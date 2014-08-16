@@ -103,8 +103,6 @@ dependencies {
     compile "com.kryptnostic:kryptnostic-api:${fhe_core_version}"
     compile "com.kryptnostic:kryptnostic-core:${fhe_core_version}"
 
-	compile files("lib/kryptnostic-java-client-responses.jar")
-
     /*
      * TESTING
      */

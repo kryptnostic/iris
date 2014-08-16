@@ -15,6 +15,7 @@ import com.kryptnostic.indexing.BaseIndexingService;
 import com.kryptnostic.indexing.Indexes;
 import com.kryptnostic.indexing.IndexingService;
 import com.kryptnostic.indexing.MetadataKeyService;
+import com.kryptnostic.indexing.metadata.Metadata;
 import com.kryptnostic.indexing.metadata.Metadatum;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
@@ -48,11 +49,11 @@ public class DefaultKryptnosticSearchConnection implements KryptnosticSearchConn
         // metadata stuff now
         // index + map tokens
         Set<Metadatum> metadata = indexingService.index(id, document);
-        Map<String, List<Metadatum>> keyedMetadata = keyService.mapTokensToKeys(metadata);
+        Metadata keyedMetadata = keyService.mapTokensToKeys(metadata);
 
         // format for metadata upload
         MetadataRequest req = new MetadataRequest();
-        for (Map.Entry<String, List<Metadatum>> m : keyedMetadata.entrySet()) {
+        for (Map.Entry<String, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet()) {
             System.out.println("list" + m.getValue().toString());
             req.addMetadata(new IndexableMetadata(m.getKey(), m.getValue().toString()));
         }
