@@ -11,13 +11,17 @@ import com.kryptnostic.api.v1.models.response.BasicResponse;
 import com.kryptnostic.api.v1.models.response.DocumentResponse;
 
 public interface KryptnosticSearch {
+    String DOCUMENT = "/document";
+    String METADATA = "/metadata";
+    String ID = "id";
+    
     /**
      * Upload a document
      * 
      * @param document
      * @return The ID of the newly saved document
      */
-    @POST("/document")
+    @POST(DOCUMENT)
     BasicResponse<String> uploadDocument(@Body DocumentRequest document);
     
     /**
@@ -26,22 +30,22 @@ public interface KryptnosticSearch {
      * @param document
      * @return The ID of the newly saved document
      */
-    @POST("/document/{id}")
-    BasicResponse<String> updateDocument(@Path("id") String id, @Body DocumentRequest document);
+    @POST(DOCUMENT + "/{" + ID + "}")
+    BasicResponse<String> updateDocument(@Path(ID) String id, @Body DocumentRequest document);
     
     /**
      * Retrieve a document's text
      * @param id
      * @return
      */
-    @GET("/document/{id}")
-    DocumentResponse getDocument(@Path("id") String id);
+    @GET(DOCUMENT + "/{" + ID + "}")
+    DocumentResponse getDocument(@Path(ID) String id);
     
     /**
      * Upload damn metaz
      * @param metadata
      * @return
      */
-    @POST("/metadata")
+    @POST(METADATA)
     BasicResponse<Void> uploadMetadata(@Body MetadataRequest metadata);
 }
