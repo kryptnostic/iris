@@ -5,6 +5,8 @@ import retrofit.http.GET;
 import retrofit.http.POST;
 import retrofit.http.Path;
 
+import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.api.v1.exceptions.types.UnauthorizedException;
 import com.kryptnostic.api.v1.models.request.DocumentRequest;
 import com.kryptnostic.api.v1.models.request.MetadataRequest;
 import com.kryptnostic.api.v1.models.response.BasicResponse;
@@ -14,7 +16,7 @@ public interface KryptnosticSearch {
     String DOCUMENT = "/document";
     String METADATA = "/metadata";
     String ID = "id";
-    
+
     /**
      * Upload a document
      * 
@@ -23,7 +25,7 @@ public interface KryptnosticSearch {
      */
     @POST(DOCUMENT)
     BasicResponse<String> uploadDocument(@Body DocumentRequest document);
-    
+
     /**
      * Update a document
      * 
@@ -32,17 +34,19 @@ public interface KryptnosticSearch {
      */
     @POST(DOCUMENT + "/{" + ID + "}")
     BasicResponse<String> updateDocument(@Path(ID) String id, @Body DocumentRequest document);
-    
+
     /**
      * Retrieve a document's text
+     * 
      * @param id
      * @return
      */
     @GET(DOCUMENT + "/{" + ID + "}")
-    DocumentResponse getDocument(@Path(ID) String id);
-    
+    DocumentResponse getDocument(@Path(ID) String id) throws ResourceNotFoundException;
+
     /**
      * Upload damn metaz
+     * 
      * @param metadata
      * @return
      */

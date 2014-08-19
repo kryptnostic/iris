@@ -5,7 +5,11 @@ import java.util.Map;
 import java.util.Set;
 
 import retrofit.RestAdapter;
+import retrofit.RestAdapter.Log;
+import retrofit.RestAdapter.LogLevel;
 
+import com.kryptnostic.api.v1.exceptions.DefaultErrorHandler;
+import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.api.v1.models.IndexableMetadata;
 import com.kryptnostic.api.v1.models.request.DocumentRequest;
 import com.kryptnostic.api.v1.models.request.MetadataRequest;
@@ -33,7 +37,8 @@ public class DefaultKryptnosticSearchConnection implements KryptnosticSearchConn
 
     public DefaultKryptnosticSearchConnection(String url) {
         // initialize http
-        RestAdapter restAdapter = new RestAdapter.Builder().setEndpoint(url).build();
+        RestAdapter restAdapter = new RestAdapter.Builder().setEndpoint(url).setErrorHandler(new DefaultErrorHandler())
+                .setLogLevel(LogLevel.FULL).build();
         service = restAdapter.create(KryptnosticSearch.class);
 
         // initialize indexing and metadata
@@ -43,6 +48,7 @@ public class DefaultKryptnosticSearchConnection implements KryptnosticSearchConn
         indexingService = new BaseIndexingService();
     }
 
+    @Override
     public String uploadDocument(String document) {
         String id = service.uploadDocument(new DocumentRequest(document)).getData();
 
@@ -64,11 +70,13 @@ public class DefaultKryptnosticSearchConnection implements KryptnosticSearchConn
         return id;
     }
 
+    @Override
     public String updateDocument(String id, String document) {
         return service.updateDocument(id, new DocumentRequest(document)).getData();
     }
 
-    public String getDocument(String id) {
+    @Override
+    public String getDocument(String id) throws ResourceNotFoundException {
         return service.getDocument(id).getData().get(ResponseKey.DOCUMENT_KEY);
     }
 }
