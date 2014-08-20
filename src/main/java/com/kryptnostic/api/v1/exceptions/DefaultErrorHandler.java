@@ -4,6 +4,7 @@ import retrofit.ErrorHandler;
 import retrofit.RetrofitError;
 import retrofit.client.Response;
 
+import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.api.v1.exceptions.types.UnauthorizedException;
 
@@ -16,6 +17,9 @@ public class DefaultErrorHandler implements ErrorHandler {
         }
         if (r != null && r.getStatus() == 404) {
             return new ResourceNotFoundException(cause);
+        }
+        if (r != null && r.getStatus() == 400) {
+            return new BadRequestException(cause);
         }
         return cause;
     }

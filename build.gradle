@@ -44,13 +44,14 @@ repositories {
    url "http://repo.maven.apache.org/maven2"
   }
   maven {
-        url "https://oss.sonatype.org/content/repositories/snapshots"
+   url "https://oss.sonatype.org/content/repositories/snapshots"
   }
 
 }
 
 ext.hazelcast_version='3.2.4'
 ext.fhe_core_version='0.1.1-SNAPSHOT'
+ext.retrofit_version='1.6.1'
 
 dependencies {
     /*
@@ -98,10 +99,12 @@ dependencies {
     compile "com.hazelcast:hazelcast-wm:${hazelcast_version}"
     compile "com.hazelcast:hazelcast-spring:${hazelcast_version}"
 
-	compile "com.squareup.retrofit:retrofit:1.6.1"
-
     compile "com.kryptnostic:kryptnostic-api:${fhe_core_version}"
     compile "com.kryptnostic:kryptnostic-core:${fhe_core_version}"
+    
+    compile "com.squareup.retrofit:retrofit:${retrofit_version}"
+	// FIXME: not working! use the following to replace com.kryptnostic.api.v1.utils.JacksonConverter plz!
+	// compile "com.squareup.retrofit:retrofit-converters:1.6.0" // not available for 1.6.1 //#${retrofit_version}
 
     /*
      * TESTING
@@ -109,6 +112,14 @@ dependencies {
     testCompile 'junit:junit:4.11'
 }
 
+task sourceJar(type : Jar) {
+  classifier = 'sources'
+  from sourceSets.main.allSource
+}
+
+artifacts {
+	archives sourceJar
+}
 
 eclipse {
     ext.downloadSources = true

@@ -5,8 +5,8 @@ import retrofit.http.GET;
 import retrofit.http.POST;
 import retrofit.http.Path;
 
+import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.api.v1.exceptions.types.UnauthorizedException;
 import com.kryptnostic.api.v1.models.request.DocumentRequest;
 import com.kryptnostic.api.v1.models.request.MetadataRequest;
 import com.kryptnostic.api.v1.models.response.BasicResponse;
@@ -51,5 +51,5 @@ public interface KryptnosticSearch {
      * @return
      */
     @POST(METADATA)
-    BasicResponse<Void> uploadMetadata(@Body MetadataRequest metadata);
+    BasicResponse<Void> uploadMetadata(@Body MetadataRequest metadata) throws BadRequestException;
 }
