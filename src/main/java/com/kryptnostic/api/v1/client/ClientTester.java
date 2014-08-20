@@ -1,16 +1,5 @@
 package com.kryptnostic.api.v1.client;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import com.kryptnostic.indexing.BalancedMetadataKeyService;
-import com.kryptnostic.indexing.BaseIndexingService;
-import com.kryptnostic.indexing.Indexes;
-import com.kryptnostic.indexing.IndexingService;
-import com.kryptnostic.indexing.MetadataKeyService;
-import com.kryptnostic.indexing.metadata.Metadatum;
-import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 public class ClientTester {
 
