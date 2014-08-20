@@ -21,7 +21,7 @@ import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 // TODO: exception handling
 public class DefaultKryptnosticSearchConnection implements KryptnosticSearchConnection {
-    final private KryptnosticSearch service;
+    final private KryptnosticStorage service;
 
     final private MetadataKeyService keyService;
     final private IndexingService indexingService;
@@ -34,7 +34,7 @@ public class DefaultKryptnosticSearchConnection implements KryptnosticSearchConn
     public DefaultKryptnosticSearchConnection(String url) {
         // initialize http
         RestAdapter restAdapter = new RestAdapter.Builder().setEndpoint(url).build();
-        service = restAdapter.create(KryptnosticSearch.class);
+        service = restAdapter.create(KryptnosticStorage.class);
 
         // initialize indexing and metadata
         SimplePolynomialFunction indexingHashFunction = Indexes.generateRandomIndexingFunction(TOKEN_LENGTH,
