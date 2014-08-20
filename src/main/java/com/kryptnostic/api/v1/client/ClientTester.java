@@ -17,7 +17,7 @@ public class ClientTester {
     private static final String URL = "http://localhost:8081/rhizome/v1";
 
     public static void main(String[] args) {
-        DefaultKryptnosticSearchConnection conn = new DefaultKryptnosticSearchConnection(URL);
+        DefaultKryptnosticConnection conn = new DefaultKryptnosticConnection(URL);
 
         String document = "I am so cool";
         
