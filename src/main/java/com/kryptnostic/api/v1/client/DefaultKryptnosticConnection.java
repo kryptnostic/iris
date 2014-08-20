@@ -11,6 +11,8 @@ import retrofit.RestAdapter;
 import retrofit.RestAdapter.LogLevel;
 
 import com.kryptnostic.api.v1.exceptions.DefaultErrorHandler;
+import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
+import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.api.v1.models.IndexableMetadata;
 import com.kryptnostic.api.v1.models.request.DocumentRequest;
 import com.kryptnostic.api.v1.models.request.MetadataRequest;
@@ -27,16 +29,16 @@ import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 // TODO: exception handling
 public class DefaultKryptnosticConnection implements KryptnosticConnection {
-    private static final Logger log = LoggerFactory.getLogger( KryptnosticConnection.class );
-    private static final int TOKEN_LENGTH    = 256;
-    private static final int NONCE_LENGTH    = 64;
+    private static final Logger log = LoggerFactory.getLogger(KryptnosticConnection.class);
+    private static final int TOKEN_LENGTH = 256;
+    private static final int NONCE_LENGTH = 64;
     private static final int LOCATION_LENGTH = 64;
-    private static final int BUCKET_SIZE     = 100;
+    private static final int BUCKET_SIZE = 100;
 
     private final KryptnosticStorage storageService;
-    private final KryptnosticSearch  searchService;
+    private final KryptnosticSearch searchService;
     private final MetadataKeyService keyService;
-    private final IndexingService    indexingService;
+    private final IndexingService indexingService;
 
     public DefaultKryptnosticConnection(String url) {
         // initialize http
@@ -47,22 +49,23 @@ public class DefaultKryptnosticConnection implements KryptnosticConnection {
                         log.debug(msg);
                     }
                 }).build();
-        storageService = restAdapter.create( KryptnosticStorage.class );
-        searchService = restAdapter.create( KryptnosticSearch.class );
+        storageService = restAdapter.create(KryptnosticStorage.class);
+        searchService = restAdapter.create(KryptnosticSearch.class);
         // initialize indexing and metadata
-        SimplePolynomialFunction indexingHashFunction = Indexes.generateRandomIndexingFunction( TOKEN_LENGTH ,
-                NONCE_LENGTH , LOCATION_LENGTH );
-        keyService = new BalancedMetadataKeyService( indexingHashFunction , BUCKET_SIZE , NONCE_LENGTH );
+        SimplePolynomialFunction indexingHashFunction = Indexes.generateRandomIndexingFunction(TOKEN_LENGTH,
+                NONCE_LENGTH, LOCATION_LENGTH);
+        keyService = new BalancedMetadataKeyService(indexingHashFunction, BUCKET_SIZE, NONCE_LENGTH);
         indexingService = new BaseIndexingService();
     }
 
-    public String uploadDocument(String document) {
-        String id = storageService.uploadDocument( new DocumentRequest( document ) ).getData();
+    @Override
+    public String uploadDocument(String document) throws BadRequestException {
+        String id = storageService.uploadDocument(new DocumentRequest(document)).getData();
 
         // metadata stuff now
         // index + map tokens
-        Set<Metadatum> metadata = indexingService.index( id , document );
-        Metadata keyedMetadata = keyService.mapTokensToKeys( metadata );
+        Set<Metadatum> metadata = indexingService.index(id, document);
+        Metadata keyedMetadata = keyService.mapTokensToKeys(metadata);
 
         // format for metadata upload
         MetadataRequest req = new MetadataRequest();
@@ -72,18 +75,19 @@ public class DefaultKryptnosticConnection implements KryptnosticConnection {
             String value = m.getValue().toString();
             req.addMetadata(new IndexableMetadata(key, value));
         }
-        storageService.uploadMetadata( req );
         log.debug("generated metadata " + keyedMetadata);
+        storageService.uploadMetadata(req);
 
         return id;
     }
 
     @Override
-    public String updateDocument(String id, String document) {
-        return storageService.updateDocument( id , new DocumentRequest( document ) ).getData();
+    public String updateDocument(String id, String document) throws ResourceNotFoundException {
+        return storageService.updateDocument(id, new DocumentRequest(document)).getData();
     }
 
-    public String getDocument(String id) {
-        return storageService.getDocument( id ).getData().get( ResponseKey.DOCUMENT_KEY );
+    @Override
+    public String getDocument(String id) throws ResourceNotFoundException {
+        return storageService.getDocument(id).getData().get(ResponseKey.DOCUMENT_KEY);
     }
 }
