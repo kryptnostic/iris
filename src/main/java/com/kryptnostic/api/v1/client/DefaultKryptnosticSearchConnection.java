@@ -4,12 +4,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import retrofit.RestAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import retrofit.RestAdapter;
+import retrofit.RestAdapter.LogLevel;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kryptnostic.api.v1.exceptions.DefaultErrorHandler;
+import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
+import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.api.v1.models.IndexableMetadata;
 import com.kryptnostic.api.v1.models.request.DocumentRequest;
 import com.kryptnostic.api.v1.models.request.MetadataRequest;
 import com.kryptnostic.api.v1.models.response.ResponseKey;
+import com.kryptnostic.api.v1.utils.JacksonConverter;
 import com.kryptnostic.indexing.BalancedMetadataKeyService;
 import com.kryptnostic.indexing.BaseIndexingService;
 import com.kryptnostic.indexing.Indexes;
@@ -26,14 +35,23 @@ public class DefaultKryptnosticSearchConnection implements KryptnosticSearchConn
     final private MetadataKeyService keyService;
     final private IndexingService indexingService;
 
+    private static final Logger log = LoggerFactory.getLogger(DefaultKryptnosticSearchConnection.class);
+
     private static final int TOKEN_LENGTH = 256;
     private static final int NONCE_LENGTH = 64;
     private static final int LOCATION_LENGTH = 64;
     private static final int BUCKET_SIZE = 100;
 
     public DefaultKryptnosticSearchConnection(String url) {
+        ObjectMapper om = new ObjectMapper();
         // initialize http
-        RestAdapter restAdapter = new RestAdapter.Builder().setEndpoint(url).build();
+        RestAdapter restAdapter = new RestAdapter.Builder().setConverter(new JacksonConverter()).setEndpoint(url)
+                .setErrorHandler(new DefaultErrorHandler()).setLogLevel(LogLevel.FULL).setLog(new RestAdapter.Log() {
+                    @Override
+                    public void log(String msg) {
+                        log.debug(msg);
+                    }
+                }).build();
         service = restAdapter.create(KryptnosticSearch.class);
 
         // initialize indexing and metadata
@@ -43,7 +61,8 @@ public class DefaultKryptnosticSearchConnection implements KryptnosticSearchConn
         indexingService = new BaseIndexingService();
     }
 
-    public String uploadDocument(String document) {
+    @Override
+    public String uploadDocument(String document) throws BadRequestException {
         String id = service.uploadDocument(new DocumentRequest(document)).getData();
 
         // metadata stuff now
@@ -54,21 +73,25 @@ public class DefaultKryptnosticSearchConnection implements KryptnosticSearchConn
         // format for metadata upload
         MetadataRequest req = new MetadataRequest();
         for (Map.Entry<String, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet()) {
-            System.out.println("list" + m.getValue().toString());
-            req.addMetadata(new IndexableMetadata(m.getKey(), m.getValue().toString()));
+            log.debug("list" + m.getValue().toString());
+            String key = m.getKey();
+            String value = m.getValue().toString();
+            req.addMetadata(new IndexableMetadata(key, value));
         }
         service.uploadMetadata(req);
 
-        System.out.println("generated metadata " + keyedMetadata);
+        log.debug("generated metadata " + keyedMetadata);
 
         return id;
     }
 
+    @Override
     public String updateDocument(String id, String document) {
         return service.updateDocument(id, new DocumentRequest(document)).getData();
     }
 
-    public String getDocument(String id) {
+    @Override
+    public String getDocument(String id) throws ResourceNotFoundException {
         return service.getDocument(id).getData().get(ResponseKey.DOCUMENT_KEY);
     }
 }
