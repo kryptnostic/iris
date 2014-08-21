@@ -51,6 +51,7 @@ repositories {
 
 ext.hazelcast_version='3.2.4'
 ext.fhe_core_version='0.1.1-SNAPSHOT'
+ext.kodex_version="0.0.1-SNAPSHOT"
 ext.retrofit_version='1.6.1'
 
 dependencies {
@@ -108,6 +109,7 @@ dependencies {
       logger.quiet("$project.name is using jar dependencies")
       compile "com.kryptnostic:kryptnostic-api:${fhe_core_version}"
       compile "com.kryptnostic:kryptnostic-core:${fhe_core_version}"
+      compile "com.kryptnostic:kodex:${kodex_version}"
     }
     
     compile "com.squareup.retrofit:retrofit:${retrofit_version}"
