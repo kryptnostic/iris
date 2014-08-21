@@ -99,8 +99,16 @@ dependencies {
     compile "com.hazelcast:hazelcast-wm:${hazelcast_version}"
     compile "com.hazelcast:hazelcast-spring:${hazelcast_version}"
 
-    compile "com.kryptnostic:kryptnostic-api:${fhe_core_version}"
-    compile "com.kryptnostic:kryptnostic-core:${fhe_core_version}"
+    if( project.hasProperty('developmentMode') && project.developmentMode ) {
+      logger.quiet("$project.name is using project dependencies")
+      compile project(":fhe-core:kryptnostic-api")
+      compile project(":fhe-core:kryptnostic-api")
+      compile project(":kodex")
+    } else {
+      logger.quiet("$project.name is using jar dependencies")
+      compile "com.kryptnostic:kryptnostic-api:${fhe_core_version}"
+      compile "com.kryptnostic:kryptnostic-core:${fhe_core_version}"
+    }
     
     compile "com.squareup.retrofit:retrofit:${retrofit_version}"
 	// FIXME: not working! use the following to replace com.kryptnostic.api.v1.utils.JacksonConverter plz!
