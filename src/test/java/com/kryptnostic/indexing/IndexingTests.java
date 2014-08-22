@@ -13,8 +13,10 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Charsets;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Resources;
-import com.kryptnostic.indexing.metadata.Metadata;
-import com.kryptnostic.indexing.metadata.Metadatum;
+import com.kryptnostic.api.v1.indexing.IndexingService;
+import com.kryptnostic.api.v1.indexing.MetadataKeyService;
+import com.kryptnostic.api.v1.indexing.metadata.Metadata;
+import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 public class IndexingTests {

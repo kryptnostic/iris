@@ -6,10 +6,11 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
-import com.kryptnostic.indexing.analysis.Analyzer;
+import com.kryptnostic.api.v1.indexing.IndexingService;
+import com.kryptnostic.api.v1.indexing.analysis.Analyzer;
+import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.indexing.analysis.TokenizingWhitespaceAnalyzer;
 import com.kryptnostic.indexing.metadata.BaseMetadatum;
-import com.kryptnostic.indexing.metadata.Metadatum;
 
 public class BaseIndexingService implements IndexingService {
 	private final Set<Analyzer> analyzers;

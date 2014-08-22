@@ -13,6 +13,10 @@ import retrofit.RestAdapter.LogLevel;
 import com.kryptnostic.api.v1.exceptions.DefaultErrorHandler;
 import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.api.v1.indexing.IndexingService;
+import com.kryptnostic.api.v1.indexing.MetadataKeyService;
+import com.kryptnostic.api.v1.indexing.metadata.Metadata;
+import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.api.v1.models.IndexableMetadata;
 import com.kryptnostic.api.v1.models.request.DocumentRequest;
 import com.kryptnostic.api.v1.models.request.MetadataRequest;
@@ -21,10 +25,6 @@ import com.kryptnostic.api.v1.utils.JacksonConverter;
 import com.kryptnostic.indexing.BalancedMetadataKeyService;
 import com.kryptnostic.indexing.BaseIndexingService;
 import com.kryptnostic.indexing.Indexes;
-import com.kryptnostic.indexing.IndexingService;
-import com.kryptnostic.indexing.MetadataKeyService;
-import com.kryptnostic.indexing.metadata.Metadata;
-import com.kryptnostic.indexing.metadata.Metadatum;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 // TODO: exception handling

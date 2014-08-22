@@ -18,11 +18,12 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
+import com.kryptnostic.api.v1.indexing.MetadataKeyService;
+import com.kryptnostic.api.v1.indexing.metadata.Metadata;
+import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.indexing.metadata.BalancedMetadata;
 import com.kryptnostic.indexing.metadata.BaseMetadatum;
-import com.kryptnostic.indexing.metadata.Metadata;
-import com.kryptnostic.indexing.metadata.Metadatum;
 import com.kryptnostic.linear.BitUtils;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 

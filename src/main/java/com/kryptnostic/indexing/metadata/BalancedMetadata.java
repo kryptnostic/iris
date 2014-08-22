@@ -3,6 +3,9 @@ package com.kryptnostic.indexing.metadata;
 import java.util.List;
 import java.util.Map;
 
+import com.kryptnostic.api.v1.indexing.metadata.Metadata;
+import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
+
 import cern.colt.bitvector.BitVector;
 
 public class BalancedMetadata implements Metadata {

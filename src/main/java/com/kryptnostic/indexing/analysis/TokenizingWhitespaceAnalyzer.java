@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.kryptnostic.api.v1.indexing.analysis.Analyzer;
 
 public class TokenizingWhitespaceAnalyzer implements Analyzer {
 	private static final Pattern onlyWords = Pattern.compile("([a-zA-Z]+)");
