@@ -1,5 +1,6 @@
 package com.kryptnostic.api.v1.client;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import retrofit.RestAdapter;
 import retrofit.RestAdapter.LogLevel;
 
+import com.google.common.collect.Lists;
 import com.kryptnostic.api.v1.exceptions.DefaultErrorHandler;
 import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
@@ -68,13 +70,14 @@ public class DefaultKryptnosticConnection implements KryptnosticConnection {
         Metadata keyedMetadata = keyService.mapTokensToKeys(metadata);
 
         // format for metadata upload
-        MetadataRequest req = new MetadataRequest();
+        Collection<IndexableMetadata> metadataIndex = Lists.newArrayList();
         for (Map.Entry<String, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet()) {
             log.debug("list" + m.getValue().toString());
             String key = m.getKey();
             String value = m.getValue().toString();
-            req.addMetadata(new IndexableMetadata(key, value));
+            metadataIndex.add(new IndexableMetadata(key, value));
         }
+        MetadataRequest req = new MetadataRequest(metadataIndex);
         log.debug("generated metadata " + keyedMetadata);
         storageService.uploadMetadata(req);
 
