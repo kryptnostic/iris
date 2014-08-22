@@ -1,4 +1,4 @@
-package com.kryptnostic.indexing;
+package com.kryptnostic.api.v1.indexing;
 
 import java.util.List;
 import java.util.Map;
@@ -8,9 +8,9 @@ import java.util.Set;
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.indexing.IndexingService;
 import com.kryptnostic.api.v1.indexing.analysis.Analyzer;
+import com.kryptnostic.api.v1.indexing.analysis.TokenizingWhitespaceAnalyzer;
+import com.kryptnostic.api.v1.indexing.metadata.BaseMetadatum;
 import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
-import com.kryptnostic.indexing.analysis.TokenizingWhitespaceAnalyzer;
-import com.kryptnostic.indexing.metadata.BaseMetadatum;
 
 public class BaseIndexingService implements IndexingService {
 	private final Set<Analyzer> analyzers;

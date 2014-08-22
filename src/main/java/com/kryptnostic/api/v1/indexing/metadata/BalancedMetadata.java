@@ -1,4 +1,4 @@
-package com.kryptnostic.indexing.metadata;
+package com.kryptnostic.api.v1.indexing.metadata;
 
 import java.util.List;
 import java.util.Map;
