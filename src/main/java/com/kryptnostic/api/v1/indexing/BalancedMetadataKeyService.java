@@ -1,4 +1,4 @@
-package com.kryptnostic.indexing;
+package com.kryptnostic.api.v1.indexing;
 
 import java.nio.ByteBuffer;
 import java.security.SecureRandom;
@@ -19,11 +19,11 @@ import com.google.common.collect.Maps;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.indexing.MetadataKeyService;
+import com.kryptnostic.api.v1.indexing.metadata.BalancedMetadata;
+import com.kryptnostic.api.v1.indexing.metadata.BaseMetadatum;
 import com.kryptnostic.api.v1.indexing.metadata.Metadata;
 import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.bitwise.BitVectors;
-import com.kryptnostic.indexing.metadata.BalancedMetadata;
-import com.kryptnostic.indexing.metadata.BaseMetadatum;
 import com.kryptnostic.linear.BitUtils;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
