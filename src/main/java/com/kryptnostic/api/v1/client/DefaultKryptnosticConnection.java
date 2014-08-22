@@ -23,8 +23,10 @@ import com.kryptnostic.api.v1.indexing.MetadataKeyService;
 import com.kryptnostic.api.v1.indexing.metadata.Metadata;
 import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.api.v1.models.IndexableMetadata;
+import com.kryptnostic.api.v1.models.SearchResult;
 import com.kryptnostic.api.v1.models.request.DocumentRequest;
 import com.kryptnostic.api.v1.models.request.MetadataRequest;
+import com.kryptnostic.api.v1.models.request.SearchRequest;
 import com.kryptnostic.api.v1.models.response.ResponseKey;
 import com.kryptnostic.api.v1.utils.JacksonConverter;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
@@ -93,4 +95,10 @@ public class DefaultKryptnosticConnection implements KryptnosticConnection {
     public String getDocument(String id) throws ResourceNotFoundException {
         return storageService.getDocument(id).getData().get(ResponseKey.DOCUMENT_KEY);
     }
+
+	@Override
+	public SearchResult search(String token) {
+		return searchService.search(SearchRequest.searchToken(token));
+	}
+    
 }
