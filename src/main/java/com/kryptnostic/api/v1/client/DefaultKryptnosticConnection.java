@@ -9,8 +9,6 @@ import javax.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Configuration;
-
 import com.google.common.collect.Lists;
 import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
