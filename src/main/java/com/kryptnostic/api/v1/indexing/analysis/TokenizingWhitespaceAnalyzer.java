@@ -13,7 +13,7 @@ import com.kryptnostic.api.v1.search.QueryAnalyzer;
 
 /**
  * Basic tokenizer that uses a regular expression to parse a source string. 
- * @author Matthew Tamayo-Rios <matthew@kryptnostic.com>
+ * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  */
 public class TokenizingWhitespaceAnalyzer implements Analyzer,QueryAnalyzer {
 	private static final Pattern onlyWords = Pattern.compile("([a-zA-Z]+)");
