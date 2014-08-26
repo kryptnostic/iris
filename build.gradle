@@ -120,10 +120,10 @@ dependencies {
     /*
      * CORE SPRING FRAMEWORK DEPENDENCIES
      */
-    compile "org.springframework:spring-core:${project.spring_framework_version}"
-    compile "org.springframework:spring-beans:${project.spring_framework_version}"
-    compile "org.springframework:spring-context:${project.spring_framework_version}"
-    compile "org.springframework:spring-test:${project.spring_framework_version}"
+    testCompile "org.springframework:spring-core:${project.spring_framework_version}"
+    testCompile "org.springframework:spring-beans:${project.spring_framework_version}"
+    testCompile "org.springframework:spring-context:${project.spring_framework_version}"
+    testCompile "org.springframework:spring-test:${project.spring_framework_version}"
 
 
     /*

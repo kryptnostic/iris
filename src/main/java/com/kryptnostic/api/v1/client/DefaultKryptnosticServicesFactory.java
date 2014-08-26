@@ -2,8 +2,6 @@ package com.kryptnostic.api.v1.client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 import retrofit.RestAdapter;
 import retrofit.RestAdapter.LogLevel;
@@ -17,7 +15,6 @@ import com.kryptnostic.api.v1.indexing.MetadataKeyService;
 import com.kryptnostic.api.v1.utils.JacksonConverter;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
-@Configuration
 public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFactory {
     private final static Logger logger = LoggerFactory.getLogger(DefaultKryptnosticServicesFactory.class);
 
@@ -47,26 +44,18 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
         searchService = restAdapter.create(KryptnosticSearch.class);
     }
 
-    @Bean(name="storageService")
-    @Override
     public KryptnosticStorage createStorageService() {
         return storageService;
     }
 
-    @Bean(name="searchService")
-    @Override
     public KryptnosticSearch createSearchService() {
         return searchService;
     }
     
-    @Bean(name="metadataKeyService")
-    @Override
     public MetadataKeyService createMetadataKeyService() {
         return metadataKeyService;
     }
 
-    @Bean(name="indexingService")
-    @Override
     public IndexingService createIndexingService() {
         return indexingService;
     }

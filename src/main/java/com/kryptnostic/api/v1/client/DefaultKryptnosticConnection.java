@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,15 +25,19 @@ import com.kryptnostic.api.v1.models.response.ResponseKey;
 // TODO: exception handling
 public class DefaultKryptnosticConnection implements KryptnosticConnection {
     private static final Logger log = LoggerFactory.getLogger(KryptnosticConnection.class);
-    
-    @Inject
+
     private KryptnosticStorage storageService;
-    @Inject
     private KryptnosticSearch searchService;
-    @Inject
     private MetadataKeyService keyService;
-    @Inject
     private IndexingService indexingService;
+
+    public DefaultKryptnosticConnection(KryptnosticStorage storageService, KryptnosticSearch searchService,
+            MetadataKeyService keyService, IndexingService indexingService) {
+        this.storageService = storageService;
+        this.searchService = searchService;
+        this.keyService = keyService;
+        this.indexingService = indexingService;
+    }
 
     @Override
     public String uploadDocument(String document) throws BadRequestException {
@@ -75,5 +77,5 @@ public class DefaultKryptnosticConnection implements KryptnosticConnection {
     public SearchResult search(String token) {
         return searchService.search(SearchRequest.searchToken(token));
     }
-    
+
 }

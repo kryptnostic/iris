@@ -7,6 +7,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.support.AnnotationConfigContextLoader;
 
 import com.kryptnostic.api.v1.client.KryptnosticConnection;
 import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
@@ -20,7 +21,7 @@ import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
  *
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration("classpath:context.xml")
+@ContextConfiguration(loader=AnnotationConfigContextLoader.class,classes=TestConfiguration.class)
 public class ClientTests {
     @Inject
     private KryptnosticConnection kryptnosticConnection;
