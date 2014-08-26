@@ -8,6 +8,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cern.colt.bitvector.BitVector;
+
 import com.google.common.collect.Lists;
 import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
@@ -74,8 +76,12 @@ public class DefaultKryptnosticConnection implements KryptnosticConnection {
     }
 
     @Override
-    public SearchResult search(String token) {
+    public SearchResult search(String term) {
+        BitVector token = null;
+        // TODO check for search function on server and generate if necessary
         return searchService.search(SearchRequest.searchToken(token));
     }
+
+
 
 }
