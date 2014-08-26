@@ -69,10 +69,5 @@ public class DefaultKryptnosticConnection implements KryptnosticConnection {
     public String getDocument(String id) throws ResourceNotFoundException {
         return storageService.getDocument(id).getData().get(ResponseKey.DOCUMENT_KEY);
     }
-
-	@Override
-	public SearchResult search(String token) {
-		return searchService.search(SearchRequest.searchToken(token));
-	}
     
 }
