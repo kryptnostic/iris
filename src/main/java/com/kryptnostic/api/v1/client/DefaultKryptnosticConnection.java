@@ -8,56 +8,37 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import retrofit.RestAdapter;
-import retrofit.RestAdapter.LogLevel;
+import cern.colt.bitvector.BitVector;
 
 import com.google.common.collect.Lists;
-import com.kryptnostic.api.v1.exceptions.DefaultErrorHandler;
 import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
-import com.kryptnostic.api.v1.indexing.BaseIndexingService;
-import com.kryptnostic.api.v1.indexing.Indexes;
 import com.kryptnostic.api.v1.indexing.IndexingService;
 import com.kryptnostic.api.v1.indexing.MetadataKeyService;
 import com.kryptnostic.api.v1.indexing.metadata.Metadata;
 import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.api.v1.models.IndexableMetadata;
+import com.kryptnostic.api.v1.models.SearchResult;
 import com.kryptnostic.api.v1.models.request.DocumentRequest;
 import com.kryptnostic.api.v1.models.request.MetadataRequest;
+import com.kryptnostic.api.v1.models.request.SearchRequest;
 import com.kryptnostic.api.v1.models.response.ResponseKey;
-import com.kryptnostic.api.v1.utils.JacksonConverter;
-import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 // TODO: exception handling
 public class DefaultKryptnosticConnection implements KryptnosticConnection {
     private static final Logger log = LoggerFactory.getLogger(KryptnosticConnection.class);
-    private static final int TOKEN_LENGTH = 256;
-    private static final int NONCE_LENGTH = 64;
-    private static final int LOCATION_LENGTH = 64;
-    private static final int BUCKET_SIZE = 100;
 
-    private final KryptnosticStorage storageService;
-    private final KryptnosticSearch searchService;
-    private final MetadataKeyService keyService;
-    private final IndexingService indexingService;
+    private KryptnosticStorage storageService;
+    private KryptnosticSearch searchService;
+    private MetadataKeyService keyService;
+    private IndexingService indexingService;
 
-    public DefaultKryptnosticConnection(String url) {
-        // initialize http
-        RestAdapter restAdapter = new RestAdapter.Builder().setConverter(new JacksonConverter()).setEndpoint(url)
-                .setErrorHandler(new DefaultErrorHandler()).setLogLevel(LogLevel.FULL).setLog(new RestAdapter.Log() {
-                    @Override
-                    public void log(String msg) {
-                        log.debug(msg);
-                    }
-                }).build();
-        storageService = restAdapter.create(KryptnosticStorage.class);
-        searchService = restAdapter.create(KryptnosticSearch.class);
-        // initialize indexing and metadata
-        SimplePolynomialFunction indexingHashFunction = Indexes.generateRandomIndexingFunction(TOKEN_LENGTH,
-                NONCE_LENGTH, LOCATION_LENGTH);
-        keyService = new BalancedMetadataKeyService(indexingHashFunction, BUCKET_SIZE, NONCE_LENGTH);
-        indexingService = new BaseIndexingService();
+    public DefaultKryptnosticConnection(KryptnosticStorage storageService, KryptnosticSearch searchService,
+            MetadataKeyService keyService, IndexingService indexingService) {
+        this.storageService = storageService;
+        this.searchService = searchService;
+        this.keyService = keyService;
+        this.indexingService = indexingService;
     }
 
     @Override
@@ -93,4 +74,14 @@ public class DefaultKryptnosticConnection implements KryptnosticConnection {
     public String getDocument(String id) throws ResourceNotFoundException {
         return storageService.getDocument(id).getData().get(ResponseKey.DOCUMENT_KEY);
     }
+
+    @Override
+    public SearchResult search(String term) {
+        BitVector token = null;
+        // TODO check for search function on server and generate if necessary
+        return searchService.search(SearchRequest.searchToken(token));
+    }
+
+
+
 }
