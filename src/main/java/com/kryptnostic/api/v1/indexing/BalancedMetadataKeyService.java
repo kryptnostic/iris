@@ -22,7 +22,7 @@ import com.kryptnostic.linear.BitUtils;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 /**
- * @author Matthew Tamayo-Rios <matthew@kryptnostic.com> This class is used to compute the appropriate location to store
+ * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt; This class is used to compute the appropriate location to store
  *         a token's metadata.
  * 
  */
