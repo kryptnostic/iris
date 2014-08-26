@@ -58,7 +58,7 @@ if ( (branch.equals("develop") || branch.equals("master") ) && ( System.getenv("
                     asNode().children().last() + {
                         resolveStrategy = Closure.DELEGATE_FIRST
                         name 'fhe-core'
-                        description 'Kryptnostic test libraries'
+                        description 'Kryptnostic client libraries'
                         url 'https://www.github.com/kryptnostic/kryptnostic-client'
                         scm {
                             url 'https://www.github.com/kryptnostic/kryptnostic-client'
