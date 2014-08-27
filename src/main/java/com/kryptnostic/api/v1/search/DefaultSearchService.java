@@ -3,11 +3,6 @@ package com.kryptnostic.api.v1.search;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.AsyncResult;
 
 import cern.colt.bitvector.BitVector;
 
@@ -35,7 +30,8 @@ public class DefaultSearchService implements SearchService {
     public DefaultSearchService(SearchAPI searchService, IndexingService indexingService) {
         this.searchService = searchService;
         this.indexingService = indexingService;
-        this.documentSearcherFactory = new DefaultDocumentSearcherFactory(); // TODO get rid of this and refer to utility class.
+        this.documentSearcherFactory = new DefaultDocumentSearcherFactory(); // TODO get rid of this and refer to
+                                                                             // utility class.
     }
 
     /**
@@ -45,57 +41,30 @@ public class DefaultSearchService implements SearchService {
     @Override
     public Set<Metadatum> search(String query) {
         List<String> tokens = analyzeQuery(query);
-        List<BitVector> searchTokens = getSearchTokens(tokens);
-
-        List<Future<SearchResult>> futures = Lists.newArrayList();
-        for (BitVector searchToken : searchTokens) {
-            Future<SearchResult> future = executeSearch(searchToken);
-            futures.add(future);
-        }
-
-        Set<Metadatum> results = Sets.newHashSet();
-        for (int i = 0; i < searchTokens.size(); i++) {
-            try {
-                filterResults(results, futures.get(i).get());
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
-        }
-
-        return results;
+        List<SearchRequest> searchRequests = getSearchRequests(tokens);
+        SearchResult searchResult = searchService.search(searchRequests);
+        Set<Metadatum> filteredResults = filterResult(searchResult);
+        return filteredResults;
     }
 
-    /**
-     * Add metadatum found to running Set of results.
-     */
-    private void filterResults(Set<Metadatum> results, SearchResult result) {
+    private Set<Metadatum> filterResult(SearchResult searchResult) {
         // TODO Auto-generated method stub
-    }
-
-    /**
-     * Asynchronous method to execute search via Kryptnostic RESTful service.
-     * 
-     * @return Future<SearchResult>
-     */
-    @Async
-    private Future<SearchResult> executeSearch(BitVector searchToken) {
-        SearchRequest request = SearchRequest.searchToken(searchToken);
-        SearchResult result = searchService.search(request);
-        return new AsyncResult<SearchResult>(result);
+        return null;
     }
 
     /**
      * @return List<BitVector> of search tokens, the ciphertext to be submitted to KryptnosticSearch.
      */
-    private List<BitVector> getSearchTokens(List<String> tokens) {
+    private List<SearchRequest> getSearchRequests(List<String> tokens) {
         Preconditions.checkArgument(tokens != null, "Cannot pass null tokens param.");
 
-        List<BitVector> searchTokens = Lists.newArrayList();
+        List<SearchRequest> searchRequests = Lists.newArrayList();
         for (String token : tokens) {
             BitVector searchToken = documentSearcherFactory.createSearchToken(token);
-            searchTokens.add(searchToken);
+            SearchRequest searchRequest = SearchRequest.searchToken(searchToken);
+            searchRequests.add(searchRequest);
         }
-        return searchTokens;
+        return searchRequests;
     }
 
     /**

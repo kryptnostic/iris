@@ -152,4 +152,10 @@ public class MockKryptnosticSearch implements SearchAPI {
         
     }
 
+    @Override
+    public SearchResult search(List<SearchRequest> requests) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
 }
