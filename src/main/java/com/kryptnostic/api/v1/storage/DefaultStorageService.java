@@ -1,4 +1,4 @@
-package com.kryptnostic.api.v1.client;
+package com.kryptnostic.api.v1.storage;
 
 import java.util.Collection;
 import java.util.List;
@@ -8,9 +8,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cern.colt.bitvector.BitVector;
-
 import com.google.common.collect.Lists;
+import com.kryptnostic.api.v1.client.StorageAPI;
 import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.api.v1.indexing.IndexingService;
@@ -18,25 +17,20 @@ import com.kryptnostic.api.v1.indexing.MetadataKeyService;
 import com.kryptnostic.api.v1.indexing.metadata.Metadata;
 import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.api.v1.models.IndexableMetadata;
-import com.kryptnostic.api.v1.models.SearchResult;
 import com.kryptnostic.api.v1.models.request.DocumentRequest;
 import com.kryptnostic.api.v1.models.request.MetadataRequest;
-import com.kryptnostic.api.v1.models.request.SearchRequest;
 import com.kryptnostic.api.v1.models.response.ResponseKey;
 
-// TODO: exception handling
-public class DefaultKryptnosticConnection implements KryptnosticConnection {
-    private static final Logger log = LoggerFactory.getLogger(KryptnosticConnection.class);
+public class DefaultStorageService implements StorageService {
+    private static final Logger log = LoggerFactory.getLogger(StorageService.class);
 
-    private KryptnosticStorage storageService;
-    private KryptnosticSearch searchService;
-    private MetadataKeyService keyService;
-    private IndexingService indexingService;
+    private final StorageAPI storageService;
+    private final MetadataKeyService keyService;
+    private final IndexingService indexingService;
 
-    public DefaultKryptnosticConnection(KryptnosticStorage storageService, KryptnosticSearch searchService,
-            MetadataKeyService keyService, IndexingService indexingService) {
+    public DefaultStorageService(StorageAPI storageService, MetadataKeyService keyService,
+            IndexingService indexingService) {
         this.storageService = storageService;
-        this.searchService = searchService;
         this.keyService = keyService;
         this.indexingService = indexingService;
     }
@@ -74,14 +68,5 @@ public class DefaultKryptnosticConnection implements KryptnosticConnection {
     public String getDocument(String id) throws ResourceNotFoundException {
         return storageService.getDocument(id).getData().get(ResponseKey.DOCUMENT_KEY);
     }
-
-    @Override
-    public SearchResult search(String term) {
-        BitVector token = null;
-        // TODO check for search function on server and generate if necessary
-        return searchService.search(SearchRequest.searchToken(token));
-    }
-
-
 
 }

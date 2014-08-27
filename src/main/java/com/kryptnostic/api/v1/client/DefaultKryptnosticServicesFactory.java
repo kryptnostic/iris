@@ -25,8 +25,8 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
 
     private final MetadataKeyService metadataKeyService;
     private final IndexingService indexingService;
-    private final KryptnosticStorage storageService;
-    private final KryptnosticSearch searchService;
+    private final StorageAPI storageService;
+    private final SearchAPI searchService;
 
     public DefaultKryptnosticServicesFactory(String url) {
         RestAdapter restAdapter = new RestAdapter.Builder().setConverter(new JacksonConverter()).setEndpoint(url)
@@ -40,15 +40,15 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
                 NONCE_LENGTH, LOCATION_LENGTH);
         metadataKeyService = new BalancedMetadataKeyService(indexingHashFunction, BUCKET_SIZE, NONCE_LENGTH);
         indexingService = new BaseIndexingService();
-        storageService = restAdapter.create(KryptnosticStorage.class);
-        searchService = restAdapter.create(KryptnosticSearch.class);
+        storageService = restAdapter.create(StorageAPI.class);
+        searchService = restAdapter.create(SearchAPI.class);
     }
 
-    public KryptnosticStorage createStorageService() {
+    public StorageAPI createStorageService() {
         return storageService;
     }
 
-    public KryptnosticSearch createSearchService() {
+    public SearchAPI createSearchService() {
         return searchService;
     }
     

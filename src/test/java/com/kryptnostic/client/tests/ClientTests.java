@@ -9,7 +9,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.support.AnnotationConfigContextLoader;
 
-import com.kryptnostic.api.v1.client.KryptnosticConnection;
+import com.kryptnostic.api.v1.client.KryptnosticContext;
 import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
 
@@ -24,20 +24,20 @@ import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
 @ContextConfiguration(loader=AnnotationConfigContextLoader.class,classes=TestConfiguration.class)
 public class ClientTests {
     @Inject
-    private KryptnosticConnection kryptnosticConnection;
+    private KryptnosticContext kryptnosticContext;
 
     @Test
     public void uploadDocumentTest() {
-        String document = "We suffer into truth.";
+        String document = "lo and behold.";
         String id = null;
         try {
-            id = kryptnosticConnection.uploadDocument(document);
+            id = kryptnosticContext.uploadDocument(document);
         } catch (BadRequestException e) {
             e.printStackTrace();
         }
         String retrieved = null;
         try {
-            retrieved = kryptnosticConnection.getDocument(id);
+            retrieved = kryptnosticContext.getDocument(id);
         } catch (ResourceNotFoundException e) {
             e.printStackTrace();
         }
