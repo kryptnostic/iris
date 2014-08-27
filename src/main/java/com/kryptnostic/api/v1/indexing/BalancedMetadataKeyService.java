@@ -27,11 +27,6 @@ import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.linear.BitUtils;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
-/**
- * @author Matthew Tamayo-Rios <matthew@kryptnostic.com> This class is used to compute the appropriate location to store
- *         a token's metadata.
- * 
- */
 public class BalancedMetadataKeyService implements MetadataKeyService {
     private static final Random r = new SecureRandom();
     private static final Base64 codec = new Base64();
