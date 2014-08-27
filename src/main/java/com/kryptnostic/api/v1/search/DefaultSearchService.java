@@ -19,7 +19,7 @@ import com.kryptnostic.api.v1.models.request.SearchRequest;
 /**
  * Default implementation of SearchService. Must use same IndexingService as the KryptnosticConnection.
  * 
- * @author Nick Hewitt <nick@kryptnostic.com>
+ * @author Nick Hewitt &lt;nick@kryptnostic.com&gt;
  *
  */
 public class DefaultSearchService implements SearchService {
