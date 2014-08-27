@@ -9,7 +9,7 @@ import cern.colt.bitvector.BitVector;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.kryptnostic.api.v1.client.SearchAPI;
+import com.kryptnostic.api.v1.client.web.SearchApi;
 import com.kryptnostic.api.v1.indexing.Indexes;
 import com.kryptnostic.api.v1.indexing.IndexingService;
 import com.kryptnostic.api.v1.indexing.analysis.Analyzer;
@@ -24,10 +24,10 @@ import com.kryptnostic.api.v1.models.request.SearchRequest;
  *
  */
 public class DefaultSearchService implements SearchService {
-    private final SearchAPI searchService;
+    private final SearchApi searchService;
     private final IndexingService indexingService;
 
-    public DefaultSearchService(SearchAPI searchService, IndexingService indexingService) {
+    public DefaultSearchService(SearchApi searchService, IndexingService indexingService) {
         this.searchService = searchService;
         this.indexingService = indexingService;
     }

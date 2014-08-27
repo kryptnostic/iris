@@ -9,7 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
-import com.kryptnostic.api.v1.client.StorageAPI;
+import com.kryptnostic.api.v1.client.web.DocumentApi;
+import com.kryptnostic.api.v1.client.web.MetadataApi;
 import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.api.v1.indexing.IndexingService;
@@ -24,20 +25,22 @@ import com.kryptnostic.api.v1.models.response.ResponseKey;
 public class DefaultStorageService implements StorageService {
     private static final Logger log = LoggerFactory.getLogger(StorageService.class);
 
-    private final StorageAPI storageService;
+    private final DocumentApi documentApi;
+    private final MetadataApi metadataApi;
     private final MetadataKeyService keyService;
     private final IndexingService indexingService;
 
-    public DefaultStorageService(StorageAPI storageService, MetadataKeyService keyService,
+    public DefaultStorageService(DocumentApi documentApi, MetadataApi metadataApi, MetadataKeyService keyService,
             IndexingService indexingService) {
-        this.storageService = storageService;
+        this.documentApi = documentApi;
+        this.metadataApi = metadataApi;
         this.keyService = keyService;
         this.indexingService = indexingService;
     }
 
     @Override
     public String uploadDocument(String document) throws BadRequestException {
-        String id = storageService.uploadDocument(new DocumentRequest(document)).getData();
+        String id = documentApi.uploadDocument(new DocumentRequest(document)).getData();
 
         // metadata stuff now
         // index + map tokens
@@ -54,19 +57,19 @@ public class DefaultStorageService implements StorageService {
         }
         MetadataRequest req = new MetadataRequest(metadataIndex);
         log.debug("generated metadata " + keyedMetadata);
-        storageService.uploadMetadata(req);
+        metadataApi.uploadMetadata(req);
 
         return id;
     }
 
     @Override
     public String updateDocument(String id, String document) throws ResourceNotFoundException {
-        return storageService.updateDocument(id, new DocumentRequest(document)).getData();
+        return documentApi.updateDocument(id, new DocumentRequest(document)).getData();
     }
 
     @Override
     public String getDocument(String id) throws ResourceNotFoundException {
-        return storageService.getDocument(id).getData().get(ResponseKey.DOCUMENT_KEY);
+        return documentApi.getDocument(id).getData().get(ResponseKey.DOCUMENT_KEY);
     }
 
 }

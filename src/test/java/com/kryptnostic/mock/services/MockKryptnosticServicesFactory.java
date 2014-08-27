@@ -1,8 +1,9 @@
 package com.kryptnostic.mock.services;
 
-import com.kryptnostic.api.v1.client.SearchAPI;
 import com.kryptnostic.api.v1.client.KryptnosticServicesFactory;
-import com.kryptnostic.api.v1.client.StorageAPI;
+import com.kryptnostic.api.v1.client.web.DocumentApi;
+import com.kryptnostic.api.v1.client.web.MetadataApi;
+import com.kryptnostic.api.v1.client.web.SearchApi;
 import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
 import com.kryptnostic.api.v1.indexing.BaseIndexingService;
 import com.kryptnostic.api.v1.indexing.Indexes;
@@ -22,8 +23,9 @@ public class MockKryptnosticServicesFactory implements KryptnosticServicesFactor
     private static final int LOCATION_LENGTH = 64;
     private static final int BUCKET_SIZE = 100;
     
-    private final SearchAPI searchService = new MockKryptnosticSearch();
-    private final StorageAPI storageService = new MockKryptnosticStorage();
+    private final SearchApi searchService = new MockKryptnosticSearch();
+    private final MetadataApi metadataService = new MockKryptnosticMetadata();
+    private final DocumentApi documentService = new MockKryptnosticDocument();
     private final MetadataKeyService metadataKeyService;
     private final IndexingService indexingService;
     
@@ -35,12 +37,17 @@ public class MockKryptnosticServicesFactory implements KryptnosticServicesFactor
     }
     
     @Override
-    public StorageAPI createStorageService() {
-        return storageService;
+    public MetadataApi createMetadataApi() {
+        return metadataService;
+    }
+    
+    @Override
+    public DocumentApi createDocumentApi() {
+        return documentService;
     }
 
     @Override
-    public SearchAPI createSearchService() {
+    public SearchApi createSearchApi() {
         return searchService;
     }
 
