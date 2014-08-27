@@ -32,10 +32,10 @@ import com.kryptnostic.search.v1.models.response.SearchResultResponse;
 // TODO replace with search on actual metadata
 public class MockKryptnosticSearch implements SearchApi {
     private final SearchResultResponse mockResult;
-    
+
     private Random r = new Random(0);
     private final KodexObjectMapperFactory objectMapperFactory = new KodexObjectMapperFactory();
-    
+
     public MockKryptnosticSearch() {
         Metadata pojoMockMetadata = new MockMetadata();
         ObjectMapper objectMapper = objectMapperFactory.getObjectMapper();
@@ -45,29 +45,21 @@ public class MockKryptnosticSearch implements SearchApi {
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
-        
+
         Integer score = 2;
         String date = "testdate";
         mockResult = new SearchResultResponse(Arrays.asList(new SearchResult(metadata, score, date)), 200, true);
-    }
-    
-    /**
-     * Validate contents of request.
-     * @return SearchResult, a mock instance containing sample data.
-     */
-    @Override
-    public SearchResultResponse search(SearchRequest request) {
-        validateRequest(request);
-        return mockResult;
     }
 
     /**
      * Assert required params in SearchRequest.
      */
-    private void validateRequest(SearchRequest request) {
-        Assert.assertNotNull(request.getSearchToken());
+    private void validateRequest(Collection<SearchRequest> requests) {
+        for (SearchRequest req : requests) {
+            Assert.assertNotNull(req.getSearchToken());
+        }
     }
-    
+
     /**
      * Mock implementation of Metadata.
      * 
@@ -77,11 +69,11 @@ public class MockKryptnosticSearch implements SearchApi {
     private class MockMetadata implements Metadata {
         private final Map<String, List<Metadatum>> metadataMap;
         private final List<BitVector> nonces;
-        
+
         private final Integer N_KEYS = 5;
         private final Integer N_METADATUM = 10;
         private final Integer N_NONCES = 10;
-        
+
         public MockMetadata() {
             metadataMap = Maps.newHashMap();
             for (int i = 0; i < N_KEYS; i++) {
@@ -89,14 +81,14 @@ public class MockKryptnosticSearch implements SearchApi {
                 for (int j = 0; j < N_METADATUM; j++) {
                     mockMetadatumList.add(new MockMetadatum());
                 }
-                metadataMap.put("key-"+ Integer.toString(i), mockMetadatumList);
+                metadataMap.put("key-" + Integer.toString(i), mockMetadatumList);
             }
             nonces = Lists.newArrayList();
             for (int i = 0; i < N_NONCES; i++) {
                 nonces.add(BitUtils.randomVector(64));
             }
         }
-        
+
         @Override
         public Map<String, List<Metadatum>> getMetadataMap() {
             return metadataMap;
@@ -106,11 +98,12 @@ public class MockKryptnosticSearch implements SearchApi {
         public List<BitVector> getNonces() {
             return nonces;
         }
-        
+
     }
-    
+
     /**
-     * Mock implementation of Metadatum. 
+     * Mock implementation of Metadatum.
+     * 
      * @author Nick Hewitt
      *
      */
@@ -118,9 +111,9 @@ public class MockKryptnosticSearch implements SearchApi {
         private final String documentId;
         private final String token;
         private final List<Integer> locations;
-        
+
         private final Integer N_LOCATIONS = 25;
-        
+
         public MockMetadatum() {
             documentId = Integer.toString(r.nextInt());
             token = Integer.toString(r.nextInt());
@@ -129,7 +122,7 @@ public class MockKryptnosticSearch implements SearchApi {
                 locations.add(r.nextInt());
             }
         }
-        
+
         @Override
         public String getDocumentId() {
             return documentId;
@@ -147,18 +140,17 @@ public class MockKryptnosticSearch implements SearchApi {
 
         @Override
         public boolean equals(Metadatum obj) {
-            boolean isEqual = getDocumentId().equals(obj.getDocumentId())
-                    && getToken().equals(obj.getToken())
+            boolean isEqual = getDocumentId().equals(obj.getDocumentId()) && getToken().equals(obj.getToken())
                     && getLocations().equals(obj.getLocations());
             return isEqual;
         }
-        
+
     }
 
     @Override
     public SearchResultResponse search(Collection<SearchRequest> requests) {
-        // TODO Auto-generated method stub
-        return null;
+        validateRequest(requests);
+        return mockResult;
     }
 
 }
