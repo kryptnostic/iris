@@ -9,7 +9,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.support.AnnotationConfigContextLoader;
 
-import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 
@@ -23,7 +23,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 @ContextConfiguration(loader = AnnotationConfigContextLoader.class, classes = TestConfiguration.class)
 public class ClientTests {
     @Inject
-    private KryptnosticContext kryptnosticContext;
+    private KryptnosticClient kryptnosticContext;
 
     @Test
     public void uploadDocumentGetDocumentTest() {

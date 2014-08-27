@@ -4,7 +4,7 @@ import java.util.Set;
 
 import com.kryptnostic.api.v1.search.DefaultSearchService;
 import com.kryptnostic.api.v1.storage.DefaultStorageService;
-import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
@@ -13,11 +13,11 @@ import com.kryptnostic.search.v1.SearchService;
 import com.kryptnostic.storage.v1.StorageService;
 
 // TODO: exception handling
-public class DefaultKryptnosticContext implements KryptnosticContext {
+public class DefaultKryptnosticClient implements KryptnosticClient {
     private final SearchService searchService;
     private final StorageService storageService;
 
-    public DefaultKryptnosticContext(KryptnosticServicesFactory factory) {
+    public DefaultKryptnosticClient(KryptnosticServicesFactory factory) {
         this.storageService = new DefaultStorageService(factory.createDocumentApi(), factory.createMetadataApi(),
                 factory.createMetadataKeyService(), factory.createIndexingService());
         this.searchService = new DefaultSearchService(factory.createSearchApi(), factory.createIndexingService());
