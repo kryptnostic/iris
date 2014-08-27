@@ -2,13 +2,15 @@ package com.kryptnostic.api.v1.client;
 
 import java.util.Set;
 
-import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
-import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.api.v1.search.DefaultSearchService;
-import com.kryptnostic.api.v1.search.SearchService;
 import com.kryptnostic.api.v1.storage.DefaultStorageService;
-import com.kryptnostic.api.v1.storage.StorageService;
+import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
+import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.search.v1.SearchService;
+import com.kryptnostic.storage.v1.StorageService;
 
 // TODO: exception handling
 public class DefaultKryptnosticContext implements KryptnosticContext {

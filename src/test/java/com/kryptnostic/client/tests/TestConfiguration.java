@@ -4,8 +4,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.kryptnostic.api.v1.client.DefaultKryptnosticContext;
-import com.kryptnostic.api.v1.client.KryptnosticContext;
-import com.kryptnostic.api.v1.client.KryptnosticServicesFactory;
+import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.mock.services.MockKryptnosticServicesFactory;
 
 @Configuration

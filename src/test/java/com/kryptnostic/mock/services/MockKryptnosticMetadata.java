@@ -5,12 +5,12 @@ import java.util.Collection;
 import cern.colt.bitvector.BitVector;
 
 import com.google.common.base.Preconditions;
-import com.kryptnostic.api.v1.client.web.MetadataApi;
-import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
-import com.kryptnostic.api.v1.models.IndexableMetadata;
-import com.kryptnostic.api.v1.models.request.MetadataRequest;
-import com.kryptnostic.api.v1.models.response.BasicResponse;
 import com.kryptnostic.bitwise.BitVectors;
+import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
+import com.kryptnostic.kodex.v1.models.response.BasicResponse;
+import com.kryptnostic.storage.v1.client.MetadataApi;
+import com.kryptnostic.storage.v1.models.request.IndexableMetadata;
+import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 
 public class MockKryptnosticMetadata implements MetadataApi {
     private final MockMetadataService metadataService = new MockMetadataService();

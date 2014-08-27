@@ -9,18 +9,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
-import com.kryptnostic.api.v1.client.web.DocumentApi;
-import com.kryptnostic.api.v1.client.web.MetadataApi;
-import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
-import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.api.v1.indexing.IndexingService;
-import com.kryptnostic.api.v1.indexing.MetadataKeyService;
-import com.kryptnostic.api.v1.indexing.metadata.Metadata;
-import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
-import com.kryptnostic.api.v1.models.IndexableMetadata;
-import com.kryptnostic.api.v1.models.request.DocumentRequest;
-import com.kryptnostic.api.v1.models.request.MetadataRequest;
-import com.kryptnostic.api.v1.models.response.ResponseKey;
+import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.indexing.IndexingService;
+import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.kodex.v1.models.response.ResponseKey;
+import com.kryptnostic.storage.v1.StorageService;
+import com.kryptnostic.storage.v1.client.DocumentApi;
+import com.kryptnostic.storage.v1.client.MetadataApi;
+import com.kryptnostic.storage.v1.models.request.DocumentRequest;
+import com.kryptnostic.storage.v1.models.request.IndexableMetadata;
+import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 
 public class DefaultStorageService implements StorageService {
     private static final Logger log = LoggerFactory.getLogger(StorageService.class);

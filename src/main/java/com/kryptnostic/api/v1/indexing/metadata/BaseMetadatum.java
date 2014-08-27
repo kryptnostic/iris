@@ -3,7 +3,7 @@ package com.kryptnostic.api.v1.indexing.metadata;
 import java.util.List;
 
 import com.google.common.collect.ImmutableList;
-import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 
 public class BaseMetadatum implements Metadatum {
 	private final String documentId;

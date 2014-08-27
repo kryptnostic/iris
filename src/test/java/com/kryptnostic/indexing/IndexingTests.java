@@ -16,10 +16,10 @@ import com.google.common.io.Resources;
 import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
 import com.kryptnostic.api.v1.indexing.BaseIndexingService;
 import com.kryptnostic.api.v1.indexing.Indexes;
-import com.kryptnostic.api.v1.indexing.IndexingService;
-import com.kryptnostic.api.v1.indexing.MetadataKeyService;
-import com.kryptnostic.api.v1.indexing.metadata.Metadata;
-import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.kodex.v1.indexing.IndexingService;
+import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 public class IndexingTests {

@@ -9,13 +9,14 @@ import cern.colt.bitvector.BitVector;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.kryptnostic.api.v1.client.web.SearchApi;
 import com.kryptnostic.api.v1.indexing.Indexes;
-import com.kryptnostic.api.v1.indexing.IndexingService;
-import com.kryptnostic.api.v1.indexing.analysis.Analyzer;
-import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
-import com.kryptnostic.api.v1.models.SearchResult;
-import com.kryptnostic.api.v1.models.request.SearchRequest;
+import com.kryptnostic.kodex.v1.indexing.IndexingService;
+import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.search.v1.SearchService;
+import com.kryptnostic.search.v1.client.SearchApi;
+import com.kryptnostic.search.v1.models.SearchResult;
+import com.kryptnostic.search.v1.models.request.SearchRequest;
 
 /**
  * Default implementation of SearchService. Must use same IndexingService as the KryptnosticConnection.

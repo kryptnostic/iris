@@ -3,12 +3,12 @@ package com.kryptnostic.mock.services;
 import org.junit.Assert;
 
 import com.google.common.base.Preconditions;
-import com.kryptnostic.api.v1.client.web.DocumentApi;
-import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
-import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.api.v1.models.request.DocumentRequest;
-import com.kryptnostic.api.v1.models.response.BasicResponse;
-import com.kryptnostic.api.v1.models.response.DocumentResponse;
+import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.models.response.BasicResponse;
+import com.kryptnostic.storage.v1.client.DocumentApi;
+import com.kryptnostic.storage.v1.models.request.DocumentRequest;
+import com.kryptnostic.storage.v1.models.response.DocumentResponse;
 
 /**
  * Mock KryptnosticStorage service for client testing. Validates input params and returns mock responses.
