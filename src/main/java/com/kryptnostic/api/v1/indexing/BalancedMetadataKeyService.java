@@ -11,8 +11,6 @@ import cern.colt.bitvector.BitVector;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.indexing.metadata.BalancedMetadata;
 import com.kryptnostic.api.v1.indexing.metadata.BaseMetadatum;
 import com.kryptnostic.api.v1.indexing.metadata.Metadata;
@@ -23,20 +21,20 @@ import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 public class BalancedMetadataKeyService implements MetadataKeyService {
     private static final Random r = new SecureRandom();
-    private final SimplePolynomialFunction hashFunction;
-    private final HashFunction hf = Hashing.sha256();
+    private final SimplePolynomialFunction indexingHashFunction;
     private final int bucketSize;
     private final int nonceLength;
 
     public BalancedMetadataKeyService(SimplePolynomialFunction hashFunction, int bucketSize, int nonceLength) {
-        this.hashFunction = hashFunction;
+        this.indexingHashFunction = hashFunction;
         this.bucketSize = bucketSize;
         this.nonceLength = nonceLength;
     }
 
     public String getKey(String token, BitVector nonce) {
-        BitVector tokenVector = Indexes.computeHashAndGetBits( hf , token );
-        return BitVectors.marshalBitvector(hashFunction.apply(tokenVector, nonce));
+        BitVector tokenVector = Indexes.computeHashAndGetBits(token);
+
+        return BitVectors.marshalBitvector(indexingHashFunction.apply(tokenVector, nonce));
     }
 
     @Override
