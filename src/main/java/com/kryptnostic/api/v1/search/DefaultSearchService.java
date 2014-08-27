@@ -15,8 +15,8 @@ import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.search.v1.SearchService;
 import com.kryptnostic.search.v1.client.SearchApi;
-import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.search.v1.models.request.SearchRequest;
+import com.kryptnostic.search.v1.models.response.SearchResultResponse;
 
 /**
  * Default implementation of SearchService. Must use same IndexingService as the KryptnosticConnection.
@@ -42,15 +42,9 @@ public class DefaultSearchService implements SearchService {
         List<String> tokens = analyzeQuery(query);
         List<SearchRequest> searchRequests = generateSearchRequests(tokens);
         
-        SearchResult searchResult = searchService.search(searchRequests);
+        SearchResultResponse searchResult = searchService.search(searchRequests);
         
-        Set<Metadatum> filteredResults = filterResult(searchResult);
-        return filteredResults;
-    }
-
-    private Set<Metadatum> filterResult(SearchResult searchResult) {
-        // TODO Auto-generated method stub
-        return null;
+        throw new UnsupportedOperationException("Search result parsing not implemented yet");
     }
 
     /**

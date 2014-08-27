@@ -1,10 +1,12 @@
 package com.kryptnostic.mock.services;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
 import org.junit.Assert;
+import org.springframework.http.HttpStatus;
 
 import cern.colt.bitvector.BitVector;
 
@@ -19,6 +21,7 @@ import com.kryptnostic.linear.BitUtils;
 import com.kryptnostic.search.v1.client.SearchApi;
 import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.search.v1.models.request.SearchRequest;
+import com.kryptnostic.search.v1.models.response.SearchResultResponse;
 
 /**
  * Mock implementation of KryptnosticSearch for testing.
@@ -28,7 +31,7 @@ import com.kryptnostic.search.v1.models.request.SearchRequest;
  */
 // TODO replace with search on actual metadata
 public class MockKryptnosticSearch implements SearchApi {
-    private final SearchResult mockResult;
+    private final SearchResultResponse mockResult;
     
     private Random r = new Random(0);
     private final KodexObjectMapperFactory objectMapperFactory = new KodexObjectMapperFactory();
@@ -45,7 +48,7 @@ public class MockKryptnosticSearch implements SearchApi {
         
         Integer score = 2;
         String date = "testdate";
-        mockResult = new SearchResult(metadata, score, date);
+        mockResult = new SearchResultResponse(Arrays.asList(new SearchResult(metadata, score, date)), HttpStatus.OK.value(), true);
     }
     
     /**
@@ -53,7 +56,7 @@ public class MockKryptnosticSearch implements SearchApi {
      * @return SearchResult, a mock instance containing sample data.
      */
     @Override
-    public SearchResult search(SearchRequest request) {
+    public SearchResultResponse search(SearchRequest request) {
         validateRequest(request);
         return mockResult;
     }
@@ -153,7 +156,7 @@ public class MockKryptnosticSearch implements SearchApi {
     }
 
     @Override
-    public SearchResult search(List<SearchRequest> requests) {
+    public SearchResultResponse search(List<SearchRequest> requests) {
         // TODO Auto-generated method stub
         return null;
     }
