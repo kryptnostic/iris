@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.Random;
 
 import org.junit.Assert;
-import org.springframework.http.HttpStatus;
 
 import cern.colt.bitvector.BitVector;
 
@@ -49,7 +48,7 @@ public class MockKryptnosticSearch implements SearchApi {
         
         Integer score = 2;
         String date = "testdate";
-        mockResult = new SearchResultResponse(Arrays.asList(new SearchResult(metadata, score, date)), HttpStatus.OK.value(), true);
+        mockResult = new SearchResultResponse(Arrays.asList(new SearchResult(metadata, score, date)), 200, true);
     }
     
     /**
