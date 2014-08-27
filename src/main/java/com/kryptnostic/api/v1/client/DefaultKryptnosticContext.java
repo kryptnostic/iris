@@ -2,25 +2,25 @@ package com.kryptnostic.api.v1.client;
 
 import java.util.Set;
 
-import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
-import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.api.v1.indexing.IndexingService;
-import com.kryptnostic.api.v1.indexing.MetadataKeyService;
-import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.api.v1.search.DefaultSearchService;
-import com.kryptnostic.api.v1.search.SearchService;
 import com.kryptnostic.api.v1.storage.DefaultStorageService;
-import com.kryptnostic.api.v1.storage.StorageService;
+import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
+import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.search.v1.SearchService;
+import com.kryptnostic.storage.v1.StorageService;
 
 // TODO: exception handling
 public class DefaultKryptnosticContext implements KryptnosticContext {
     private final SearchService searchService;
     private final StorageService storageService;
 
-    public DefaultKryptnosticContext(StorageAPI storageService, SearchAPI searchService, MetadataKeyService keyService,
-            IndexingService indexingService) {
-        this.storageService = new DefaultStorageService(storageService, keyService, indexingService);
-        this.searchService = new DefaultSearchService(searchService, indexingService);
+    public DefaultKryptnosticContext(KryptnosticServicesFactory factory) {
+        this.storageService = new DefaultStorageService(factory.createDocumentApi(), factory.createMetadataApi(),
+                factory.createMetadataKeyService(), factory.createIndexingService());
+        this.searchService = new DefaultSearchService(factory.createSearchApi(), factory.createIndexingService());
     }
 
     @Override

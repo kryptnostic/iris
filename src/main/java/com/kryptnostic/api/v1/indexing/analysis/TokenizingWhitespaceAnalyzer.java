@@ -9,7 +9,8 @@ import java.util.regex.Pattern;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.kryptnostic.api.v1.search.QueryAnalyzer;
+import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
+import com.kryptnostic.search.v1.search.QueryAnalyzer;
 
 /**
  * Basic tokenizer that uses a regular expression to parse a source string. 

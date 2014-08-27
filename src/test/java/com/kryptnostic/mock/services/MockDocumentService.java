@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.collect.Maps;
-import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 
 /**
  * In memory implementation of a document storage service for testing.

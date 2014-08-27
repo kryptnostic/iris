@@ -1,14 +1,15 @@
 package com.kryptnostic.mock.services;
 
-import com.kryptnostic.api.v1.client.SearchAPI;
-import com.kryptnostic.api.v1.client.KryptnosticServicesFactory;
-import com.kryptnostic.api.v1.client.StorageAPI;
 import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
 import com.kryptnostic.api.v1.indexing.BaseIndexingService;
 import com.kryptnostic.api.v1.indexing.Indexes;
-import com.kryptnostic.api.v1.indexing.IndexingService;
-import com.kryptnostic.api.v1.indexing.MetadataKeyService;
+import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
+import com.kryptnostic.kodex.v1.indexing.IndexingService;
+import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
+import com.kryptnostic.search.v1.client.SearchApi;
+import com.kryptnostic.storage.v1.client.DocumentApi;
+import com.kryptnostic.storage.v1.client.MetadataApi;
 
 /**
  * Services factory for testing client.
@@ -22,8 +23,9 @@ public class MockKryptnosticServicesFactory implements KryptnosticServicesFactor
     private static final int LOCATION_LENGTH = 64;
     private static final int BUCKET_SIZE = 100;
     
-    private final SearchAPI searchService = new MockKryptnosticSearch();
-    private final StorageAPI storageService = new MockKryptnosticStorage();
+    private final SearchApi searchService = new MockKryptnosticSearch();
+    private final MetadataApi metadataService = new MockKryptnosticMetadata();
+    private final DocumentApi documentService = new MockKryptnosticDocument();
     private final MetadataKeyService metadataKeyService;
     private final IndexingService indexingService;
     
@@ -35,12 +37,17 @@ public class MockKryptnosticServicesFactory implements KryptnosticServicesFactor
     }
     
     @Override
-    public StorageAPI createStorageService() {
-        return storageService;
+    public MetadataApi createMetadataApi() {
+        return metadataService;
+    }
+    
+    @Override
+    public DocumentApi createDocumentApi() {
+        return documentService;
     }
 
     @Override
-    public SearchAPI createSearchService() {
+    public SearchApi createSearchApi() {
         return searchService;
     }
 

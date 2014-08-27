@@ -12,13 +12,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.kryptnostic.api.v1.client.SearchAPI;
-import com.kryptnostic.api.v1.indexing.metadata.Metadata;
-import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
-import com.kryptnostic.api.v1.models.SearchResult;
-import com.kryptnostic.api.v1.models.request.SearchRequest;
-import com.kryptnostic.api.v1.serialization.jackson.KodexObjectMapperFactory;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.linear.BitUtils;
+import com.kryptnostic.search.v1.client.SearchApi;
+import com.kryptnostic.search.v1.models.SearchResult;
+import com.kryptnostic.search.v1.models.request.SearchRequest;
 
 /**
  * Mock implementation of KryptnosticSearch for testing.
@@ -27,7 +27,7 @@ import com.kryptnostic.linear.BitUtils;
  *
  */
 // TODO replace with search on actual metadata
-public class MockKryptnosticSearch implements SearchAPI {
+public class MockKryptnosticSearch implements SearchApi {
     private final SearchResult mockResult;
     
     private Random r = new Random(0);
