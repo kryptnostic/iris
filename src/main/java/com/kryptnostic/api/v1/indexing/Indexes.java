@@ -12,6 +12,8 @@ import com.kryptnostic.multivariate.PolynomialFunctions;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 public class Indexes {
+    private Indexes() {}
+    
     private static final HashFunction hashFunction = Hashing.sha256();
     
 	public static SimplePolynomialFunction generateRandomIndexingFunction( int tokenLength, int nonceLength, int locationLength ) {
