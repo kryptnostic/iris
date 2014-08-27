@@ -3,11 +3,11 @@ package com.kryptnostic.client.tests;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.kryptnostic.api.v1.client.DefaultKryptnosticConnection;
-import com.kryptnostic.api.v1.client.KryptnosticConnection;
-import com.kryptnostic.api.v1.client.KryptnosticSearch;
+import com.kryptnostic.api.v1.client.DefaultKryptnosticContext;
+import com.kryptnostic.api.v1.client.KryptnosticContext;
 import com.kryptnostic.api.v1.client.KryptnosticServicesFactory;
-import com.kryptnostic.api.v1.client.KryptnosticStorage;
+import com.kryptnostic.api.v1.client.SearchAPI;
+import com.kryptnostic.api.v1.client.StorageAPI;
 import com.kryptnostic.api.v1.indexing.IndexingService;
 import com.kryptnostic.api.v1.indexing.MetadataKeyService;
 import com.kryptnostic.mock.services.MockKryptnosticServicesFactory;
@@ -15,9 +15,8 @@ import com.kryptnostic.mock.services.MockKryptnosticServicesFactory;
 @Configuration
 public class TestConfiguration {
     @Bean
-    public KryptnosticConnection kryptnosticConnection() {
-        return new DefaultKryptnosticConnection(storageService(), searchService(), metadataKeyService(),
-                indexingService());
+    public KryptnosticContext kryptnosticContext() {
+        return new DefaultKryptnosticContext(storageService(), searchService(), metadataKeyService(), indexingService());
     }
 
     @Bean
@@ -26,12 +25,12 @@ public class TestConfiguration {
     }
 
     @Bean
-    public KryptnosticStorage storageService() {
+    public StorageAPI storageService() {
         return serviceFactory().createStorageService();
     }
 
     @Bean
-    public KryptnosticSearch searchService() {
+    public SearchAPI searchService() {
         return serviceFactory().createSearchService();
     }
 

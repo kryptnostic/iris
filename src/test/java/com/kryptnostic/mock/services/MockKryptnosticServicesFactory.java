@@ -1,8 +1,8 @@
 package com.kryptnostic.mock.services;
 
-import com.kryptnostic.api.v1.client.KryptnosticSearch;
+import com.kryptnostic.api.v1.client.SearchAPI;
 import com.kryptnostic.api.v1.client.KryptnosticServicesFactory;
-import com.kryptnostic.api.v1.client.KryptnosticStorage;
+import com.kryptnostic.api.v1.client.StorageAPI;
 import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
 import com.kryptnostic.api.v1.indexing.BaseIndexingService;
 import com.kryptnostic.api.v1.indexing.Indexes;
@@ -22,8 +22,8 @@ public class MockKryptnosticServicesFactory implements KryptnosticServicesFactor
     private static final int LOCATION_LENGTH = 64;
     private static final int BUCKET_SIZE = 100;
     
-    private final KryptnosticSearch searchService = new MockKryptnosticSearch();
-    private final KryptnosticStorage storageService = new MockKryptnosticStorage();
+    private final SearchAPI searchService = new MockKryptnosticSearch();
+    private final StorageAPI storageService = new MockKryptnosticStorage();
     private final MetadataKeyService metadataKeyService;
     private final IndexingService indexingService;
     
@@ -35,12 +35,12 @@ public class MockKryptnosticServicesFactory implements KryptnosticServicesFactor
     }
     
     @Override
-    public KryptnosticStorage createStorageService() {
+    public StorageAPI createStorageService() {
         return storageService;
     }
 
     @Override
-    public KryptnosticSearch createSearchService() {
+    public SearchAPI createSearchService() {
         return searchService;
     }
 

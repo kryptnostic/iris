@@ -7,7 +7,7 @@ import org.junit.Assert;
 import cern.colt.bitvector.BitVector;
 
 import com.google.common.base.Preconditions;
-import com.kryptnostic.api.v1.client.KryptnosticStorage;
+import com.kryptnostic.api.v1.client.StorageAPI;
 import com.kryptnostic.api.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.api.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.api.v1.models.IndexableMetadata;
@@ -23,7 +23,7 @@ import com.kryptnostic.bitwise.BitVectors;
  * 
  * @author Nick Hewitt
  */
-public class MockKryptnosticStorage implements KryptnosticStorage {
+public class MockKryptnosticStorage implements StorageAPI {
     private final MockDocumentService documentService = new MockDocumentService();
     private final MockMetadataService metadataService = new MockMetadataService();
     
