@@ -14,30 +14,28 @@ import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.indexing.metadata.BalancedMetadata;
 import com.kryptnostic.api.v1.indexing.metadata.BaseMetadatum;
 import com.kryptnostic.bitwise.BitVectors;
+import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
-import com.kryptnostic.linear.BitUtils;
-import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 public class BalancedMetadataKeyService implements MetadataKeyService {
     private static final Random r = new SecureRandom();
-    private final SimplePolynomialFunction indexingHashFunction;
-    private final int bucketSize;
-    private final int nonceLength;
+    private final KryptnosticContext context;
+    private static final int BUCKET_SIZE = 100;
 
-    public BalancedMetadataKeyService(SimplePolynomialFunction hashFunction, int bucketSize, int nonceLength) {
-        this.indexingHashFunction = hashFunction;
-        this.bucketSize = bucketSize;
-        this.nonceLength = nonceLength;
+    public BalancedMetadataKeyService(KryptnosticContext context) {
+        this.context = context;
     }
 
     public String getKey(String token, BitVector nonce) {
         BitVector tokenVector = Indexes.computeHashAndGetBits(token);
 
-        return BitVectors.marshalBitvector(indexingHashFunction.apply(tokenVector, nonce));
+        return BitVectors.marshalBitvector(context.getSearchFunction().apply(tokenVector, nonce));
     }
 
+    // TODO reuse nonces
+    // TODO add nonces to context
     @Override
     public Metadata mapTokensToKeys(Set<Metadatum> metadata) {
         /*
@@ -52,11 +50,11 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
         for (Metadatum metadatum : metadata) {
             String token = metadatum.getToken();
             List<Integer> locations = metadatum.getLocations();
-            int fromIndex = 0, toIndex = Math.min(locations.size(), bucketSize);
+            int fromIndex = 0, toIndex = Math.min(locations.size(), BUCKET_SIZE);
             do {
                 Metadatum balancedMetadatum = new BaseMetadatum(metadatum.getDocumentId(), token, subListAndPad(
                         locations, fromIndex, toIndex));
-                BitVector nonce = BitUtils.randomVector(nonceLength);
+                BitVector nonce = context.generateNonce();
                 String key = getKey(token, nonce);
                 nonces.add(nonce);
                 List<Metadatum> metadatumList = metadataMap.get(key);
@@ -66,8 +64,8 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
                     metadataMap.put(key, metadatumList);
                 }
                 metadatumList.add(balancedMetadatum);
-                fromIndex += bucketSize;
-                toIndex += bucketSize;
+                fromIndex += BUCKET_SIZE;
+                toIndex += BUCKET_SIZE;
                 if (toIndex > locations.size()) {
                     toIndex = locations.size();
                 }
@@ -77,7 +75,7 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
     }
 
     private Iterable<Integer> subListAndPad(List<Integer> locations, int fromIndex, int toIndex) {
-        int paddingLength = bucketSize - toIndex + fromIndex;
+        int paddingLength = BUCKET_SIZE - toIndex + fromIndex;
         List<Integer> padding = Lists.newArrayListWithCapacity(paddingLength);
         for (int i = 0; i < paddingLength; ++i) {
             int invalidLocation = r.nextInt();

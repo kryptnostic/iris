@@ -1,45 +1,45 @@
 package com.kryptnostic.api.v1.client;
 
-import java.util.Set;
+import java.util.List;
 
-import com.kryptnostic.api.v1.search.DefaultSearchService;
-import com.kryptnostic.api.v1.storage.DefaultStorageService;
+import cern.colt.bitvector.BitVector;
+
+import com.kryptnostic.api.v1.indexing.Indexes;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
-import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
-import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
-import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
-import com.kryptnostic.search.v1.SearchService;
-import com.kryptnostic.storage.v1.StorageService;
+import com.kryptnostic.linear.BitUtils;
+import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
-// TODO: exception handling
 public class DefaultKryptnosticContext implements KryptnosticContext {
-    private final SearchService searchService;
-    private final StorageService storageService;
 
-    public DefaultKryptnosticContext(KryptnosticServicesFactory factory) {
-        this.storageService = new DefaultStorageService(factory.createDocumentApi(), factory.createMetadataApi(),
-                factory.createMetadataKeyService(), factory.createIndexingService());
-        this.searchService = new DefaultSearchService(factory.createSearchApi(), factory.createIndexingService());
+    private SimplePolynomialFunction indexingHashFunction;
+
+    private static final int TOKEN_LENGTH = 256;
+    private static final int LOCATION_LENGTH = 64;
+    private static final int NONCE_LENGTH = 64;
+
+    @Override
+    public SimplePolynomialFunction getSearchFunction() {
+        if (indexingHashFunction == null) {
+            indexingHashFunction = Indexes.generateRandomIndexingFunction(TOKEN_LENGTH, NONCE_LENGTH, LOCATION_LENGTH);
+            // TODO POST to search function service
+        }
+        return indexingHashFunction;
     }
 
     @Override
-    public Set<Metadatum> search(String query) {
-        return searchService.search(query);
+    public List<BitVector> getNonces() {
+        // TODO Auto-generated method stub
+        return null;
     }
 
     @Override
-    public String uploadDocument(String document) throws BadRequestException {
-        return storageService.uploadDocument(document);
+    public void addNonces(List<BitVector> nonces) {
+        // TODO Auto-generated method stub
+
     }
 
-    @Override
-    public String updateDocument(String id, String document) throws ResourceNotFoundException {
-        return storageService.updateDocument(id, document);
+    public BitVector generateNonce() {
+        return BitUtils.randomVector(NONCE_LENGTH);
     }
 
-    @Override
-    public String getDocument(String id) throws ResourceNotFoundException {
-        return storageService.getDocument(id);
-    }
 }

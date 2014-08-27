@@ -13,20 +13,16 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Charsets;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Resources;
+import com.kryptnostic.api.v1.client.DefaultKryptnosticContext;
 import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
 import com.kryptnostic.api.v1.indexing.BaseIndexingService;
-import com.kryptnostic.api.v1.indexing.Indexes;
+import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.indexing.IndexingService;
 import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
-import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 public class IndexingTests {
-	private static final int TOKEN_LENGTH = 256;
-	private static final int NONCE_LENGTH = 64;
-	private static final int LOCATION_LENGTH = 64;
-	private static final int BUCKET_SIZE = 100 ;
 	private static final Logger logger = LoggerFactory.getLogger( IndexingTests.class );
 
 	private static MetadataKeyService keyService;
@@ -34,8 +30,8 @@ public class IndexingTests {
 	
 	@BeforeClass
 	public static void setupServices() {
-		SimplePolynomialFunction indexingHashFunction= Indexes.generateRandomIndexingFunction(TOKEN_LENGTH, NONCE_LENGTH, LOCATION_LENGTH);
-		keyService = new BalancedMetadataKeyService(indexingHashFunction, BUCKET_SIZE, NONCE_LENGTH );
+	    KryptnosticContext context = new DefaultKryptnosticContext();
+		keyService = new BalancedMetadataKeyService(context);
 		indexingService = new BaseIndexingService();
 	}
 	
