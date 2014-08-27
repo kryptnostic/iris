@@ -10,6 +10,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.client.SearchAPI;
+import com.kryptnostic.api.v1.indexing.Indexes;
 import com.kryptnostic.api.v1.indexing.IndexingService;
 import com.kryptnostic.api.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.api.v1.indexing.metadata.Metadatum;
@@ -25,13 +26,10 @@ import com.kryptnostic.api.v1.models.request.SearchRequest;
 public class DefaultSearchService implements SearchService {
     private final SearchAPI searchService;
     private final IndexingService indexingService;
-    private final DocumentSearcherFactory documentSearcherFactory;
 
     public DefaultSearchService(SearchAPI searchService, IndexingService indexingService) {
         this.searchService = searchService;
         this.indexingService = indexingService;
-        this.documentSearcherFactory = new DefaultDocumentSearcherFactory(); // TODO get rid of this and refer to
-                                                                             // utility class.
     }
 
     /**
@@ -41,8 +39,10 @@ public class DefaultSearchService implements SearchService {
     @Override
     public Set<Metadatum> search(String query) {
         List<String> tokens = analyzeQuery(query);
-        List<SearchRequest> searchRequests = getSearchRequests(tokens);
+        List<SearchRequest> searchRequests = generateSearchRequests(tokens);
+        
         SearchResult searchResult = searchService.search(searchRequests);
+        
         Set<Metadatum> filteredResults = filterResult(searchResult);
         return filteredResults;
     }
@@ -55,12 +55,12 @@ public class DefaultSearchService implements SearchService {
     /**
      * @return List<BitVector> of search tokens, the ciphertext to be submitted to KryptnosticSearch.
      */
-    private List<SearchRequest> getSearchRequests(List<String> tokens) {
+    private List<SearchRequest> generateSearchRequests(List<String> tokens) {
         Preconditions.checkArgument(tokens != null, "Cannot pass null tokens param.");
 
         List<SearchRequest> searchRequests = Lists.newArrayList();
         for (String token : tokens) {
-            BitVector searchToken = documentSearcherFactory.createSearchToken(token);
+            BitVector searchToken = Indexes.computeHashAndGetBits(token);
             SearchRequest searchRequest = SearchRequest.searchToken(searchToken);
             searchRequests.add(searchRequest);
         }

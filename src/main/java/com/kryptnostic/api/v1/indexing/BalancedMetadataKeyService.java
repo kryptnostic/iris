@@ -1,24 +1,16 @@
 package com.kryptnostic.api.v1.indexing;
 
-import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.commons.codec.binary.Base64;
-
 import cern.colt.bitvector.BitVector;
 
-import com.google.common.base.Charsets;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
-import com.kryptnostic.api.v1.indexing.MetadataKeyService;
 import com.kryptnostic.api.v1.indexing.metadata.BalancedMetadata;
 import com.kryptnostic.api.v1.indexing.metadata.BaseMetadatum;
 import com.kryptnostic.api.v1.indexing.metadata.Metadata;
@@ -29,28 +21,20 @@ import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 public class BalancedMetadataKeyService implements MetadataKeyService {
     private static final Random r = new SecureRandom();
-    private static final Base64 codec = new Base64();
-    private final SimplePolynomialFunction hashFunction;
-    private final HashFunction hf = Hashing.sha256();
+    private final SimplePolynomialFunction indexingHashFunction;
     private final int bucketSize;
     private final int nonceLength;
 
     public BalancedMetadataKeyService(SimplePolynomialFunction hashFunction, int bucketSize, int nonceLength) {
-        this.hashFunction = hashFunction;
+        this.indexingHashFunction = hashFunction;
         this.bucketSize = bucketSize;
         this.nonceLength = nonceLength;
     }
 
     public String getKey(String token, BitVector nonce) {
-        byte[] hash = hf.hashString(token, Charsets.UTF_8).asBytes();
-        // TODO: Consider padding output to a multiple of 8
-        Preconditions.checkState(hash.length % 8 == 0, "Output length of has function must be a multiple of 8.");
-        long[] raw = new long[hash.length >>> 3];
-        ByteBuffer.wrap(hash).asLongBuffer().get(raw);
+        BitVector tokenVector = Indexes.computeHashAndGetBits(token);
 
-        BitVector tokenVector = new BitVector(raw, raw.length << 6);
-
-        return BitVectors.marshalBitvector(hashFunction.apply(tokenVector, nonce));
+        return BitVectors.marshalBitvector(indexingHashFunction.apply(tokenVector, nonce));
     }
 
     @Override
