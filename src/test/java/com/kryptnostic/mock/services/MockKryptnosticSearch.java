@@ -1,6 +1,7 @@
 package com.kryptnostic.mock.services;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -156,7 +157,7 @@ public class MockKryptnosticSearch implements SearchApi {
     }
 
     @Override
-    public SearchResultResponse search(List<SearchRequest> requests) {
+    public SearchResultResponse search(Collection<SearchRequest> requests) {
         // TODO Auto-generated method stub
         return null;
     }
