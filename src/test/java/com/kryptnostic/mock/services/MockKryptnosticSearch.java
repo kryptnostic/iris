@@ -54,10 +54,8 @@ public class MockKryptnosticSearch implements SearchApi {
     /**
      * Assert required params in SearchRequest.
      */
-    private void validateRequest(Collection<SearchRequest> requests) {
-        for (SearchRequest req : requests) {
-            Assert.assertNotNull(req.getSearchToken());
-        }
+    private void validateRequest(SearchRequest req) {
+        Assert.assertNotNull(req.getSearchToken());
     }
 
     /**
@@ -148,8 +146,8 @@ public class MockKryptnosticSearch implements SearchApi {
     }
 
     @Override
-    public SearchResultResponse search(Collection<SearchRequest> requests) {
-        validateRequest(requests);
+    public SearchResultResponse search(SearchRequest request) {
+        validateRequest(request);
         return mockResult;
     }
 

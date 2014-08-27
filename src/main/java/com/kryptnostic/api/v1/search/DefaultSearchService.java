@@ -1,5 +1,6 @@
 package com.kryptnostic.api.v1.search;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,9 +41,9 @@ public class DefaultSearchService implements SearchService {
     @Override
     public Set<Metadatum> search(String query) {
         List<String> tokens = analyzeQuery(query);
-        List<SearchRequest> searchRequests = generateSearchRequests(tokens);
+        SearchRequest searchRequest = generateSearchRequest(tokens);
         
-        SearchResultResponse searchResult = searchService.search(searchRequests);
+        SearchResultResponse searchResult = searchService.search(searchRequest);
         
         throw new UnsupportedOperationException("Search result parsing not implemented yet");
     }
@@ -50,16 +51,15 @@ public class DefaultSearchService implements SearchService {
     /**
      * @return List<BitVector> of search tokens, the ciphertext to be submitted to KryptnosticSearch.
      */
-    private List<SearchRequest> generateSearchRequests(List<String> tokens) {
+    private SearchRequest generateSearchRequest(List<String> tokens) {
         Preconditions.checkArgument(tokens != null, "Cannot pass null tokens param.");
 
-        List<SearchRequest> searchRequests = Lists.newArrayList();
+        Collection<BitVector> searchTokens = Lists.newArrayList();
         for (String token : tokens) {
-            BitVector searchToken = Indexes.computeHashAndGetBits(token);
-            SearchRequest searchRequest = SearchRequest.searchToken(searchToken);
-            searchRequests.add(searchRequest);
+            searchTokens.add( Indexes.computeHashAndGetBits(token));
         }
-        return searchRequests;
+        
+        return SearchRequest.searchToken(searchTokens);
     }
 
     /**
