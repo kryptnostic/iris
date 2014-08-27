@@ -23,20 +23,20 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 @ContextConfiguration(loader = AnnotationConfigContextLoader.class, classes = TestConfiguration.class)
 public class ClientTests {
     @Inject
-    private KryptnosticClient kryptnosticContext;
+    private KryptnosticClient kryptnosticClient;
 
     @Test
     public void uploadDocumentGetDocumentTest() {
         String document = "lo and behold.";
         String id = null;
         try {
-            id = kryptnosticContext.uploadDocument(document);
+            id = kryptnosticClient.uploadDocument(document);
         } catch (BadRequestException e) {
             e.printStackTrace();
         }
         String retrieved = null;
         try {
-            retrieved = kryptnosticContext.getDocument(id);
+            retrieved = kryptnosticClient.getDocument(id);
         } catch (ResourceNotFoundException e) {
             e.printStackTrace();
         }
@@ -49,20 +49,20 @@ public class ClientTests {
         String document = "what is best in life? the wind in your hair. falcons at your wrist.";
         String id = null;
         try {
-            id = kryptnosticContext.uploadDocument(document);
+            id = kryptnosticClient.uploadDocument(document);
         } catch (BadRequestException e) {
             e.printStackTrace();
         }
         String newDocument = "what is best in life? To crush your enemies, see them driven before you, and to hear the lamentation of the loved ones.";
         try {
-            kryptnosticContext.updateDocument(id, newDocument);
+            kryptnosticClient.updateDocument(id, newDocument);
         } catch (ResourceNotFoundException e1) {
             e1.printStackTrace();
         }
         
         String retrieved = null;
         try {
-            retrieved = kryptnosticContext.getDocument(id);
+            retrieved = kryptnosticClient.getDocument(id);
         } catch (ResourceNotFoundException e) {
             e.printStackTrace();
         }
