@@ -11,6 +11,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.search.v1.SearchService;
 import com.kryptnostic.storage.v1.StorageService;
+import com.kryptnostic.storage.v1.models.Document;
 
 // TODO: exception handling
 public class DefaultKryptnosticClient implements KryptnosticClient {
@@ -39,7 +40,7 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     }
 
     @Override
-    public String getDocument(String id) throws ResourceNotFoundException {
+    public Document getDocument(String id) throws ResourceNotFoundException {
         return storageService.getDocument(id);
     }
 }

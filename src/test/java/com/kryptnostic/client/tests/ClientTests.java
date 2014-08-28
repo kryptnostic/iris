@@ -12,6 +12,7 @@ import org.springframework.test.context.support.AnnotationConfigContextLoader;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.storage.v1.models.Document;
 
 /**
  * Kryptnostic client tests. Primarily testing the functionality of KryptnosticConnection.
@@ -34,14 +35,14 @@ public class ClientTests {
         } catch (BadRequestException e) {
             e.printStackTrace();
         }
-        String retrieved = null;
+        Document retrieved = null;
         try {
             retrieved = kryptnosticClient.getDocument(id);
         } catch (ResourceNotFoundException e) {
             e.printStackTrace();
         }
-        Assert.assertFalse(retrieved == null);
-        Assert.assertEquals(retrieved, document);
+        Assert.assertNotNull(retrieved);
+        Assert.assertEquals(retrieved.getBody(), document);
     }
 
     @Test
@@ -59,14 +60,14 @@ public class ClientTests {
         } catch (ResourceNotFoundException e1) {
             e1.printStackTrace();
         }
-        
-        String retrieved = null;
+
+        Document retrieved = null;
         try {
             retrieved = kryptnosticClient.getDocument(id);
         } catch (ResourceNotFoundException e) {
             e.printStackTrace();
         }
-        Assert.assertFalse(retrieved == null);
+        Assert.assertNotNull(retrieved);
         Assert.assertEquals(retrieved, newDocument);
     }
 }

@@ -35,7 +35,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             try {
                 indexingHashFunction = searchFunctionService.getFunction().getData();
             } catch (ResourceNotFoundException e) {
-                e.printStackTrace();
+                // no search function was stored remotely
             }
             if (indexingHashFunction == null) {
                 indexingHashFunction = Indexes.generateRandomIndexingFunction(TOKEN_LENGTH, NONCE_LENGTH,
