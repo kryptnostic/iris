@@ -3,6 +3,9 @@ package com.kryptnostic.api.v1.client;
 import java.util.Collection;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cern.colt.bitvector.BitVector;
 
 import com.google.common.collect.Lists;
@@ -19,6 +22,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private final SearchFunctionApi searchFunctionService;
 
     private SimplePolynomialFunction indexingHashFunction;
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultKryptnosticContext.class);
 
     private static final int TOKEN_LENGTH = 256;
     private static final int LOCATION_LENGTH = 64;
