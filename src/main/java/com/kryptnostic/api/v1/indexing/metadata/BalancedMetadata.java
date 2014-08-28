@@ -9,23 +9,23 @@ import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 
 public class BalancedMetadata implements Metadata {
-    private final Map<String, List<Metadatum>> metadataMap;
+    private final Map<BitVector, List<Metadatum>> metadataMap;
     private final List<BitVector> nonces;
-    
-    public BalancedMetadata( Map<String, List<Metadatum>> metadataMap, List<BitVector> nonces ) {
-        this.metadataMap=metadataMap;
+
+    public BalancedMetadata(Map<BitVector, List<Metadatum>> metadataMap, List<BitVector> nonces) {
+        this.metadataMap = metadataMap;
         this.nonces = nonces;
     }
 
-    public Map<String, List<Metadatum>> getMetadataMap() {
+    public Map<BitVector, List<Metadatum>> getMetadataMap() {
         return metadataMap;
     }
 
     public List<BitVector> getNonces() {
         return nonces;
     }
-    
-    public static Metadata from(Map<String, List<Metadatum>> metadataMap, List<BitVector> nonces) {
-        return new BalancedMetadata( metadataMap , nonces );
+
+    public static Metadata from(Map<BitVector, List<Metadatum>> metadataMap, List<BitVector> nonces) {
+        return new BalancedMetadata(metadataMap, nonces);
     }
 }

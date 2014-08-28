@@ -8,6 +8,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cern.colt.bitvector.BitVector;
+
 import com.google.common.collect.Lists;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
@@ -50,9 +52,9 @@ public class DefaultStorageService implements StorageService {
 
         // format for metadata upload
         Collection<IndexableMetadata> metadataIndex = Lists.newArrayList();
-        for (Map.Entry<String, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet()) {
+        for (Map.Entry<BitVector, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet()) {
             log.debug("list" + m.getValue().toString());
-            String key = m.getKey();
+            BitVector key = m.getKey();
             String value = m.getValue().toString();
             metadataIndex.add(new IndexableMetadata(key, value));
         }

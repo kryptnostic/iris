@@ -36,6 +36,7 @@ public class JacksonConverter implements Converter {
 
     public JacksonConverter(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+        // TODO: move all this config for objectMapper somewhere centralized
         objectMapper.registerModule(new GuavaModule());
         objectMapper.registerModule(new KodexModule());
         objectMapper.registerModule(new AfterburnerModule());

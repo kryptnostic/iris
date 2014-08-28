@@ -1,7 +1,6 @@
 package com.kryptnostic.mock.services;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -65,7 +64,7 @@ public class MockKryptnosticSearch implements SearchApi {
      *
      */
     private class MockMetadata implements Metadata {
-        private final Map<String, List<Metadatum>> metadataMap;
+        private final Map<BitVector, List<Metadatum>> metadataMap;
         private final List<BitVector> nonces;
 
         private final Integer N_KEYS = 5;
@@ -79,7 +78,7 @@ public class MockKryptnosticSearch implements SearchApi {
                 for (int j = 0; j < N_METADATUM; j++) {
                     mockMetadatumList.add(new MockMetadatum());
                 }
-                metadataMap.put("key-" + Integer.toString(i), mockMetadatumList);
+                metadataMap.put(BitUtils.randomVector(64), mockMetadatumList);
             }
             nonces = Lists.newArrayList();
             for (int i = 0; i < N_NONCES; i++) {
@@ -88,7 +87,7 @@ public class MockKryptnosticSearch implements SearchApi {
         }
 
         @Override
-        public Map<String, List<Metadatum>> getMetadataMap() {
+        public Map<BitVector, List<Metadatum>> getMetadataMap() {
             return metadataMap;
         }
 

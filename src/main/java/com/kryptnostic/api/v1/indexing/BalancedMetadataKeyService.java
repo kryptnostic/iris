@@ -13,7 +13,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.indexing.metadata.BalancedMetadata;
 import com.kryptnostic.api.v1.indexing.metadata.BaseMetadatum;
-import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
@@ -28,10 +27,10 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
         this.context = context;
     }
 
-    public String getKey(String token, BitVector nonce) {
+    public BitVector getKey(String token, BitVector nonce) {
         BitVector tokenVector = Indexes.computeHashAndGetBits(token);
 
-        return BitVectors.marshalBitvector(context.getSearchFunction().apply(tokenVector, nonce));
+        return context.getSearchFunction().apply(tokenVector, nonce);
     }
 
     // TODO reuse nonces
@@ -45,7 +44,7 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
          * a collision. In theory this shouldn't be a security risk, because its hard for an attacker to force stuff
          * into the same bucket, unless they compromise the random number generator.
          */
-        Map<String, List<Metadatum>> metadataMap = Maps.newHashMapWithExpectedSize(metadata.size());
+        Map<BitVector, List<Metadatum>> metadataMap = Maps.newHashMapWithExpectedSize(metadata.size());
         List<BitVector> nonces = Lists.newArrayList();
         for (Metadatum metadatum : metadata) {
             String token = metadatum.getToken();
@@ -55,7 +54,7 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
                 Metadatum balancedMetadatum = new BaseMetadatum(metadatum.getDocumentId(), token, subListAndPad(
                         locations, fromIndex, toIndex));
                 BitVector nonce = context.generateNonce();
-                String key = getKey(token, nonce);
+                BitVector key = getKey(token, nonce);
                 nonces.add(nonce);
                 List<Metadatum> metadatumList = metadataMap.get(key);
                 // TODO: Retry a few times instead of just allowing collision.
