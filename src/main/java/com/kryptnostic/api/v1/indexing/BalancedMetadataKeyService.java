@@ -6,6 +6,9 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cern.colt.bitvector.BitVector;
 
 import com.google.common.collect.Iterables;
@@ -16,9 +19,11 @@ import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.multivariate.FunctionUtils;
 
 public class BalancedMetadataKeyService implements MetadataKeyService {
     private static final Random r = new SecureRandom();
+    private static final Logger log = LoggerFactory.getLogger(BalancedMetadataKeyService.class);
     private final KryptnosticContext context;
     private static final int BUCKET_SIZE = 100;
 
@@ -28,7 +33,6 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
 
     public BitVector getKey(String token, BitVector nonce) {
         BitVector tokenVector = Indexes.computeHashAndGetBits(token);
-
         return context.getSearchFunction().apply(tokenVector, nonce);
     }
 
@@ -69,6 +73,7 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
                 }
             } while (fromIndex < toIndex);
         }
+        context.addNonces(nonces);
         return BalancedMetadata.from(metadataMap, nonces);
     }
 
