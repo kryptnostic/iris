@@ -17,10 +17,10 @@ import com.kryptnostic.kodex.v1.indexing.IndexingService;
 import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
-import com.kryptnostic.kodex.v1.models.response.ResponseKey;
 import com.kryptnostic.storage.v1.StorageService;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
+import com.kryptnostic.storage.v1.models.Document;
 import com.kryptnostic.storage.v1.models.request.DocumentRequest;
 import com.kryptnostic.storage.v1.models.request.IndexableMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
@@ -71,8 +71,8 @@ public class DefaultStorageService implements StorageService {
     }
 
     @Override
-    public String getDocument(String id) throws ResourceNotFoundException {
-        return documentApi.getDocument(id).getData().get(ResponseKey.DOCUMENT_KEY);
+    public Document getDocument(String id) throws ResourceNotFoundException {
+        return documentApi.getDocument(id).getData();
     }
 
 }
