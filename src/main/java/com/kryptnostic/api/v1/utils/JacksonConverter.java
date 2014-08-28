@@ -17,6 +17,8 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
+import com.fasterxml.jackson.module.afterburner.AfterburnerModule;
+import com.kryptnostic.kodex.v1.serialization.jackson.KodexModule;
 
 /**
  * A {@link Converter} which uses Jackson for reading and writing entities.
@@ -35,6 +37,8 @@ public class JacksonConverter implements Converter {
     public JacksonConverter(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
         objectMapper.registerModule(new GuavaModule());
+        objectMapper.registerModule(new KodexModule());
+        objectMapper.registerModule(new AfterburnerModule());
     }
 
     @Override
