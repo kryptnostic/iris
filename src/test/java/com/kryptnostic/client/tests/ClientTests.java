@@ -42,7 +42,7 @@ public class ClientTests {
             e.printStackTrace();
         }
         Assert.assertNotNull(retrieved);
-        Assert.assertEquals(retrieved.getBody(), document);
+        Assert.assertEquals(document, retrieved.getBody());
     }
 
     @Test
@@ -68,6 +68,6 @@ public class ClientTests {
             e.printStackTrace();
         }
         Assert.assertNotNull(retrieved);
-        Assert.assertEquals(retrieved, newDocument);
+        Assert.assertEquals(newDocument, retrieved.getBody());
     }
 }
