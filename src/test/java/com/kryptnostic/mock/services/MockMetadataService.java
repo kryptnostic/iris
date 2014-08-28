@@ -6,6 +6,7 @@ import cern.colt.bitvector.BitVector;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 
 /**
  * In memory implementation of a metadata service for testing.
@@ -14,14 +15,14 @@ import com.google.common.collect.Multimap;
  *
  */
 public class MockMetadataService {
-    private final Multimap<BitVector, String> indexMap = HashMultimap.create();
+    private final Multimap<BitVector, Metadatum> indexMap = HashMultimap.create();
     
-    public boolean save(BitVector key, String metadata) {
+    public boolean save(BitVector key, Metadatum metadata) {
         indexMap.put(key, metadata);
         return true;
     }
     
-    public Collection<String> get(BitVector key) {
+    public Collection<Metadatum> get(BitVector key) {
         return indexMap.get(key);
     }
     

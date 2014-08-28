@@ -8,7 +8,6 @@ import java.util.Set;
 
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.indexing.analysis.TokenizingWhitespaceAnalyzer;
-import com.kryptnostic.api.v1.indexing.metadata.BaseMetadatum;
 import com.kryptnostic.kodex.v1.indexing.IndexingService;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
@@ -28,7 +27,7 @@ public class BaseIndexingService implements IndexingService {
 			for( Entry<String, List<Integer>> entry : invertedIndex.entrySet() ) {
 				String token = entry.getKey();
 				List<Integer> locations = entry.getValue();
-				metadata.add( new BaseMetadatum(documentId, token, locations) );
+				metadata.add( new Metadatum(documentId, token, locations) );
 			}
 		}
 		return metadata;

@@ -6,6 +6,7 @@ import cern.colt.bitvector.BitVector;
 
 import com.google.common.base.Preconditions;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.storage.v1.client.MetadataApi;
 import com.kryptnostic.storage.v1.models.request.IndexableMetadata;
@@ -21,7 +22,7 @@ public class MockKryptnosticMetadata implements MetadataApi {
         Collection<IndexableMetadata> metadataCollection = metadata.getMetadata();
         for (IndexableMetadata m : metadataCollection) {
             BitVector vector = m.getKey();
-            String data = m.getData();
+            Metadatum data = m.getData();
             metadataService.save(vector, data);
         }
         return new BasicResponse<String>("", OK_STATUS, true);

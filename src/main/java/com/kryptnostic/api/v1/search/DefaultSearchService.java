@@ -13,9 +13,9 @@ import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.indexing.Indexes;
 import com.kryptnostic.kodex.v1.indexing.IndexingService;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
-import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.search.v1.SearchService;
 import com.kryptnostic.search.v1.client.SearchApi;
+import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.search.v1.models.request.SearchRequest;
 import com.kryptnostic.search.v1.models.response.SearchResultResponse;
 
@@ -39,13 +39,13 @@ public class DefaultSearchService implements SearchService {
      * search service.
      */
     @Override
-    public Set<Metadatum> search(String query) {
+    public Collection<SearchResult> search(String query) {
         List<String> tokens = analyzeQuery(query);
         SearchRequest searchRequest = generateSearchRequest(tokens);
         
         SearchResultResponse searchResult = searchService.search(searchRequest);
         
-        throw new UnsupportedOperationException("Search result parsing not implemented yet");
+        return searchResult.getData();
     }
 
     /**

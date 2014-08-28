@@ -55,8 +55,9 @@ public class DefaultStorageService implements StorageService {
         for (Map.Entry<BitVector, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet()) {
             log.debug("list" + m.getValue().toString());
             BitVector key = m.getKey();
-            String value = m.getValue().toString();
-            metadataIndex.add(new IndexableMetadata(key, value));
+            for (Metadatum subMeta : m.getValue()) {
+                metadataIndex.add(new IndexableMetadata(key, subMeta));
+            }
         }
         MetadataRequest req = new MetadataRequest(metadataIndex);
         log.debug("generated metadata " + keyedMetadata);
