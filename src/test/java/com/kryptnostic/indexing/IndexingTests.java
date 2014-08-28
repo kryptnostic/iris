@@ -21,6 +21,10 @@ import com.kryptnostic.kodex.v1.indexing.IndexingService;
 import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.mock.services.MockNonceService;
+import com.kryptnostic.mock.services.MockSearchFunctionService;
+import com.kryptnostic.storage.v1.client.NonceApi;
+import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 
 public class IndexingTests {
 	private static final Logger logger = LoggerFactory.getLogger( IndexingTests.class );
@@ -30,7 +34,9 @@ public class IndexingTests {
 	
 	@BeforeClass
 	public static void setupServices() {
-	    KryptnosticContext context = new DefaultKryptnosticContext();
+	    NonceApi nonceService = new MockNonceService();
+        SearchFunctionApi searchFunctionService = new MockSearchFunctionService();
+	    KryptnosticContext context = new DefaultKryptnosticContext(searchFunctionService, nonceService);
 		keyService = new BalancedMetadataKeyService(context);
 		indexingService = new BaseIndexingService();
 	}

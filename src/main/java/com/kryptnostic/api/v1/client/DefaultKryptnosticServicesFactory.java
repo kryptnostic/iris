@@ -17,15 +17,19 @@ import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.search.v1.client.SearchApi;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
+import com.kryptnostic.storage.v1.client.NonceApi;
+import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 
 public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFactory {
     private final static Logger logger = LoggerFactory.getLogger(DefaultKryptnosticServicesFactory.class);
 
     private final MetadataKeyService metadataKeyService;
     private final IndexingService indexingService;
-    private final MetadataApi metadataApi;
-    private final DocumentApi documentApi;
+    private final MetadataApi metadataService;
+    private final DocumentApi documentService;
     private final SearchApi searchService;
+    private final NonceApi nonceService;
+    private final SearchFunctionApi searchFunctionService;
 
     public DefaultKryptnosticServicesFactory(String url) {
         // connection
@@ -37,23 +41,24 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
                     }
                 }).build();
 
-        documentApi = restAdapter.create(DocumentApi.class);
-        metadataApi = restAdapter.create(MetadataApi.class);
+        documentService = restAdapter.create(DocumentApi.class);
+        metadataService = restAdapter.create(MetadataApi.class);
         searchService = restAdapter.create(SearchApi.class);
-
+        nonceService = restAdapter.create(NonceApi.class);
+        searchFunctionService = restAdapter.create(SearchFunctionApi.class);
+        
         // context
-        KryptnosticContext context = new DefaultKryptnosticContext();
-
+        KryptnosticContext context = new DefaultKryptnosticContext(searchFunctionService, nonceService);
         metadataKeyService = new BalancedMetadataKeyService(context);
         indexingService = new BaseIndexingService();
     }
 
     public MetadataApi createMetadataApi() {
-        return metadataApi;
+        return metadataService;
     }
 
     public DocumentApi createDocumentApi() {
-        return documentApi;
+        return documentService;
     }
 
     public SearchApi createSearchApi() {
