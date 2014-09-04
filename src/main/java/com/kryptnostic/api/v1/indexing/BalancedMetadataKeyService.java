@@ -36,8 +36,6 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
         return context.getSearchFunction().apply(tokenVector, nonce);
     }
 
-    // TODO reuse nonces
-    // TODO add nonces to context
     @Override
     public Metadata mapTokensToKeys(Set<Metadatum> metadata) {
         /*

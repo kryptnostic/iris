@@ -10,6 +10,8 @@ import cern.colt.bitvector.BitVector;
 
 import com.google.common.collect.Lists;
 import com.kryptnostic.api.v1.indexing.Indexes;
+import com.kryptnostic.crypto.PrivateKey;
+import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.linear.BitUtils;
@@ -20,6 +22,8 @@ import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 public class DefaultKryptnosticContext implements KryptnosticContext {
     private final NonceApi nonceService;
     private final SearchFunctionApi searchFunctionService;
+    private final PrivateKey privateKey = new PrivateKey(CIPHER_BLOCK_LENGTH, PLAINTEXT_BLOCK_LENGTH);
+    private final PublicKey publicKey = new PublicKey(privateKey);
 
     private SimplePolynomialFunction indexingHashFunction;
 
@@ -28,12 +32,15 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private static final int TOKEN_LENGTH = 256;
     private static final int LOCATION_LENGTH = 64;
     private static final int NONCE_LENGTH = 64;
+    private static final int CIPHER_BLOCK_LENGTH = 128;
+    private static final int PLAINTEXT_BLOCK_LENGTH = 64;
 
     public DefaultKryptnosticContext(SearchFunctionApi searchFunctionService, NonceApi nonceService) {
         this.searchFunctionService = searchFunctionService;
         this.nonceService = nonceService;
     }
 
+    // Needs to take in 
     @Override
     public SimplePolynomialFunction getSearchFunction() {
         if (indexingHashFunction == null) {
@@ -45,10 +52,18 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             if (indexingHashFunction == null) {
                 indexingHashFunction = Indexes.generateRandomIndexingFunction(TOKEN_LENGTH, NONCE_LENGTH,
                         LOCATION_LENGTH);
-                searchFunctionService.setFunction(indexingHashFunction);
+                
+                setFunction(indexingHashFunction);
             }
         }
         return indexingHashFunction;
+    }
+    
+
+    private void setFunction(SimplePolynomialFunction indexingHashFunction2) {
+        SimplePolynomialFunction indexingHomomorphism = indexingHashFunction2.partialComposeRight(privateKey.getDecryptor());
+        indexingHomomorphism = privateKey.encrypt(indexingHomomorphism, privateKey.getG());
+        searchFunctionService.setFunction(indexingHashFunction);
     }
 
     @Override
