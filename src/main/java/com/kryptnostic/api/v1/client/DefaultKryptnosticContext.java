@@ -10,8 +10,10 @@ import cern.colt.bitvector.BitVector;
 
 import com.google.common.collect.Lists;
 import com.kryptnostic.api.v1.indexing.Indexes;
+import com.kryptnostic.api.v1.security.InMemorySecurityService;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.security.SecurityService;
 import com.kryptnostic.linear.BitUtils;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.storage.v1.client.NonceApi;
@@ -20,18 +22,21 @@ import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 public class DefaultKryptnosticContext implements KryptnosticContext {
     private final NonceApi nonceService;
     private final SearchFunctionApi searchFunctionService;
+    private final SecurityService securityService;
 
     private SimplePolynomialFunction indexingHashFunction;
 
-    private static final Logger log = LoggerFactory.getLogger(DefaultKryptnosticContext.class);
+    private static final Logger logger = LoggerFactory.getLogger(DefaultKryptnosticContext.class);
 
     private static final int TOKEN_LENGTH = 256;
     private static final int LOCATION_LENGTH = 64;
     private static final int NONCE_LENGTH = 64;
 
-    public DefaultKryptnosticContext(SearchFunctionApi searchFunctionService, NonceApi nonceService) {
+    public DefaultKryptnosticContext(SearchFunctionApi searchFunctionService, NonceApi nonceService,
+            SecurityService securityService) {
         this.searchFunctionService = searchFunctionService;
         this.nonceService = nonceService;
+        this.securityService = securityService;
     }
 
     @Override
@@ -64,6 +69,11 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     public BitVector generateNonce() {
         return BitUtils.randomVector(NONCE_LENGTH);
+    }
+
+    @Override
+    public SecurityService getSecurityService() {
+        return this.securityService;
     }
 
 }

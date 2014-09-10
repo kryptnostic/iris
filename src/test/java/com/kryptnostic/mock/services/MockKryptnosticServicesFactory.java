@@ -3,6 +3,7 @@ package com.kryptnostic.mock.services;
 import com.kryptnostic.api.v1.client.DefaultKryptnosticContext;
 import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
 import com.kryptnostic.api.v1.indexing.BaseIndexingService;
+import com.kryptnostic.api.v1.security.InMemorySecurityService;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.indexing.IndexingService;
@@ -30,7 +31,7 @@ public class MockKryptnosticServicesFactory implements KryptnosticServicesFactor
     {
         NonceApi nonceService = new MockNonceService();
         SearchFunctionApi searchFunctionService = new MockSearchFunctionService();
-        context = new DefaultKryptnosticContext(searchFunctionService, nonceService);
+        context = new DefaultKryptnosticContext(searchFunctionService, nonceService, new InMemorySecurityService());
         metadataKeyService = new BalancedMetadataKeyService(context);
         indexingService = new BaseIndexingService();
     }
