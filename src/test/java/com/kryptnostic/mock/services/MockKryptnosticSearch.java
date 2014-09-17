@@ -7,8 +7,8 @@ import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableList;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.kodex.v1.models.AesEncryptable;
 import com.kryptnostic.kodex.v1.models.Encryptable;
-import com.kryptnostic.kodex.v1.models.FheEncryptable;
 import com.kryptnostic.search.v1.client.SearchApi;
 import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.search.v1.models.request.SearchRequest;
@@ -26,8 +26,7 @@ public class MockKryptnosticSearch implements SearchApi {
 
     public MockKryptnosticSearch() {
         Metadatum pojoMockMetadata = Mockito.mock(Metadatum.class);
-        // TODO: Change to AES
-        Encryptable<Metadatum> encrypted = new FheEncryptable<Metadatum>(pojoMockMetadata);
+        Encryptable<Metadatum> encrypted = new AesEncryptable<Metadatum>(pojoMockMetadata);
 
         Integer score = 2;
         String date = "testdate";

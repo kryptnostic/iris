@@ -17,7 +17,7 @@ import com.kryptnostic.kodex.v1.indexing.IndexingService;
 import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
-import com.kryptnostic.kodex.v1.models.FheEncryptable;
+import com.kryptnostic.kodex.v1.models.AesEncryptable;
 import com.kryptnostic.storage.v1.StorageService;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
@@ -57,8 +57,7 @@ public class DefaultStorageService implements StorageService {
             log.debug("list" + m.getValue().toString());
             BitVector key = m.getKey();
             for (Metadatum subMeta : m.getValue()) {
-                // TODO: change scheme to AES
-                metadataIndex.add(new IndexedMetadata(key, new FheEncryptable<Metadatum>(subMeta)));
+                metadataIndex.add(new IndexedMetadata(key, new AesEncryptable<Metadatum>(subMeta)));
             }
         }
         MetadataRequest req = new MetadataRequest(metadataIndex);
