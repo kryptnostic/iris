@@ -42,9 +42,9 @@ public class DefaultSearchService implements SearchService {
     public Collection<SearchResult> search(String query) {
         List<String> tokens = analyzeQuery(query);
         SearchRequest searchRequest = generateSearchRequest(tokens);
-        
+
         SearchResultResponse searchResult = searchService.search(searchRequest);
-        
+
         return searchResult.getData();
     }
 
@@ -56,9 +56,9 @@ public class DefaultSearchService implements SearchService {
 
         Collection<BitVector> searchTokens = Lists.newArrayList();
         for (String token : tokens) {
-            searchTokens.add( Indexes.computeHashAndGetBits(token));
+            searchTokens.add(Indexes.computeHashAndGetBits(token));
         }
-        
+
         return SearchRequest.searchToken(searchTokens);
     }
 
