@@ -13,6 +13,7 @@ import com.kryptnostic.search.v1.SearchService;
 import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.storage.v1.StorageService;
 import com.kryptnostic.storage.v1.models.Document;
+import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 
 // TODO: exception handling
 public class DefaultKryptnosticClient implements KryptnosticClient {
@@ -52,5 +53,10 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     @Override
     public KryptnosticContext getContext() {
         return this.context;
+    }
+
+    @Override
+    public String uploadMetadata(MetadataRequest metadata) throws BadRequestException {
+        return storageService.uploadMetadata(metadata);
     }
 }

@@ -49,20 +49,8 @@ public class DefaultStorageService implements StorageService {
         // metadata stuff now
         // index + map tokens
         Set<Metadatum> metadata = indexingService.index(id, document);
-        Metadata keyedMetadata = keyService.mapTokensToKeys(metadata);
 
-        // format for metadata upload
-        Collection<IndexedMetadata> metadataIndex = Lists.newArrayList();
-        for (Map.Entry<BitVector, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet()) {
-            log.debug("list" + m.getValue().toString());
-            BitVector key = m.getKey();
-            for (Metadatum subMeta : m.getValue()) {
-                metadataIndex.add(new IndexedMetadata(key, new AesEncryptable<Metadatum>(subMeta)));
-            }
-        }
-        MetadataRequest req = new MetadataRequest(metadataIndex);
-        log.debug("generated metadata " + keyedMetadata);
-        metadataApi.uploadMetadata(req);
+        uploadMetadata(prepareMetadata(metadata));
 
         return id;
     }
@@ -75,6 +63,27 @@ public class DefaultStorageService implements StorageService {
     @Override
     public Document getDocument(String id) throws ResourceNotFoundException {
         return documentApi.getDocument(id).getData();
+    }
+
+    @Override
+    public String uploadMetadata(MetadataRequest req) throws BadRequestException {
+        return metadataApi.uploadMetadata(req).getData();
+    }
+
+    private MetadataRequest prepareMetadata(Set<Metadatum> metadata) {
+        Metadata keyedMetadata = keyService.mapTokensToKeys(metadata);
+        log.debug("generated metadata " + keyedMetadata);
+
+        // format for metadata upload
+        Collection<IndexedMetadata> metadataIndex = Lists.newArrayList();
+        for (Map.Entry<BitVector, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet()) {
+            log.debug("list" + m.getValue().toString());
+            BitVector key = m.getKey();
+            for (Metadatum subMeta : m.getValue()) {
+                metadataIndex.add(new IndexedMetadata(key, new AesEncryptable<Metadatum>(subMeta)));
+            }
+        }
+        return new MetadataRequest(metadataIndex);
     }
 
 }
