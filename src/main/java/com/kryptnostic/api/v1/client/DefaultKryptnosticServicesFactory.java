@@ -25,18 +25,19 @@ import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFactory {
     private final static Logger logger = LoggerFactory.getLogger(DefaultKryptnosticServicesFactory.class);
 
-    private final MetadataKeyService metadataKeyService;
+    private MetadataKeyService metadataKeyService;
     private final IndexingService indexingService;
     private final MetadataApi metadataService;
     private final DocumentApi documentService;
     private final SearchApi searchService;
     private final NonceApi nonceService;
     private final SearchFunctionApi searchFunctionService;
+    private final SecurityService securityService;
 
     public DefaultKryptnosticServicesFactory(String url) {
         // security
         // TODO: replace with a persistent service to store keys for reuse
-        SecurityService securityService = new InMemorySecurityService();
+        securityService = new InMemorySecurityService();
 
         // connection
         RestAdapter restAdapter = new RestAdapter.Builder()
@@ -54,30 +55,49 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
         nonceService = restAdapter.create(NonceApi.class);
         searchFunctionService = restAdapter.create(SearchFunctionApi.class);
 
-        // context
-        KryptnosticContext context = new DefaultKryptnosticContext(searchFunctionService, nonceService, securityService);
-        metadataKeyService = new BalancedMetadataKeyService(context);
         indexingService = new BaseIndexingService();
     }
 
+    @Override
     public MetadataApi createMetadataApi() {
         return metadataService;
     }
 
+    @Override
     public DocumentApi createDocumentApi() {
         return documentService;
     }
 
+    @Override
     public SearchApi createSearchApi() {
         return searchService;
     }
 
-    public MetadataKeyService createMetadataKeyService() {
+    @Override
+    public MetadataKeyService createMetadataKeyService(KryptnosticContext context) {
+        if (metadataKeyService == null) {
+            this.metadataKeyService = new BalancedMetadataKeyService(context);
+        }
         return metadataKeyService;
     }
 
+    @Override
     public IndexingService createIndexingService() {
         return indexingService;
     }
 
+    @Override
+    public SearchFunctionApi createSearchFunctionService() {
+        return searchFunctionService;
+    }
+
+    @Override
+    public NonceApi createNonceService() {
+        return nonceService;
+    }
+
+    @Override
+    public SecurityService createSecurityService() {
+        return securityService;
+    }
 }
