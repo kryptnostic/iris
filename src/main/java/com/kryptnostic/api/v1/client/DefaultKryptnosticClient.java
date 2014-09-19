@@ -59,4 +59,9 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     public String uploadMetadata(MetadataRequest metadata) throws BadRequestException {
         return storageService.uploadMetadata(metadata);
     }
+
+    @Override
+    public Collection<String> getDocumentIds() {
+        return storageService.getDocumentIds();
+    }
 }

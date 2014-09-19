@@ -86,4 +86,9 @@ public class DefaultStorageService implements StorageService {
         return new MetadataRequest(metadataIndex);
     }
 
+    @Override
+    public Collection<String> getDocumentIds() {
+        return documentApi.getDocumentIds().getData();
+    }
+
 }
