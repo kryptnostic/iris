@@ -14,6 +14,7 @@ import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.security.SecurityService;
 import com.kryptnostic.linear.BitUtils;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.storage.v1.client.NonceApi;
@@ -24,6 +25,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private final SearchFunctionApi searchFunctionService;
     private final PrivateKey privateKey = new PrivateKey(CIPHER_BLOCK_LENGTH, PLAINTEXT_BLOCK_LENGTH);
     private final PublicKey publicKey = new PublicKey(privateKey);
+    private final SecurityService securityService;
 
     private SimplePolynomialFunction indexingHashFunction;
 
@@ -35,9 +37,11 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private static final int CIPHER_BLOCK_LENGTH = 128;
     private static final int PLAINTEXT_BLOCK_LENGTH = 64;
 
-    public DefaultKryptnosticContext(SearchFunctionApi searchFunctionService, NonceApi nonceService) {
+    public DefaultKryptnosticContext(SearchFunctionApi searchFunctionService, NonceApi nonceService,
+            SecurityService securityService) {
         this.searchFunctionService = searchFunctionService;
         this.nonceService = nonceService;
+        this.securityService = securityService;
     }
 
     /** 
@@ -97,6 +101,11 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     public BitVector generateNonce() {
         return BitUtils.randomVector(NONCE_LENGTH);
+    }
+
+    @Override
+    public SecurityService getSecurityService() {
+        return this.securityService;
     }
 
 }

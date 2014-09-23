@@ -3,10 +3,12 @@ package com.kryptnostic.mock.services;
 import com.kryptnostic.api.v1.client.DefaultKryptnosticContext;
 import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
 import com.kryptnostic.api.v1.indexing.BaseIndexingService;
+import com.kryptnostic.api.v1.security.InMemorySecurityService;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.indexing.IndexingService;
 import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
+import com.kryptnostic.kodex.v1.security.SecurityService;
 import com.kryptnostic.search.v1.client.SearchApi;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
@@ -30,7 +32,7 @@ public class MockKryptnosticServicesFactory implements KryptnosticServicesFactor
     {
         NonceApi nonceService = new MockNonceService();
         SearchFunctionApi searchFunctionService = new MockSearchFunctionService();
-        context = new DefaultKryptnosticContext(searchFunctionService, nonceService);
+        context = new DefaultKryptnosticContext(searchFunctionService, nonceService, new InMemorySecurityService());
         metadataKeyService = new BalancedMetadataKeyService(context);
         indexingService = new BaseIndexingService();
     }
@@ -51,13 +53,31 @@ public class MockKryptnosticServicesFactory implements KryptnosticServicesFactor
     }
 
     @Override
-    public MetadataKeyService createMetadataKeyService() {
+    public MetadataKeyService createMetadataKeyService(KryptnosticContext context) {
         return metadataKeyService;
     }
 
     @Override
     public IndexingService createIndexingService() {
         return indexingService;
+    }
+
+    @Override
+    public NonceApi createNonceService() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public SecurityService createSecurityService() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public SearchFunctionApi createSearchFunctionService() {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }

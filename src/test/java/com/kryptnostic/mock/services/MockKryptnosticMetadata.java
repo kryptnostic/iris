@@ -9,7 +9,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.storage.v1.client.MetadataApi;
-import com.kryptnostic.storage.v1.models.request.IndexableMetadata;
+import com.kryptnostic.storage.v1.models.request.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 
 public class MockKryptnosticMetadata implements MetadataApi {
@@ -19,10 +19,10 @@ public class MockKryptnosticMetadata implements MetadataApi {
     @Override
     public BasicResponse<String> uploadMetadata(MetadataRequest metadata) throws BadRequestException {
         Preconditions.checkArgument(metadata != null, "metadata request cannot be null.");
-        Collection<IndexableMetadata> metadataCollection = metadata.getMetadata();
-        for (IndexableMetadata m : metadataCollection) {
+        Collection<IndexedMetadata> metadataCollection = metadata.getMetadata();
+        for (IndexedMetadata m : metadataCollection) {
             BitVector vector = m.getKey();
-            Metadatum data = m.getData();
+            Metadatum data = (Metadatum) m.getData().getData();
             metadataService.save(vector, data);
         }
         return new BasicResponse<String>("", OK_STATUS, true);

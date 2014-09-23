@@ -1,5 +1,7 @@
 package com.kryptnostic.mock.services;
 
+import java.util.Collection;
+
 import org.junit.Assert;
 
 import com.google.common.base.Preconditions;
@@ -49,6 +51,11 @@ public class MockKryptnosticDocument implements DocumentApi {
 
     private void validateDocumentRequest(DocumentRequest document) {
         Assert.assertNotNull(document.getDocument());
+    }
+
+    @Override
+    public BasicResponse<Collection<String>> getDocumentIds() {
+        throw new UnsupportedOperationException();
     }
 
 }

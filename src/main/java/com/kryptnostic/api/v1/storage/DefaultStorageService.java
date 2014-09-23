@@ -17,12 +17,13 @@ import com.kryptnostic.kodex.v1.indexing.IndexingService;
 import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.kodex.v1.models.AesEncryptable;
 import com.kryptnostic.storage.v1.StorageService;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
 import com.kryptnostic.storage.v1.models.Document;
 import com.kryptnostic.storage.v1.models.request.DocumentRequest;
-import com.kryptnostic.storage.v1.models.request.IndexableMetadata;
+import com.kryptnostic.storage.v1.models.request.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 
 public class DefaultStorageService implements StorageService {
@@ -48,20 +49,8 @@ public class DefaultStorageService implements StorageService {
         // metadata stuff now
         // index + map tokens
         Set<Metadatum> metadata = indexingService.index(id, document);
-        Metadata keyedMetadata = keyService.mapTokensToKeys(metadata);
 
-        // format for metadata upload
-        Collection<IndexableMetadata> metadataIndex = Lists.newArrayList();
-        for (Map.Entry<BitVector, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet()) {
-            log.debug("list" + m.getValue().toString());
-            BitVector key = m.getKey();
-            for (Metadatum subMeta : m.getValue()) {
-                metadataIndex.add(new IndexableMetadata(key, subMeta));
-            }
-        }
-        MetadataRequest req = new MetadataRequest(metadataIndex);
-        log.debug("generated metadata " + keyedMetadata);
-        metadataApi.uploadMetadata(req);
+        uploadMetadata(prepareMetadata(metadata));
 
         return id;
     }
@@ -74,6 +63,32 @@ public class DefaultStorageService implements StorageService {
     @Override
     public Document getDocument(String id) throws ResourceNotFoundException {
         return documentApi.getDocument(id).getData();
+    }
+
+    @Override
+    public String uploadMetadata(MetadataRequest req) throws BadRequestException {
+        return metadataApi.uploadMetadata(req).getData();
+    }
+
+    private MetadataRequest prepareMetadata(Set<Metadatum> metadata) {
+        Metadata keyedMetadata = keyService.mapTokensToKeys(metadata);
+        log.debug("generated metadata " + keyedMetadata);
+
+        // format for metadata upload
+        Collection<IndexedMetadata> metadataIndex = Lists.newArrayList();
+        for (Map.Entry<BitVector, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet()) {
+            log.debug("list" + m.getValue().toString());
+            BitVector key = m.getKey();
+            for (Metadatum subMeta : m.getValue()) {
+                metadataIndex.add(new IndexedMetadata(key, new AesEncryptable<Metadatum>(subMeta)));
+            }
+        }
+        return new MetadataRequest(metadataIndex);
+    }
+
+    @Override
+    public Collection<String> getDocumentIds() {
+        return documentApi.getDocumentIds().getData();
     }
 
 }
