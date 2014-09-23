@@ -27,7 +27,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     private SimplePolynomialFunction indexingHashFunction;
 
-    private static final Logger log = LoggerFactory.getLogger(DefaultKryptnosticContext.class);
+    private static final Logger logger = LoggerFactory.getLogger(DefaultKryptnosticContext.class);
 
     private static final int TOKEN_LENGTH = 256;
     private static final int LOCATION_LENGTH = 64;
@@ -40,7 +40,10 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         this.nonceService = nonceService;
     }
 
-    // Needs to take in 
+    /** 
+     * Gets a search function locally, or, if one does not exist, generates a search function and
+     * persists the homomorphism to the search service.
+     */
     @Override
     public SimplePolynomialFunction getSearchFunction() {
         if (indexingHashFunction == null) {
@@ -50,31 +53,46 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                 // no search function was stored remotely
             }
             if (indexingHashFunction == null) {
-                indexingHashFunction = Indexes.generateRandomIndexingFunction(TOKEN_LENGTH, NONCE_LENGTH,
+                logger.info("Generating search function.");
+                indexingHashFunction = Indexes.generateRandomIndexingFunction(NONCE_LENGTH, TOKEN_LENGTH,
                         LOCATION_LENGTH);
-                
+
                 setFunction(indexingHashFunction);
             }
         }
         return indexingHashFunction;
     }
-    
 
-    private void setFunction(SimplePolynomialFunction indexingHashFunction2) {
-        SimplePolynomialFunction indexingHomomorphism = indexingHashFunction2.partialComposeRight(privateKey.getDecryptor());
-        indexingHomomorphism = privateKey.encrypt(indexingHomomorphism, privateKey.getG());
-        searchFunctionService.setFunction(indexingHashFunction);
+    /**
+     * Wraps call to SearchFunctionService, first encrypting the function with FHE before sending it.
+     */
+    private void setFunction(SimplePolynomialFunction indexingHashFunction) {
+        SimplePolynomialFunction indexingHomomorphism = indexingHashFunction.partialComposeLeft(privateKey
+                .getDecryptor());
+        searchFunctionService.setFunction(indexingHomomorphism);
     }
 
+    /**
+     * TODO need to decrypt cipher nonces for local use
+     */
     @Override
     public List<BitVector> getNonces() {
         Collection<BitVector> nonces = nonceService.getNonces().getData();
         return Lists.newArrayList(nonces);
     }
 
+    /**
+     * Sends the nonce service cipher nonces, for use with the search homomorphism.
+     */
     @Override
     public void addNonces(List<BitVector> nonces) {
-        nonceService.addNonces(nonces);
+        List<BitVector> cipherNonces = Lists.newArrayList();
+        for (BitVector nonce : nonces) {
+            SimplePolynomialFunction encrypter = publicKey.getEncrypter();
+            BitVector cipherNonce = encrypter.apply(nonce, BitUtils.randomVector(nonce.size()));
+            cipherNonces.add(cipherNonce);
+        }
+        nonceService.addNonces(cipherNonces);
     }
 
     public BitVector generateNonce() {

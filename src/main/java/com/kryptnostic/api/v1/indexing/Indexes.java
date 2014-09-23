@@ -16,9 +16,9 @@ public class Indexes {
     
     private static final HashFunction hashFunction = Hashing.sha256();
     
-	public static SimplePolynomialFunction generateRandomIndexingFunction( int tokenLength, int nonceLength, int locationLength ) {
+	public static SimplePolynomialFunction generateRandomIndexingFunction( int nonceLength, int tokenLength, int locationLength ) {
 		SimplePolynomialFunction outer = PolynomialFunctions.denseRandomMultivariateQuadratic( locationLength , locationLength );
-		SimplePolynomialFunction inner = PolynomialFunctions.unsafeRandomManyToOneLinearCombination( tokenLength + nonceLength , locationLength );
+		SimplePolynomialFunction inner = PolynomialFunctions.unsafeRandomManyToOneLinearCombination( nonceLength + tokenLength, locationLength );
 		return outer.compose( inner );
 	}
 
