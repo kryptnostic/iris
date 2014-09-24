@@ -69,6 +69,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     /**
      * Wraps call to SearchFunctionService, first encrypting the function with FHE before sending it.
+     * TODO make this async or something...hide latency of compose
      */
     private void setFunction(SimplePolynomialFunction indexingHashFunction) {
         SimplePolynomialFunction indexingHomomorphism = indexingHashFunction.partialComposeLeft(privateKey

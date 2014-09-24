@@ -17,7 +17,7 @@ import com.kryptnostic.search.v1.search.QueryAnalyzer;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  */
 public class TokenizingWhitespaceAnalyzer implements Analyzer,QueryAnalyzer {
-	private static final Pattern onlyWords = Pattern.compile("([a-zA-Z]+)");
+	private static final Pattern onlyWords = Pattern.compile("([a-zA-Z0-9]+)");
 	//TODO: Make a generic analyzer that takes in a pattern and indexes on resulting tokens.
 	public Map<String, List<Integer>> analyze( String source ) {
 		Matcher m = onlyWords.matcher( source );
