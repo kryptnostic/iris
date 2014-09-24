@@ -8,7 +8,6 @@ import retrofit.RestAdapter.LogLevel;
 
 import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
 import com.kryptnostic.api.v1.indexing.BaseIndexingService;
-import com.kryptnostic.api.v1.security.InMemorySecurityService;
 import com.kryptnostic.api.v1.utils.JacksonConverter;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
@@ -34,11 +33,9 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     private final SearchFunctionApi searchFunctionService;
     private final SecurityService securityService;
 
-    public DefaultKryptnosticServicesFactory(String url) {
-        // security
-        // TODO: replace with a persistent service to store keys for reuse
-        securityService = new InMemorySecurityService();
-
+    public DefaultKryptnosticServicesFactory(String url, SecurityService service) {
+        securityService = service;
+        
         // connection
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setConverter(new JacksonConverter(securityService.getSecurityConfigurationMapping())).setEndpoint(url)
