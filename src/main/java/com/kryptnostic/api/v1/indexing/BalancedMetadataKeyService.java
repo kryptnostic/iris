@@ -33,11 +33,9 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
 
     public BitVector getKey(String token, BitVector nonce) {
         BitVector tokenVector = Indexes.computeHashAndGetBits(token);
-        return context.getSearchFunction().apply(tokenVector, nonce);
+        return context.getSearchFunction().apply(nonce, tokenVector);
     }
 
-    // TODO reuse nonces
-    // TODO add nonces to context
     @Override
     public Metadata mapTokensToKeys(Set<Metadatum> metadata) {
         /*

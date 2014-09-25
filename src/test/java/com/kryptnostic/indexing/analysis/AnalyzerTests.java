@@ -18,6 +18,6 @@ public class AnalyzerTests {
 		
 		Map<String,List<Integer>> invertedIndex = analyzer.analyze( doc );
 		
-		Assert.assertEquals(invertedIndex.keySet() , Sets.newHashSet( "This" , "is" , "a" , "test" , "document", "with", "some", "fu","d", "hit", "up") );
+		Assert.assertEquals(invertedIndex.keySet() , Sets.newHashSet( "This" , "is" , "a" , "test" , "document", "with", "some", "fu","3d", "hit", "up") );
 	}
 }
