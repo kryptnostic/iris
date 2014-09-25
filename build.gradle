@@ -26,8 +26,6 @@ apply plugin: "eclipse"
 apply plugin: "idea"
 apply from: "publish.gradle"
 
-ext.sourceCompatibility=JavaVersion.VERSION_1_8
-
 repositories {
   mavenCentral()  
   mavenLocal()
@@ -92,19 +90,10 @@ dependencies {
      */
     compile 'com.esotericsoftware.kryo:kryo:2.22'
 
-    /*
-     * HAZELCAST - DISTRIBUTED DATA GRID
-     * Transparent http clustering, distributed java.util collections
-     */
-    compile "com.hazelcast:hazelcast:${hazelcast_version}"
-    compile "com.hazelcast:hazelcast-client:${hazelcast_version}"
-    compile "com.hazelcast:hazelcast-wm:${hazelcast_version}"
-    compile "com.hazelcast:hazelcast-spring:${hazelcast_version}"
-
     if( project.hasProperty('developmentMode') && project.developmentMode ) {
       logger.quiet("$project.name is using project dependencies")
       compile project(":fhe-core:kryptnostic-api")
-      compile project(":fhe-core:kryptnostic-api")
+      compile project(":fhe-core:kryptnostic-core")
       compile project(":kodex")
     } else {
       logger.quiet("$project.name is using jar dependencies")
@@ -148,9 +137,14 @@ artifacts {
 }
 
 eclipse {
+    ext.sourceCompatibility=JavaVersion.VERSION_1_6
+    ext.targetCompatibility=JavaVersion.VERSION_1_6
     ext.downloadSources = true
     ext.downloadJavadoc = true
-    ext.sourceCompatibility=JavaVersion.VERSION_1_8
+    classpath {
+         containers.remove('org.eclipse.jdt.launching.JRE_CONTAINER')
+         containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6'
+    }
 }
 
 task wrapper(type: Wrapper) {
