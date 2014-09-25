@@ -17,6 +17,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.security.SecurityService;
 import com.kryptnostic.linear.BitUtils;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
+import com.kryptnostic.search.v1.models.request.SearchFunctionUploadRequest;
 import com.kryptnostic.storage.v1.client.NonceApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 
@@ -74,7 +75,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private void setFunction(SimplePolynomialFunction indexingHashFunction) {
         SimplePolynomialFunction indexingHomomorphism = indexingHashFunction.partialComposeLeft(privateKey
                 .getDecryptor());
-        searchFunctionService.setFunction(indexingHomomorphism);
+        SearchFunctionUploadRequest request = new SearchFunctionUploadRequest(indexingHomomorphism);
+        searchFunctionService.setFunction(request);
     }
 
     /**
