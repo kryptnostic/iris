@@ -25,6 +25,7 @@ apply plugin: "maven"
 apply plugin: "eclipse"
 apply plugin: "idea"
 apply from: "publish.gradle"
+apply plugin: "jacoco"
 
 repositories {
   mavenCentral()  

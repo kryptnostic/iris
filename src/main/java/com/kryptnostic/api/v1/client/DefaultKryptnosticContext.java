@@ -13,7 +13,6 @@ import com.kryptnostic.api.v1.indexing.Indexes;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
-import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.security.SecurityService;
 import com.kryptnostic.linear.BitUtils;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
@@ -53,9 +52,9 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     public SimplePolynomialFunction getSearchFunction() {
         if (indexingHashFunction == null) {
             try {
-                indexingHashFunction = searchFunctionService.getFunction().getData();
-            } catch (ResourceNotFoundException e) {
-                // no search function was stored remotely
+                indexingHashFunction = searchFunctionService.getFunction().getData(); 
+            } catch (Exception e) {
+                
             }
             if (indexingHashFunction == null) {
                 logger.info("Generating search function.");
