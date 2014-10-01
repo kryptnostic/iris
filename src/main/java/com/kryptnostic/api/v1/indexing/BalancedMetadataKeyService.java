@@ -19,7 +19,6 @@ import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
-import com.kryptnostic.multivariate.FunctionUtils;
 
 public class BalancedMetadataKeyService implements MetadataKeyService {
     private static final Random r = new SecureRandom();
@@ -47,6 +46,7 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
          */
         Map<BitVector, List<Metadatum>> metadataMap = Maps.newHashMapWithExpectedSize(metadata.size());
         List<BitVector> nonces = Lists.newArrayList();
+        log.info("Generating metadatum.");
         for (Metadatum metadatum : metadata) {
             String token = metadatum.getToken();
             List<Integer> locations = metadatum.getLocations();

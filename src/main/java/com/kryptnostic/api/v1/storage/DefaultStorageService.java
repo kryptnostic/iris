@@ -43,12 +43,14 @@ public class DefaultStorageService implements StorageService {
     }
 
     @Override
-    public String uploadDocument(String document) throws BadRequestException {
-        String id = documentApi.uploadDocument(new DocumentRequest(document)).getData();
+    public String uploadDocument(String documentBody) throws BadRequestException {
+        Document document = new Document(new AesEncryptable<String>(documentBody));
+        DocumentRequest request = new DocumentRequest(document);
+        String id = documentApi.uploadDocument(request).getData();
 
         // metadata stuff now
         // index + map tokens
-        Set<Metadatum> metadata = indexingService.index(id, document);
+        Set<Metadatum> metadata = indexingService.index(id, documentBody);
 
         uploadMetadata(prepareMetadata(metadata));
 
@@ -56,13 +58,16 @@ public class DefaultStorageService implements StorageService {
     }
 
     @Override
-    public String updateDocument(String id, String document) throws ResourceNotFoundException {
-        return documentApi.updateDocument(id, new DocumentRequest(document)).getData();
+    public String updateDocument(String id, String documentBody) throws ResourceNotFoundException {
+        Document document = new Document(new AesEncryptable<String>(documentBody));
+        DocumentRequest request = new DocumentRequest(document);
+        return documentApi.updateDocument(id, request).getData();
     }
 
     @Override
     public Document getDocument(String id) throws ResourceNotFoundException {
-        return documentApi.getDocument(id).getData();
+        Document document = documentApi.getDocument(id).getData();
+        return document;
     }
 
     @Override
