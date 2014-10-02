@@ -13,6 +13,8 @@ import com.kryptnostic.api.v1.indexing.Indexes;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.models.FheEncryptable;
+import com.kryptnostic.kodex.v1.security.SecurityConfigurationMapping;
 import com.kryptnostic.kodex.v1.security.SecurityService;
 import com.kryptnostic.linear.BitUtils;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
@@ -23,8 +25,8 @@ import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 public class DefaultKryptnosticContext implements KryptnosticContext {
     private final NonceApi nonceService;
     private final SearchFunctionApi searchFunctionService;
-    private final PrivateKey privateKey = new PrivateKey(CIPHER_BLOCK_LENGTH, PLAINTEXT_BLOCK_LENGTH);
-    private final PublicKey publicKey = new PublicKey(privateKey);
+    private final PrivateKey privateKey;
+    private final PublicKey publicKey;
     private final SecurityService securityService;
 
     private SimplePolynomialFunction indexingHashFunction;
@@ -34,27 +36,35 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private static final int TOKEN_LENGTH = 256;
     private static final int LOCATION_LENGTH = 64;
     private static final int NONCE_LENGTH = 64;
-    private static final int CIPHER_BLOCK_LENGTH = 128;
-    private static final int PLAINTEXT_BLOCK_LENGTH = 64;
 
     public DefaultKryptnosticContext(SearchFunctionApi searchFunctionService, NonceApi nonceService,
             SecurityService securityService) {
         this.searchFunctionService = searchFunctionService;
         this.nonceService = nonceService;
         this.securityService = securityService;
+
+        SecurityConfigurationMapping mapping = this.securityService.getSecurityConfigurationMapping();
+
+        if (mapping != null) {
+            this.privateKey = mapping.get(FheEncryptable.class, PrivateKey.class);
+            this.publicKey = mapping.get(FheEncryptable.class, PublicKey.class);
+        } else {
+            this.privateKey = null;
+            this.publicKey = null;
+        }
     }
 
-    /** 
-     * Gets a search function locally, or, if one does not exist, generates a search function and
-     * persists the homomorphism to the search service.
+    /**
+     * Gets a search function locally, or, if one does not exist, generates a search function and persists the
+     * homomorphism to the search service.
      */
     @Override
     public SimplePolynomialFunction getSearchFunction() {
         if (indexingHashFunction == null) {
             try {
-                indexingHashFunction = searchFunctionService.getFunction().getData(); 
+                indexingHashFunction = searchFunctionService.getFunction().getData();
             } catch (Exception e) {
-                
+
             }
             if (indexingHashFunction == null) {
                 logger.info("Generating search function.");
@@ -68,8 +78,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     /**
-     * Wraps call to SearchFunctionService, first encrypting the function with FHE before sending it.
-     * TODO make this async or something...hide latency of compose
+     * Wraps call to SearchFunctionService, first encrypting the function with FHE before sending it. TODO make this
+     * async or something...hide latency of compose
      */
     private void setFunction(SimplePolynomialFunction indexingHashFunction) {
         SimplePolynomialFunction indexingHomomorphism = indexingHashFunction.partialComposeLeft(privateKey
@@ -108,6 +118,12 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     @Override
     public SecurityService getSecurityService() {
         return this.securityService;
+    }
+
+    @Override
+    public void setSearchFunction(SimplePolynomialFunction fn) {
+        indexingHashFunction = fn;
+        setFunction(fn);
     }
 
 }

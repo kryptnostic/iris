@@ -44,9 +44,7 @@ public class DefaultStorageService implements StorageService {
 
     @Override
     public String uploadDocument(String documentBody) throws BadRequestException {
-        Document document = new Document(new AesEncryptable<String>(documentBody));
-        DocumentRequest request = new DocumentRequest(document);
-        String id = documentApi.uploadDocument(request).getData();
+        String id = uploadDocumentWithoutMetadata(documentBody);
 
         // metadata stuff now
         // index + map tokens
@@ -94,6 +92,13 @@ public class DefaultStorageService implements StorageService {
     @Override
     public Collection<String> getDocumentIds() {
         return documentApi.getDocumentIds().getData();
+    }
+
+    @Override
+    public String uploadDocumentWithoutMetadata(String documentBody) throws BadRequestException {
+        Document document = new Document(new AesEncryptable<String>(documentBody));
+        DocumentRequest request = new DocumentRequest(document);
+        return documentApi.uploadDocument(request).getData();
     }
 
 }
