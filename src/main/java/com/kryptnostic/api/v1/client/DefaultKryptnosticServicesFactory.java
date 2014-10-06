@@ -1,10 +1,13 @@
 package com.kryptnostic.api.v1.client;
 
+import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import retrofit.RestAdapter;
 import retrofit.RestAdapter.LogLevel;
+import retrofit.client.OkClient;
 
 import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
 import com.kryptnostic.api.v1.indexing.BaseIndexingService;
@@ -20,6 +23,7 @@ import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
 import com.kryptnostic.storage.v1.client.NonceApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
+import com.squareup.okhttp.OkHttpClient;
 
 public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFactory {
     private final static Logger logger = LoggerFactory.getLogger(DefaultKryptnosticServicesFactory.class);
@@ -35,10 +39,14 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
 
     public DefaultKryptnosticServicesFactory(String url, SecurityService service) {
         securityService = service;
+        OkHttpClient client = new OkHttpClient();
+        client.setReadTimeout( 0 , TimeUnit.MILLISECONDS );
+        client.setConnectTimeout( 0 , TimeUnit.MILLISECONDS );
         
         // connection
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setConverter(new JacksonConverter(securityService.getSecurityConfigurationMapping())).setEndpoint(url)
+                .setClient( new OkClient( client  ) )
                 .setErrorHandler(new DefaultErrorHandler()).setLogLevel(LogLevel.FULL).setLog(new RestAdapter.Log() {
                     @Override
                     public void log(String msg) {
