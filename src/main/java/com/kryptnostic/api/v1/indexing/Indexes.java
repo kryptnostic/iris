@@ -8,8 +8,8 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
-import com.kryptnostic.multivariate.PolynomialFunctions;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
+import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 
 public class Indexes {
     private Indexes() {}
@@ -17,8 +17,8 @@ public class Indexes {
     private static final HashFunction hashFunction = Hashing.sha256();
     
 	public static SimplePolynomialFunction generateRandomIndexingFunction( int nonceLength, int tokenLength, int locationLength ) {
-		SimplePolynomialFunction outer = PolynomialFunctions.denseRandomMultivariateQuadratic( locationLength , locationLength );
-		SimplePolynomialFunction inner = PolynomialFunctions.unsafeRandomManyToOneLinearCombination( nonceLength + tokenLength, locationLength );
+        SimplePolynomialFunction outer = SimplePolynomialFunctions.denseRandomMultivariateQuadratic( locationLength , locationLength );
+		SimplePolynomialFunction inner = SimplePolynomialFunctions.unsafeRandomManyToOneLinearCombination( nonceLength + tokenLength, locationLength );
 		return outer.compose( inner );
 	}
 
