@@ -1,4 +1,4 @@
-package com.kryptnostic.indexing;
+package com.kryptnostic.api.v1.indexing;
 
 import java.io.IOException;
 import java.util.Set;

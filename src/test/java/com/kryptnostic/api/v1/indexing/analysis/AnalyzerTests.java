@@ -1,4 +1,4 @@
-package com.kryptnostic.indexing.analysis;
+package com.kryptnostic.api.v1.indexing.analysis;
 
 import java.util.List;
 import java.util.Map;

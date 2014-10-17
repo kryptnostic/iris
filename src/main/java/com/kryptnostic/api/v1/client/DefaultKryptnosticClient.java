@@ -1,8 +1,12 @@
 package com.kryptnostic.api.v1.client;
 
+import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
+import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.search.DefaultSearchService;
 import com.kryptnostic.api.v1.storage.DefaultStorageService;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
@@ -10,7 +14,8 @@ import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
+import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.kodex.v1.models.Encryptable;
 import com.kryptnostic.search.v1.SearchService;
 import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.storage.v1.StorageService;
@@ -28,7 +33,8 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
                 factory.createNonceService(), factory.createSecurityService());
 
         this.storageService = new DefaultStorageService(factory.createDocumentApi(), factory.createMetadataApi(),
-                factory.createMetadataKeyService(context), factory.createIndexingService());
+                factory.createMetadataKeyService(context), factory.createIndexingService(), context
+                        .getSecurityService().getSecurityConfigurationMapping());
         this.searchService = new DefaultSearchService(factory.createSearchApi(), factory.createIndexingService());
     }
 
@@ -38,12 +44,14 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     }
 
     @Override
-    public String uploadDocument(String document) throws BadRequestException {
+    public String uploadDocument(String document) throws BadRequestException, SecurityConfigurationException,
+            IOException, ResourceNotFoundException {
         return storageService.uploadDocument(document);
     }
 
     @Override
-    public String updateDocument(String id, String document) throws ResourceNotFoundException {
+    public String updateDocument(String id, String document) throws ResourceNotFoundException, BadRequestException,
+            SecurityConfigurationException, IOException {
         return storageService.updateDocument(id, document);
     }
 
@@ -68,12 +76,20 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     }
 
     @Override
-    public String uploadDocumentWithoutMetadata(String document) throws BadRequestException {
+    public String uploadDocumentWithoutMetadata(String document) throws BadRequestException,
+            SecurityConfigurationException, IOException {
         return storageService.uploadDocumentWithoutMetadata(document);
     }
 
     @Override
-    public Map<Integer, String> getDocumentFragments(Metadatum m, int i) {
-        return storageService.getDocumentFragments(m, i);
+    public Map<Integer, String> getDocumentFragments(String id, List<Integer> offsets, int characterWindow)
+            throws ResourceNotFoundException {
+        return storageService.getDocumentFragments(id, offsets, characterWindow);
+    }
+
+    @Override
+    public String updateDocumentWithoutMetadata(String id, String document) throws BadRequestException,
+            SecurityConfigurationException, IOException {
+        return storageService.updateDocumentWithoutMetadata(id, document);
     }
 }
