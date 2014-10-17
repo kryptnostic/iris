@@ -1,6 +1,7 @@
 package com.kryptnostic.api.v1.client;
 
 import java.util.Collection;
+import java.util.Map;
 
 import com.kryptnostic.api.v1.search.DefaultSearchService;
 import com.kryptnostic.api.v1.storage.DefaultStorageService;
@@ -9,6 +10,7 @@ import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.search.v1.SearchService;
 import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.storage.v1.StorageService;
@@ -68,5 +70,10 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     @Override
     public String uploadDocumentWithoutMetadata(String document) throws BadRequestException {
         return storageService.uploadDocumentWithoutMetadata(document);
+    }
+
+    @Override
+    public Map<Integer, String> getDocumentFragments(Metadatum m, int i) {
+        return storageService.getDocumentFragments(m, i);
     }
 }

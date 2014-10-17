@@ -101,4 +101,9 @@ public class DefaultStorageService implements StorageService {
         return documentApi.uploadDocument(request).getData();
     }
 
+    @Override
+    public Map<Integer, String> getDocumentFragments(Metadatum m, int i) {
+        return documentApi.getDocumentFragments(m, i).getData();
+    }
+
 }
