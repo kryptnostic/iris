@@ -10,13 +10,13 @@ import cern.colt.bitvector.BitVector;
 
 import com.google.common.collect.Lists;
 import com.kryptnostic.api.v1.indexing.Indexes;
+import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.models.FheEncryptable;
 import com.kryptnostic.kodex.v1.security.SecurityConfigurationMapping;
 import com.kryptnostic.kodex.v1.security.SecurityService;
-import com.kryptnostic.linear.BitUtils;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.search.v1.models.request.SearchFunctionUploadRequest;
 import com.kryptnostic.storage.v1.client.NonceApi;
@@ -105,14 +105,14 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         List<BitVector> cipherNonces = Lists.newArrayList();
         for (BitVector nonce : nonces) {
             SimplePolynomialFunction encrypter = publicKey.getEncrypter();
-            BitVector cipherNonce = encrypter.apply(nonce, BitUtils.randomVector(nonce.size()));
+            BitVector cipherNonce = encrypter.apply(nonce, BitVectors.randomVector(nonce.size()));
             cipherNonces.add(cipherNonce);
         }
         nonceService.addNonces(cipherNonces);
     }
 
     public BitVector generateNonce() {
-        return BitUtils.randomVector(NONCE_LENGTH);
+        return BitVectors.randomVector(NONCE_LENGTH);
     }
 
     @Override
