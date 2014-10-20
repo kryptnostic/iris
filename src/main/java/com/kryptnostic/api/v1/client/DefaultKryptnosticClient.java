@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.search.DefaultSearchService;
 import com.kryptnostic.api.v1.storage.DefaultStorageService;
@@ -45,13 +47,13 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
 
     @Override
     public String uploadDocument(String document) throws BadRequestException, SecurityConfigurationException,
-            IOException, ResourceNotFoundException {
+            IOException, ResourceNotFoundException, ClassNotFoundException {
         return storageService.uploadDocument(document);
     }
 
     @Override
     public String updateDocument(String id, String document) throws ResourceNotFoundException, BadRequestException,
-            SecurityConfigurationException, IOException {
+            SecurityConfigurationException, IOException, ClassNotFoundException {
         return storageService.updateDocument(id, document);
     }
 
@@ -77,19 +79,20 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
 
     @Override
     public String uploadDocumentWithoutMetadata(String document) throws BadRequestException,
-            SecurityConfigurationException, IOException {
+            SecurityConfigurationException, IOException, ClassNotFoundException {
         return storageService.uploadDocumentWithoutMetadata(document);
     }
 
     @Override
     public Map<Integer, String> getDocumentFragments(String id, List<Integer> offsets, int characterWindow)
-            throws ResourceNotFoundException {
+            throws ResourceNotFoundException, JsonParseException, JsonMappingException, IOException,
+            ClassNotFoundException, SecurityConfigurationException {
         return storageService.getDocumentFragments(id, offsets, characterWindow);
     }
 
     @Override
     public String updateDocumentWithoutMetadata(String id, String document) throws BadRequestException,
-            SecurityConfigurationException, IOException {
+            SecurityConfigurationException, IOException, ClassNotFoundException {
         return storageService.updateDocumentWithoutMetadata(id, document);
     }
 }

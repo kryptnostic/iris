@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -31,12 +31,15 @@ import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.kodex.v1.models.AesEncryptable;
 import com.kryptnostic.kodex.v1.models.Encryptable;
 import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils;
+import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils.VerifiedStringBlocks;
 import com.kryptnostic.kodex.v1.security.SecurityConfigurationMapping;
 import com.kryptnostic.storage.v1.StorageService;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
 import com.kryptnostic.storage.v1.models.Document;
 import com.kryptnostic.storage.v1.models.DocumentBlock;
+import com.kryptnostic.storage.v1.models.request.DocumentCreationRequest;
+import com.kryptnostic.storage.v1.models.request.DocumentFragmentRequest;
 import com.kryptnostic.storage.v1.models.request.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 
@@ -62,49 +65,64 @@ public class DefaultStorageService implements StorageService {
 
     @Override
     public String uploadDocument(String documentBody) throws BadRequestException, SecurityConfigurationException,
-            IOException, ResourceNotFoundException {
-        String id = documentApi.createDocument().getData();
-        updateDocument(id, documentBody);
-        return id;
+            IOException, ResourceNotFoundException, ClassNotFoundException {
+        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
+        String documentId = documentApi.createDocument(new DocumentCreationRequest(verified.getVerificationHash()))
+                .getData();
+        return updateDocument(documentId, documentBody, verified);
     }
 
     @Override
     public String uploadDocumentWithoutMetadata(String documentBody) throws BadRequestException,
-            SecurityConfigurationException, IOException {
-        String id = documentApi.createDocument().getData();
-        updateDocumentWithoutMetadata(id, documentBody);
-        return id;
+            SecurityConfigurationException, IOException, ClassNotFoundException {
+        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
+        String documentId = documentApi.createDocument(new DocumentCreationRequest(verified.getVerificationHash()))
+                .getData();
+        return updateDocumentWithoutMetadata(documentId, documentBody, verified);
     }
 
     @Override
-    public String updateDocument(String id, String documentBody) throws ResourceNotFoundException, BadRequestException,
-            SecurityConfigurationException, IOException {
-        updateDocumentWithoutMetadata(id, documentBody);
+    public String updateDocument(String documentId, String documentBody) throws ResourceNotFoundException,
+            BadRequestException, SecurityConfigurationException, IOException, ClassNotFoundException {
+        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
+        return updateDocument(documentId, documentBody, verified);
+    }
+
+    private String updateDocument(String documentId, String documentBody, VerifiedStringBlocks verified)
+            throws BadRequestException, SecurityConfigurationException, IOException, ClassNotFoundException {
+        updateDocumentWithoutMetadata(documentId, documentBody);
         // index + map tokens
-        Set<Metadatum> metadata = indexingService.index(id, documentBody);
+        Set<Metadatum> metadata = indexingService.index(documentId, documentBody);
         uploadMetadata(prepareMetadata(metadata));
-        return id;
+
+        return documentId;
     }
 
     @Override
-    public String updateDocumentWithoutMetadata(String id, String documentBody) throws BadRequestException,
-            SecurityConfigurationException, IOException {
+    public String updateDocumentWithoutMetadata(String documentId, String documentBody) throws BadRequestException,
+            SecurityConfigurationException, IOException, ClassNotFoundException {
+        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
+        return updateDocumentWithoutMetadata(documentId, documentBody, verified);
+    }
 
+    private String updateDocumentWithoutMetadata(final String documentId, String documentBody,
+            VerifiedStringBlocks verifiedStringBlocks) throws SecurityConfigurationException, IOException {
         ExecutorService e = Executors.newFixedThreadPool(PARALLEL_NETWORK_THREADS);
         Document doc = null;
         try {
-            doc = AesEncryptableUtils.createEncryptedDocument(id, documentBody, mapping);
+            doc = AesEncryptableUtils.createEncryptedDocument(documentId, documentBody,
+                    verifiedStringBlocks.getVerificationHash(), verifiedStringBlocks.getStrings(), mapping);
         } catch (ClassNotFoundException e1) {
             e1.printStackTrace();
         }
         List<Future<String>> jobs = Lists.newArrayList();
 
-        for (DocumentBlock block : doc.getBlocks()) {
+        for (final DocumentBlock block : doc.getBlocks()) {
             jobs.add(e.submit(new Callable<String>() {
 
                 @Override
                 public String call() throws Exception {
-                    return documentApi.updateDocument(id, block).getData();
+                    return documentApi.updateDocument(documentId, block).getData();
                 }
             }));
         }
@@ -121,13 +139,12 @@ public class DefaultStorageService implements StorageService {
             }
         }
 
-        return id;
+        return documentId;
     }
 
     @Override
     public Document getDocument(String id) throws ResourceNotFoundException {
-        Document document = documentApi.getDocument(id).getData();
-        return document;
+        return documentApi.getDocument(id).getData();
     }
 
     @Override
@@ -161,8 +178,8 @@ public class DefaultStorageService implements StorageService {
             throws ResourceNotFoundException, JsonParseException, JsonMappingException, IOException,
             ClassNotFoundException, SecurityConfigurationException {
         Map<Integer, String> plain = Maps.newHashMap();
-        Map<Integer, Encryptable<String>> encrypted = documentApi.getDocumentFragments(id, offsets, characterWindow)
-                .getData();
+        Map<Integer, Encryptable<String>> encrypted = documentApi.getDocumentFragments(id,
+                new DocumentFragmentRequest(offsets, characterWindow)).getData();
         for (Entry<Integer, Encryptable<String>> e : encrypted.entrySet()) {
             plain.put(e.getKey(), e.getValue().decrypt(this.mapping).getData());
         }
