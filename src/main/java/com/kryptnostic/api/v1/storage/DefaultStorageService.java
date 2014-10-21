@@ -111,13 +111,13 @@ public class DefaultStorageService implements StorageService {
         Document doc = null;
         try {
             doc = AesEncryptableUtils.createEncryptedDocument(documentId, documentBody,
-                    verifiedStringBlocks.getVerificationHash(), verifiedStringBlocks.getStrings(), mapping);
+                    verifiedStringBlocks.getVerificationHash(), verifiedStringBlocks.getStrings());
         } catch (ClassNotFoundException e1) {
             e1.printStackTrace();
         }
         List<Future<String>> jobs = Lists.newArrayList();
 
-        for (final DocumentBlock block : doc.getBlocks()) {
+        for (final DocumentBlock block : doc.getBlocks().getBlocks()) {
             jobs.add(e.submit(new Callable<String>() {
 
                 @Override
@@ -178,10 +178,14 @@ public class DefaultStorageService implements StorageService {
             throws ResourceNotFoundException, JsonParseException, JsonMappingException, IOException,
             ClassNotFoundException, SecurityConfigurationException {
         Map<Integer, String> plain = Maps.newHashMap();
-        Map<Integer, Encryptable<String>> encrypted = documentApi.getDocumentFragments(id,
+        Map<Integer, List<DocumentBlock>> encrypted = documentApi.getDocumentFragments(id,
                 new DocumentFragmentRequest(offsets, characterWindow)).getData();
-        for (Entry<Integer, Encryptable<String>> e : encrypted.entrySet()) {
-            plain.put(e.getKey(), e.getValue().decrypt(this.mapping).getData());
+        for (Entry<Integer, List<DocumentBlock>> e : encrypted.entrySet()) {
+            String preview = "";
+            for (DocumentBlock block : e.getValue()) {
+                preview += block.getBlock().decrypt(this.mapping).getData();
+            }
+            plain.put(e.getKey(), preview);
         }
         return plain;
     }
