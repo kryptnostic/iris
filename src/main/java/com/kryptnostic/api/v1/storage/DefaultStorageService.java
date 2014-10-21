@@ -66,8 +66,8 @@ public class DefaultStorageService implements StorageService {
     public String uploadDocument(String documentBody) throws BadRequestException, SecurityConfigurationException,
             IOException, ResourceNotFoundException, ClassNotFoundException {
         VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
-        String documentId = documentApi.createDocument(new DocumentCreationRequest(verified.getVerificationHash(),verified.getStrings().size()))
-                .getData();
+        String documentId = documentApi.createDocument(
+                new DocumentCreationRequest(verified.getVerificationHash(), verified.getStrings().size())).getData();
         return updateDocument(documentId, documentBody, verified);
     }
 
@@ -75,8 +75,8 @@ public class DefaultStorageService implements StorageService {
     public String uploadDocumentWithoutMetadata(String documentBody) throws BadRequestException,
             SecurityConfigurationException, IOException, ClassNotFoundException {
         VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
-        String documentId = documentApi.createDocument(new DocumentCreationRequest(verified.getVerificationHash(),verified.getStrings().size()))
-                .getData();
+        String documentId = documentApi.createDocument(
+                new DocumentCreationRequest(verified.getVerificationHash(), verified.getStrings().size())).getData();
         return updateDocumentWithoutMetadata(documentId, documentBody, verified);
     }
 
