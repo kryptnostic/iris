@@ -29,7 +29,6 @@ import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadatum;
 import com.kryptnostic.kodex.v1.models.AesEncryptable;
-import com.kryptnostic.kodex.v1.models.Encryptable;
 import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils;
 import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils.VerifiedStringBlocks;
 import com.kryptnostic.kodex.v1.security.SecurityConfigurationMapping;
@@ -67,7 +66,7 @@ public class DefaultStorageService implements StorageService {
     public String uploadDocument(String documentBody) throws BadRequestException, SecurityConfigurationException,
             IOException, ResourceNotFoundException, ClassNotFoundException {
         VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
-        String documentId = documentApi.createDocument(new DocumentCreationRequest(verified.getVerificationHash()))
+        String documentId = documentApi.createDocument(new DocumentCreationRequest(verified.getVerificationHash(),verified.getStrings().size()))
                 .getData();
         return updateDocument(documentId, documentBody, verified);
     }
@@ -76,7 +75,7 @@ public class DefaultStorageService implements StorageService {
     public String uploadDocumentWithoutMetadata(String documentBody) throws BadRequestException,
             SecurityConfigurationException, IOException, ClassNotFoundException {
         VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
-        String documentId = documentApi.createDocument(new DocumentCreationRequest(verified.getVerificationHash()))
+        String documentId = documentApi.createDocument(new DocumentCreationRequest(verified.getVerificationHash(),verified.getStrings().size()))
                 .getData();
         return updateDocumentWithoutMetadata(documentId, documentBody, verified);
     }
@@ -117,7 +116,7 @@ public class DefaultStorageService implements StorageService {
         }
         List<Future<String>> jobs = Lists.newArrayList();
 
-        for (final DocumentBlock block : doc.getBlocks().getBlocks()) {
+        for (final DocumentBlock block : doc.getBlocks()) {
             jobs.add(e.submit(new Callable<String>() {
 
                 @Override
