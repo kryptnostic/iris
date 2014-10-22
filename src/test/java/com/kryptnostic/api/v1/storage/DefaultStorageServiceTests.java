@@ -15,6 +15,7 @@ import com.kryptnostic.api.v1.indexing.BaseIndexingService;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.storage.v1.StorageService;
@@ -36,14 +37,14 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
 
     @Test
     public void uploadingWithoutMetadataTest() throws BadRequestException, SecurityConfigurationException, IOException,
-            ClassNotFoundException, ResourceNotFoundException {
+            ClassNotFoundException, ResourceNotFoundException, ResourceNotLockedException {
         DocumentApi documentApi = Mockito.mock(DocumentApi.class);
         MetadataApi metadataApi = Mockito.mock(MetadataApi.class);
         KryptnosticContext context = Mockito.mock(KryptnosticContext.class);
         storageService = new DefaultStorageService(documentApi, metadataApi, new BalancedMetadataKeyService(context),
                 new BaseIndexingService(), config);
 
-        Mockito.when(documentApi.createDocument(Mockito.any(DocumentCreationRequest.class))).then(
+        Mockito.when(documentApi.createPendingDocument(Mockito.any(DocumentCreationRequest.class))).then(
                 new Answer<BasicResponse<String>>() {
 
                     @Override
@@ -52,7 +53,7 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
                     }
 
                 });
-        
+
         Mockito.when(documentApi.updateDocument(Mockito.anyString(), Mockito.any(DocumentBlock.class))).then(
                 new Answer<BasicResponse<String>>() {
 

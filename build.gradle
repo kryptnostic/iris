@@ -141,10 +141,9 @@ artifacts {
 }
 
 eclipse {
-    ext.sourceCompatibility=JavaVersion.VERSION_1_6
-    ext.targetCompatibility=JavaVersion.VERSION_1_6
     ext.downloadSources = true
     ext.downloadJavadoc = true
+    ext.sourceCompatibility=JavaVersion.VERSION_1_6
     classpath {
          containers.remove('org.eclipse.jdt.launching.JRE_CONTAINER')
          containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6'
