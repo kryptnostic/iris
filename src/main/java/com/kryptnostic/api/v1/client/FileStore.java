@@ -2,13 +2,10 @@ package com.kryptnostic.api.v1.client;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
+import com.google.common.io.Files;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 
 /**
@@ -18,36 +15,33 @@ import com.kryptnostic.kodex.v1.storage.DataStore;
  *
  */
 public class FileStore implements DataStore {
-    private final Path rootDirectory;
+    private final File rootDirectory;
     private static HashFunction hf = Hashing.murmur3_128();
 
     public FileStore(String name) {
-        this.rootDirectory = Paths.get(System.getProperty("user.home"), name);
-        File dir = rootDirectory.toFile();
-        dir.mkdir();
+        this.rootDirectory = new File(System.getProperty("user.home"), name);
+        this.rootDirectory.mkdir();
     }
 
     @Override
     public byte[] get(byte[] key) throws IOException {
-        Path keyPath = keyToPath(key);
-        try {
-            byte[] data = Files.readAllBytes(keyPath);
+        File keyFile = keyToFile(key);
+        if (keyFile.isFile()) {
+            byte[] data = Files.toByteArray(keyFile);
             return data;
-        } catch (NoSuchFileException e) {
-            return null;
         }
+        return null;
     }
 
     @Override
     public void put(byte[] key, byte[] value) throws IOException {
-        Path keyPath;
-        keyPath = keyToPath(key);
-        Files.write(keyPath, value);
+        File keyFile = keyToFile(key);
+        Files.write(value, keyFile);
     }
 
-    private Path keyToPath(byte[] key) {
+    private File keyToFile(byte[] key) {
         Long longEncodedKey = hf.hashBytes(key).asLong();
-        return rootDirectory.resolve(longEncodedKey.toString());
+        return new File(rootDirectory, longEncodedKey.toString());
     }
 
 }
