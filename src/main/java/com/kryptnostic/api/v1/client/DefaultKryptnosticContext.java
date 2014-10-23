@@ -19,11 +19,12 @@ import com.kryptnostic.kodex.v1.security.SecurityConfigurationMapping;
 import com.kryptnostic.kodex.v1.security.SecurityService;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.search.v1.models.request.SearchFunctionUploadRequest;
-import com.kryptnostic.storage.v1.client.NonceApi;
+import com.kryptnostic.storage.v1.client.DocumentKeyApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
+import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
 
 public class DefaultKryptnosticContext implements KryptnosticContext {
-    private final NonceApi nonceService;
+    private final DocumentKeyApi documentKeyService;
     private final SearchFunctionApi searchFunctionService;
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
@@ -37,10 +38,10 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private static final int LOCATION_LENGTH = 64;
     private static final int NONCE_LENGTH = 64;
 
-    public DefaultKryptnosticContext(SearchFunctionApi searchFunctionService, NonceApi nonceService,
+    public DefaultKryptnosticContext(SearchFunctionApi searchFunctionService, DocumentKeyApi documentKeyService,
             SecurityService securityService) {
         this.searchFunctionService = searchFunctionService;
-        this.nonceService = nonceService;
+        this.documentKeyService = documentKeyService;
         this.securityService = securityService;
 
         SecurityConfigurationMapping mapping = this.securityService.getSecurityConfigurationMapping();
@@ -85,30 +86,32 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         SimplePolynomialFunction indexingHomomorphism = indexingHashFunction.partialComposeLeft(privateKey
                 .getDecryptor());
         SearchFunctionUploadRequest request = new SearchFunctionUploadRequest(indexingHomomorphism);
-        searchFunctionService.setFunction(request);
+//        searchFunctionService.setFunction(request);
+        throw new UnsupportedOperationException("not yet implemented");
     }
 
     /**
      * TODO need to decrypt cipher nonces for local use
      */
     @Override
-    public List<BitVector> getNonces() {
-        Collection<BitVector> nonces = nonceService.getNonces().getData();
-        return Lists.newArrayList(nonces);
+    public List<EncryptedSearchDocumentKey> getDocumentKeys() {
+        Collection<EncryptedSearchDocumentKey> keys = documentKeyService.getDocumentKeys().getData();
+        return Lists.newArrayList(keys);
     }
 
     /**
-     * Sends the nonce service cipher nonces, for use with the search homomorphism.
+     * Sends the encryptedSearchDocumentKeys up to the server
      */
     @Override
-    public void addNonces(List<BitVector> nonces) {
-        List<BitVector> cipherNonces = Lists.newArrayList();
-        for (BitVector nonce : nonces) {
-            SimplePolynomialFunction encrypter = publicKey.getEncrypter();
-            BitVector cipherNonce = encrypter.apply(nonce, BitVectors.randomVector(nonce.size()));
-            cipherNonces.add(cipherNonce);
-        }
-        nonceService.addNonces(cipherNonces);
+    public void addDocumentKeys(List<EncryptedSearchDocumentKey> keys) {
+//        List<BitVector> cipherNonces = Lists.newArrayList();
+//        for (EncryptedSearchDocumentKey key : keys) {
+//            SimplePolynomialFunction encrypter = publicKey.getEncrypter();
+//            BitVector cipherNonce = encrypter.apply(nonce, BitVectors.randomVector(nonce.size()));
+//            cipherNonces.add(cipherNonce);
+//        }
+//        documentKeyService.addDocumentKeys(cipherNonces);
+        throw new UnsupportedOperationException("not yet implemented");
     }
 
     public BitVector generateNonce() {

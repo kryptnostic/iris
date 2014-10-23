@@ -4,11 +4,9 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
-import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.search.DefaultSearchService;
 import com.kryptnostic.api.v1.storage.DefaultStorageService;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
@@ -17,7 +15,6 @@ import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.models.Encryptable;
 import com.kryptnostic.search.v1.SearchService;
 import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.storage.v1.StorageService;
@@ -32,7 +29,7 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
 
     public DefaultKryptnosticClient(KryptnosticServicesFactory factory) {
         this.context = new DefaultKryptnosticContext(factory.createSearchFunctionService(),
-                factory.createNonceService(), factory.createSecurityService());
+                factory.createDocumentKeyService(), factory.createSecurityService());
 
         this.storageService = new DefaultStorageService(factory.createDocumentApi(), factory.createMetadataApi(),
                 factory.createMetadataKeyService(context), factory.createIndexingService(), context

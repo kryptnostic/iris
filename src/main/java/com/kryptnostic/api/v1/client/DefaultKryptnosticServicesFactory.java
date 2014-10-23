@@ -20,8 +20,8 @@ import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
 import com.kryptnostic.kodex.v1.security.SecurityService;
 import com.kryptnostic.search.v1.client.SearchApi;
 import com.kryptnostic.storage.v1.client.DocumentApi;
+import com.kryptnostic.storage.v1.client.DocumentKeyApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
-import com.kryptnostic.storage.v1.client.NonceApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.squareup.okhttp.OkHttpClient;
 
@@ -33,7 +33,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     private final MetadataApi metadataService;
     private final DocumentApi documentService;
     private final SearchApi searchService;
-    private final NonceApi nonceService;
+    private final DocumentKeyApi documentKeyService;
     private final SearchFunctionApi searchFunctionService;
     private final SecurityService securityService;
 
@@ -57,7 +57,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
         documentService = restAdapter.create(DocumentApi.class);
         metadataService = restAdapter.create(MetadataApi.class);
         searchService = restAdapter.create(SearchApi.class);
-        nonceService = restAdapter.create(NonceApi.class);
+        documentKeyService = restAdapter.create(DocumentKeyApi.class);
         searchFunctionService = restAdapter.create(SearchFunctionApi.class);
 
         indexingService = new BaseIndexingService();
@@ -97,8 +97,8 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     }
 
     @Override
-    public NonceApi createNonceService() {
-        return nonceService;
+    public DocumentKeyApi createDocumentKeyService() {
+        return documentKeyService;
     }
 
     @Override

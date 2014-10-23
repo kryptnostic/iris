@@ -71,8 +71,9 @@ public class BalancedMetadataKeyService implements MetadataKeyService {
                 }
             } while (fromIndex < toIndex);
         }
-        context.addNonces(nonces);
-        return BalancedMetadata.from(metadataMap, nonces);
+        throw new UnsupportedOperationException("not yet implemented");
+//        context.addNonces(nonces);
+//        return BalancedMetadata.from(metadataMap, nonces);
     }
 
     private Iterable<Integer> subListAndPad(List<Integer> locations, int fromIndex, int toIndex) {
