@@ -24,31 +24,33 @@ import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
 
 public class DefaultKryptnosticContext implements KryptnosticContext {
-    private final DocumentKeyApi documentKeyService;
-    private final SearchFunctionApi searchFunctionService;
-    private final PrivateKey privateKey;
-    private final PublicKey publicKey;
-    private final SecurityService securityService;
+    private final DocumentKeyApi     documentKeyService;
+    private final SearchFunctionApi  searchFunctionService;
+    private final PrivateKey         privateKey;
+    private final PublicKey          publicKey;
+    private final SecurityService    securityService;
 
     private SimplePolynomialFunction indexingHashFunction;
 
-    private static final Logger logger = LoggerFactory.getLogger(DefaultKryptnosticContext.class);
+    private static final Logger      logger          = LoggerFactory.getLogger( DefaultKryptnosticContext.class );
 
-    private static final int TOKEN_LENGTH = 256;
-    private static final int LOCATION_LENGTH = 64;
-    private static final int NONCE_LENGTH = 64;
+    private static final int         TOKEN_LENGTH    = 256;
+    private static final int         LOCATION_LENGTH = 64;
+    private static final int         NONCE_LENGTH    = 64;
 
-    public DefaultKryptnosticContext(SearchFunctionApi searchFunctionService, DocumentKeyApi documentKeyService,
-            SecurityService securityService) {
+    public DefaultKryptnosticContext(
+            SearchFunctionApi searchFunctionService,
+            DocumentKeyApi documentKeyService,
+            SecurityService securityService ) {
         this.searchFunctionService = searchFunctionService;
         this.documentKeyService = documentKeyService;
         this.securityService = securityService;
 
         SecurityConfigurationMapping mapping = this.securityService.getSecurityConfigurationMapping();
 
-        if (mapping != null) {
-            this.privateKey = mapping.get(FheEncryptable.class, PrivateKey.class);
-            this.publicKey = mapping.get(FheEncryptable.class, PublicKey.class);
+        if ( mapping != null ) {
+            this.privateKey = mapping.get( FheEncryptable.class, PrivateKey.class );
+            this.publicKey = mapping.get( FheEncryptable.class, PublicKey.class );
         } else {
             this.privateKey = null;
             this.publicKey = null;
@@ -61,18 +63,20 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
      */
     @Override
     public SimplePolynomialFunction getSearchFunction() {
-        if (indexingHashFunction == null) {
+        if ( indexingHashFunction == null ) {
             try {
                 indexingHashFunction = searchFunctionService.getFunction().getData();
-            } catch (Exception e) {
+            } catch ( Exception e ) {
 
             }
-            if (indexingHashFunction == null) {
-                logger.info("Generating search function.");
-                indexingHashFunction = Indexes.generateRandomIndexingFunction(NONCE_LENGTH, TOKEN_LENGTH,
-                        LOCATION_LENGTH);
+            if ( indexingHashFunction == null ) {
+                logger.info( "Generating search function." );
+                indexingHashFunction = Indexes.generateRandomIndexingFunction(
+                        NONCE_LENGTH,
+                        TOKEN_LENGTH,
+                        LOCATION_LENGTH );
 
-                setFunction(indexingHashFunction);
+                setFunction( indexingHashFunction );
             }
         }
         return indexingHashFunction;
@@ -82,12 +86,12 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
      * Wraps call to SearchFunctionService, first encrypting the function with FHE before sending it. TODO make this
      * async or something...hide latency of compose
      */
-    private void setFunction(SimplePolynomialFunction indexingHashFunction) {
-        SimplePolynomialFunction indexingHomomorphism = indexingHashFunction.partialComposeLeft(privateKey
-                .getDecryptor());
-        SearchFunctionUploadRequest request = new SearchFunctionUploadRequest(indexingHomomorphism);
-//        searchFunctionService.setFunction(request);
-        throw new UnsupportedOperationException("not yet implemented");
+    private void setFunction( SimplePolynomialFunction indexingHashFunction ) {
+        SimplePolynomialFunction indexingHomomorphism = indexingHashFunction.partialComposeLeft( privateKey
+                .getDecryptor() );
+        SearchFunctionUploadRequest request = new SearchFunctionUploadRequest( indexingHomomorphism );
+        // searchFunctionService.setFunction(request);
+        throw new UnsupportedOperationException( "not yet implemented" );
     }
 
     /**
@@ -96,26 +100,26 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     @Override
     public List<EncryptedSearchDocumentKey> getDocumentKeys() {
         Collection<EncryptedSearchDocumentKey> keys = documentKeyService.getDocumentKeys().getData();
-        return Lists.newArrayList(keys);
+        return Lists.newArrayList( keys );
     }
 
     /**
      * Sends the encryptedSearchDocumentKeys up to the server
      */
     @Override
-    public void addDocumentKeys(List<EncryptedSearchDocumentKey> keys) {
-//        List<BitVector> cipherNonces = Lists.newArrayList();
-//        for (EncryptedSearchDocumentKey key : keys) {
-//            SimplePolynomialFunction encrypter = publicKey.getEncrypter();
-//            BitVector cipherNonce = encrypter.apply(nonce, BitVectors.randomVector(nonce.size()));
-//            cipherNonces.add(cipherNonce);
-//        }
-//        documentKeyService.addDocumentKeys(cipherNonces);
-        throw new UnsupportedOperationException("not yet implemented");
+    public void addDocumentKeys( List<EncryptedSearchDocumentKey> keys ) {
+        // List<BitVector> cipherNonces = Lists.newArrayList();
+        // for (EncryptedSearchDocumentKey key : keys) {
+        // SimplePolynomialFunction encrypter = publicKey.getEncrypter();
+        // BitVector cipherNonce = encrypter.apply(nonce, BitVectors.randomVector(nonce.size()));
+        // cipherNonces.add(cipherNonce);
+        // }
+        // documentKeyService.addDocumentKeys(cipherNonces);
+        throw new UnsupportedOperationException( "not yet implemented" );
     }
 
     public BitVector generateNonce() {
-        return BitVectors.randomVector(NONCE_LENGTH);
+        return BitVectors.randomVector( NONCE_LENGTH );
     }
 
     @Override
@@ -124,9 +128,9 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public void setSearchFunction(SimplePolynomialFunction fn) {
+    public void setSearchFunction( SimplePolynomialFunction fn ) {
         indexingHashFunction = fn;
-        setFunction(fn);
+        setFunction( fn );
     }
 
 }

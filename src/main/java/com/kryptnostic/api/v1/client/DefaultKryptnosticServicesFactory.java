@@ -23,6 +23,7 @@ import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.DocumentKeyApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
+import com.kryptnostic.users.v1.UserKey;
 import com.squareup.okhttp.OkHttpClient;
 
 public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFactory {
@@ -36,8 +37,8 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     private final DocumentKeyApi documentKeyService;
     private final SearchFunctionApi searchFunctionService;
     private final SecurityService securityService;
-
-    public DefaultKryptnosticServicesFactory(String url, SecurityService service) {
+    
+    public DefaultKryptnosticServicesFactory(UserKey user, String url, SecurityService service) {
         securityService = service;
         OkHttpClient client = new OkHttpClient();
         client.setReadTimeout( 0 , TimeUnit.MILLISECONDS );
@@ -60,7 +61,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
         documentKeyService = restAdapter.create(DocumentKeyApi.class);
         searchFunctionService = restAdapter.create(SearchFunctionApi.class);
 
-        indexingService = new BaseIndexingService();
+        indexingService = new BaseIndexingService( user );
     }
 
     @Override

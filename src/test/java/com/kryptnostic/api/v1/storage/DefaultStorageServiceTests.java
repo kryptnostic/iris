@@ -25,6 +25,7 @@ import com.kryptnostic.storage.v1.models.DocumentBlock;
 import com.kryptnostic.storage.v1.models.request.AesEncryptableBase;
 import com.kryptnostic.storage.v1.models.request.DocumentCreationRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
+import com.kryptnostic.users.v1.UserKey;
 
 public class DefaultStorageServiceTests extends AesEncryptableBase {
 
@@ -38,44 +39,48 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
     @Test
     public void uploadingWithoutMetadataTest() throws BadRequestException, SecurityConfigurationException, IOException,
             ClassNotFoundException, ResourceNotFoundException, ResourceNotLockedException {
-        DocumentApi documentApi = Mockito.mock(DocumentApi.class);
-        MetadataApi metadataApi = Mockito.mock(MetadataApi.class);
-        KryptnosticContext context = Mockito.mock(KryptnosticContext.class);
-        storageService = new DefaultStorageService(documentApi, metadataApi, new BalancedMetadataKeyService(context),
-                new BaseIndexingService(), config);
+        DocumentApi documentApi = Mockito.mock( DocumentApi.class );
+        MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
+        KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
+        storageService = new DefaultStorageService(
+                documentApi,
+                metadataApi,
+                new BalancedMetadataKeyService( context ),
+                new BaseIndexingService( new UserKey( "kryptnostic", "tester" ) ),
+                config );
 
-        Mockito.when(documentApi.createPendingDocument(Mockito.any(DocumentCreationRequest.class))).then(
+        Mockito.when( documentApi.createPendingDocument( Mockito.any( DocumentCreationRequest.class ) ) ).then(
                 new Answer<BasicResponse<String>>() {
 
                     @Override
-                    public BasicResponse<String> answer(InvocationOnMock invocation) throws Throwable {
-                        return new BasicResponse<String>("document1", HttpStatus.OK.value(), true);
+                    public BasicResponse<String> answer( InvocationOnMock invocation ) throws Throwable {
+                        return new BasicResponse<String>( "document1", HttpStatus.OK.value(), true );
                     }
 
-                });
+                } );
 
-        Mockito.when(documentApi.updateDocument(Mockito.anyString(), Mockito.any(DocumentBlock.class))).then(
+        Mockito.when( documentApi.updateDocument( Mockito.anyString(), Mockito.any( DocumentBlock.class ) ) ).then(
                 new Answer<BasicResponse<String>>() {
 
                     @Override
-                    public BasicResponse<String> answer(InvocationOnMock invocation) throws Throwable {
-                        return new BasicResponse<String>("document1", HttpStatus.OK.value(), true);
+                    public BasicResponse<String> answer( InvocationOnMock invocation ) throws Throwable {
+                        return new BasicResponse<String>( "document1", HttpStatus.OK.value(), true );
                     }
 
-                });
+                } );
 
-        Mockito.when(metadataApi.uploadMetadata(Mockito.any(MetadataRequest.class))).then(new Answer<String>() {
+        Mockito.when( metadataApi.uploadMetadata( Mockito.any( MetadataRequest.class ) ) ).then( new Answer<String>() {
 
             @Override
-            public String answer(InvocationOnMock invocation) throws Throwable {
-                Assert.fail("No metadata should be uploaded");
+            public String answer( InvocationOnMock invocation ) throws Throwable {
+                Assert.fail( "No metadata should be uploaded" );
                 return null;
             }
 
-        });
+        } );
 
-        storageService.uploadDocumentWithoutMetadata("test");
+        storageService.uploadDocumentWithoutMetadata( "test" );
 
-        storageService.updateDocumentWithoutMetadata("test", "test");
+        storageService.updateDocumentWithoutMetadata( "test", "test" );
     }
 }
