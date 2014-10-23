@@ -32,6 +32,7 @@ import com.kryptnostic.kodex.v1.models.AesEncryptable;
 import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils;
 import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils.VerifiedStringBlocks;
 import com.kryptnostic.kodex.v1.security.SecurityConfigurationMapping;
+import com.kryptnostic.sharing.v1.DocumentId;
 import com.kryptnostic.storage.v1.StorageService;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
@@ -41,150 +42,169 @@ import com.kryptnostic.storage.v1.models.request.DocumentCreationRequest;
 import com.kryptnostic.storage.v1.models.request.DocumentFragmentRequest;
 import com.kryptnostic.storage.v1.models.request.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
+import com.kryptnostic.users.v1.UserKey;
 
 public class DefaultStorageService implements StorageService {
-    private static final Logger log = LoggerFactory.getLogger(StorageService.class);
+    private static final Logger                log                      = LoggerFactory
+                                                                                .getLogger( StorageService.class );
 
-    private static final int PARALLEL_NETWORK_THREADS = 4;
+    private static final int                   PARALLEL_NETWORK_THREADS = 4;
 
-    private final DocumentApi documentApi;
-    private final MetadataApi metadataApi;
-    private final MetadataKeyService keyService;
-    private final IndexingService indexingService;
+    private final DocumentApi                  documentApi;
+    private final MetadataApi                  metadataApi;
+    private final MetadataKeyService           keyService;
+    private final IndexingService              indexingService;
     private final SecurityConfigurationMapping mapping;
+    private final UserKey                      userKey;
 
-    public DefaultStorageService(DocumentApi documentApi, MetadataApi metadataApi, MetadataKeyService keyService,
-            IndexingService indexingService, SecurityConfigurationMapping mapping) {
+    public DefaultStorageService(
+            DocumentApi documentApi,
+            MetadataApi metadataApi,
+            MetadataKeyService keyService,
+            IndexingService indexingService,
+            SecurityConfigurationMapping mapping,
+            UserKey userKey ) {
         this.documentApi = documentApi;
         this.metadataApi = metadataApi;
         this.keyService = keyService;
         this.indexingService = indexingService;
         this.mapping = mapping;
+        this.userKey = userKey;
     }
 
     @Override
-    public String uploadDocument(String documentBody) throws BadRequestException, SecurityConfigurationException,
+    public String uploadDocument( String documentBody ) throws BadRequestException, SecurityConfigurationException,
             IOException, ResourceNotFoundException, ClassNotFoundException {
-        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
-        String documentId = documentApi
-                .createPendingDocument(new DocumentCreationRequest(verified.getStrings().size())).getData();
-        return updateDocument(documentId, documentBody, verified);
+        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification( documentBody, mapping );
+        DocumentId documentId = documentApi.createPendingDocument(
+                new DocumentCreationRequest( verified.getStrings().size() ) ).getData();
+        return updateDocument( documentId, documentBody, verified );
     }
 
     @Override
-    public String uploadDocumentWithoutMetadata(String documentBody) throws BadRequestException,
+    public String uploadDocumentWithoutMetadata( String documentBody ) throws BadRequestException,
             SecurityConfigurationException, IOException, ClassNotFoundException {
-        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
+        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification( documentBody, mapping );
         String documentId = documentApi
-                .createPendingDocument(new DocumentCreationRequest(verified.getStrings().size())).getData();
-        return updateDocumentWithoutMetadata(documentId, documentBody, verified);
+                .createPendingDocument( new DocumentCreationRequest( verified.getStrings().size() ) ).getData()
+                .getDocumentId();
+        return updateDocumentWithoutMetadata( documentId( documentId ), documentBody, verified );
     }
 
     @Override
-    public String updateDocument(String documentId, String documentBody) throws ResourceNotFoundException,
+    public String updateDocument( String documentId, String documentBody ) throws ResourceNotFoundException,
             BadRequestException, SecurityConfigurationException, IOException, ClassNotFoundException {
-        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
-        return updateDocument(documentId, documentBody, verified);
+        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification( documentBody, mapping );
+        return updateDocument( documentId( documentId ), documentBody, verified );
     }
 
-    private String updateDocument(String documentId, String documentBody, VerifiedStringBlocks verified)
+    private String updateDocument( DocumentId documentId, String documentBody, VerifiedStringBlocks verified )
             throws BadRequestException, SecurityConfigurationException, IOException, ClassNotFoundException {
-        updateDocumentWithoutMetadata(documentId, documentBody);
+        updateDocumentWithoutMetadata( documentId.toString(), documentBody );
         // index + map tokens
-        Set<Metadatum> metadata = indexingService.index(documentId, documentBody);
-        uploadMetadata(prepareMetadata(metadata));
+        Set<Metadatum> metadata = indexingService.index( documentId.getDocumentId(), documentBody );
+        uploadMetadata( prepareMetadata( metadata ) );
 
-        return documentId;
+        return documentId.getDocumentId();
     }
 
     @Override
-    public String updateDocumentWithoutMetadata(String documentId, String documentBody) throws BadRequestException,
+    public String updateDocumentWithoutMetadata( String documentId, String documentBody ) throws BadRequestException,
             SecurityConfigurationException, IOException, ClassNotFoundException {
-        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification(documentBody, mapping);
-        return updateDocumentWithoutMetadata(documentId, documentBody, verified);
+        VerifiedStringBlocks verified = AesEncryptableUtils.chunkStringWithVerification( documentBody, mapping );
+        return updateDocumentWithoutMetadata( documentId( documentId ), documentBody, verified );
     }
 
-    private String updateDocumentWithoutMetadata(final String documentId, String documentBody,
-            VerifiedStringBlocks verifiedStringBlocks) throws SecurityConfigurationException, IOException {
-        ExecutorService e = Executors.newFixedThreadPool(PARALLEL_NETWORK_THREADS);
+    private DocumentId documentId( String documentId ) {
+        return new DocumentId( documentId, userKey );
+    }
+
+    private String updateDocumentWithoutMetadata(
+            final DocumentId documentId,
+            String documentBody,
+            VerifiedStringBlocks verifiedStringBlocks ) throws SecurityConfigurationException, IOException {
+        ExecutorService e = Executors.newFixedThreadPool( PARALLEL_NETWORK_THREADS );
         Document doc = null;
         try {
-            doc = AesEncryptableUtils.createEncryptedDocument(documentId, documentBody,
-                    verifiedStringBlocks.getStrings());
-        } catch (ClassNotFoundException e1) {
+            doc = AesEncryptableUtils.createEncryptedDocument(
+                    documentId.getDocumentId(),
+                    documentBody,
+                    verifiedStringBlocks.getStrings() );
+        } catch ( ClassNotFoundException e1 ) {
             e1.printStackTrace();
         }
         List<Future<String>> jobs = Lists.newArrayList();
 
-        for (final DocumentBlock block : doc.getBlocks()) {
-            jobs.add(e.submit(new Callable<String>() {
+        for ( final DocumentBlock block : doc.getBlocks() ) {
+            jobs.add( e.submit( new Callable<String>() {
 
                 @Override
                 public String call() throws Exception {
-                    return documentApi.updateDocument(documentId, block).getData();
+                    return documentApi.updateDocument( documentId.toString(), block ).getData().getDocumentId();
                 }
-            }));
+            } ) );
         }
 
-        for (Future<String> f : jobs) {
+        for ( Future<String> f : jobs ) {
             try {
-                log.info("Document Block Upload completed: " + f.get());
-            } catch (InterruptedException e1) {
+                log.info( "Document Block Upload completed: " + f.get() );
+            } catch ( InterruptedException e1 ) {
                 // TODO Auto-generated catch block
                 e1.printStackTrace();
-            } catch (ExecutionException e1) {
+            } catch ( ExecutionException e1 ) {
                 // TODO Auto-generated catch block
                 e1.printStackTrace();
             }
         }
 
-        return documentId;
+        return documentId.getDocumentId();
     }
 
     @Override
-    public Document getDocument(String id) throws ResourceNotFoundException {
-        return documentApi.getDocument(id).getData();
+    public Document getDocument( DocumentId id ) throws ResourceNotFoundException {
+        return documentApi.getDocument( id.toString() ).getData();
     }
 
     @Override
-    public String uploadMetadata(MetadataRequest req) throws BadRequestException {
-        return metadataApi.uploadMetadata(req).getData();
+    public String uploadMetadata( MetadataRequest req ) throws BadRequestException {
+        return metadataApi.uploadMetadata( req ).getData();
     }
 
-    private MetadataRequest prepareMetadata(Set<Metadatum> metadata) {
-        Metadata keyedMetadata = keyService.mapTokensToKeys(metadata);
-        log.debug("generated metadata " + keyedMetadata);
+    private MetadataRequest prepareMetadata( Set<Metadatum> metadata ) {
+        Metadata keyedMetadata = keyService.mapTokensToKeys( metadata );
+        log.debug( "generated metadata " + keyedMetadata );
 
         // format for metadata upload
         Collection<IndexedMetadata> metadataIndex = Lists.newArrayList();
-        for (Map.Entry<BitVector, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet()) {
-            log.debug("list" + m.getValue().toString());
+        for ( Map.Entry<BitVector, List<Metadatum>> m : keyedMetadata.getMetadataMap().entrySet() ) {
+            log.debug( "list" + m.getValue().toString() );
             BitVector key = m.getKey();
-            for (Metadatum subMeta : m.getValue()) {
-                metadataIndex.add(new IndexedMetadata(key, new AesEncryptable<Metadatum>(subMeta)));
+            for ( Metadatum subMeta : m.getValue() ) {
+                metadataIndex.add( new IndexedMetadata( key, new AesEncryptable<Metadatum>( subMeta ) ) );
             }
         }
-        return new MetadataRequest(metadataIndex);
+        return new MetadataRequest( metadataIndex );
     }
 
     @Override
-    public Collection<String> getDocumentIds() {
+    public Collection<DocumentId> getDocumentIds() {
         return documentApi.getDocumentIds().getData();
     }
 
     @Override
-    public Map<Integer, String> getDocumentFragments(String id, List<Integer> offsets, int characterWindow)
+    public Map<Integer, String> getDocumentFragments( DocumentId id, List<Integer> offsets, int characterWindow )
             throws ResourceNotFoundException, JsonParseException, JsonMappingException, IOException,
             ClassNotFoundException, SecurityConfigurationException {
         Map<Integer, String> plain = Maps.newHashMap();
-        Map<Integer, List<DocumentBlock>> encrypted = documentApi.getDocumentFragments(id,
-                new DocumentFragmentRequest(offsets, characterWindow)).getData();
-        for (Entry<Integer, List<DocumentBlock>> e : encrypted.entrySet()) {
+        Map<Integer, List<DocumentBlock>> encrypted = documentApi.getDocumentFragments(
+                id.toString(),
+                new DocumentFragmentRequest( offsets, characterWindow ) ).getData();
+        for ( Entry<Integer, List<DocumentBlock>> e : encrypted.entrySet() ) {
             String preview = "";
-            for (DocumentBlock block : e.getValue()) {
-                preview += block.getBlock().decrypt(this.mapping).getData();
+            for ( DocumentBlock block : e.getValue() ) {
+                preview += block.getBlock().decrypt( this.mapping ).getData();
             }
-            plain.put(e.getKey(), preview);
+            plain.put( e.getKey(), preview );
         }
         return plain;
     }

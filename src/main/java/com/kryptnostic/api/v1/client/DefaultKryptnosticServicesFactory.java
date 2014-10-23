@@ -39,7 +39,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     private final SearchFunctionApi searchFunctionService;
     private final SecurityService   securityService;
 
-    public DefaultKryptnosticServicesFactory( UserKey user, String userCredential, String url, SecurityService service ) {
+    public DefaultKryptnosticServicesFactory( String url, SecurityService service ) {
         securityService = service;
         OkHttpClient client = new OkHttpClient();
         client.setReadTimeout( 0, TimeUnit.MILLISECONDS );
@@ -48,8 +48,10 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
         // connection
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setConverter( new JacksonConverter( securityService.getSecurityConfigurationMapping() ) )
-                .setEndpoint( url ).setClient( new OkClient( client ) )
-                .setRequestInterceptor( new PreauthenticationRequestInterceptor( user, userCredential ) )
+                .setEndpoint( url )
+                .setClient( new OkClient( client ) )
+                .setRequestInterceptor(
+                        new PreauthenticationRequestInterceptor( service.getUserKey(), service.getUserCredential() ) )
                 .setErrorHandler( new DefaultErrorHandler() ).setLogLevel( LogLevel.FULL )
                 .setLog( new RestAdapter.Log() {
                     @Override
@@ -64,7 +66,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
         documentKeyService = restAdapter.create( DocumentKeyApi.class );
         searchFunctionService = restAdapter.create( SearchFunctionApi.class );
 
-        indexingService = new BaseIndexingService( user );
+        indexingService = new BaseIndexingService( securityService.getUserKey() );
     }
 
     @Override

@@ -18,6 +18,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
+import com.kryptnostic.sharing.v1.DocumentId;
 import com.kryptnostic.storage.v1.StorageService;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
@@ -30,9 +31,11 @@ import com.kryptnostic.users.v1.UserKey;
 public class DefaultStorageServiceTests extends AesEncryptableBase {
 
     private StorageService storageService;
+    private UserKey        userKey;
 
     @Before
     public void setup() {
+        userKey = new UserKey( "krypt", "sina" );
         initImplicitEncryption();
     }
 
@@ -46,25 +49,28 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
                 documentApi,
                 metadataApi,
                 new BalancedMetadataKeyService( context ),
-                new BaseIndexingService( new UserKey( "kryptnostic", "tester" ) ),
-                config );
+                new BaseIndexingService( userKey ),
+                config,
+                userKey );
 
         Mockito.when( documentApi.createPendingDocument( Mockito.any( DocumentCreationRequest.class ) ) ).then(
-                new Answer<BasicResponse<String>>() {
+                new Answer<BasicResponse<DocumentId>>() {
 
                     @Override
-                    public BasicResponse<String> answer( InvocationOnMock invocation ) throws Throwable {
-                        return new BasicResponse<String>( "document1", HttpStatus.OK.value(), true );
+                    public BasicResponse<DocumentId> answer( InvocationOnMock invocation ) throws Throwable {
+                        return new BasicResponse<DocumentId>( new DocumentId( "document1", userKey ), HttpStatus.OK
+                                .value(), true );
                     }
 
                 } );
 
         Mockito.when( documentApi.updateDocument( Mockito.anyString(), Mockito.any( DocumentBlock.class ) ) ).then(
-                new Answer<BasicResponse<String>>() {
+                new Answer<BasicResponse<DocumentId>>() {
 
                     @Override
-                    public BasicResponse<String> answer( InvocationOnMock invocation ) throws Throwable {
-                        return new BasicResponse<String>( "document1", HttpStatus.OK.value(), true );
+                    public BasicResponse<DocumentId> answer( InvocationOnMock invocation ) throws Throwable {
+                        return new BasicResponse<DocumentId>( new DocumentId( "document1", userKey ), HttpStatus.OK
+                                .value(), true );
                     }
 
                 } );
