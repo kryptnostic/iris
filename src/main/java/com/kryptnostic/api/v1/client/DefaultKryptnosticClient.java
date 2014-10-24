@@ -31,19 +31,13 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     private final KryptnosticContext context;
 
     public DefaultKryptnosticClient( KryptnosticServicesFactory factory, SecurityService securityService ) throws IrisException {
-        this.context = new DefaultKryptnosticContext(
-                factory.createSearchFunctionApi(),
-                securityService );
-
-        Indexer indexer = new SimpleIndexer( securityService.getUserKey() );
+        this.context = new DefaultKryptnosticContext( factory.createSearchFunctionApi(), securityService );
 
         this.storageClient = new DefaultStorageClient(
+                context,
                 factory.createDocumentApi(),
-                factory.createMetadataApi(),
-                new PaddedMetadataMapper( context ),
-                indexer,
-                context.getSecurityService() );
-        this.searchClient = new DefaultSearchClient( factory.createSearchApi(), indexer );
+                factory.createMetadataApi() );
+        this.searchClient = new DefaultSearchClient( context, factory.createSearchApi() );
     }
 
     @Override

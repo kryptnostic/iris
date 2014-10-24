@@ -46,12 +46,10 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
         DocumentApi documentApi = Mockito.mock( DocumentApi.class );
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
-        storageService = new DefaultStorageClient(
-                documentApi,
-                metadataApi,
-                new PaddedMetadataMapper( context ),
-                new SimpleIndexer( userKey ),
-                new InMemorySecurityService( userKey, "test" ) );
+
+        Mockito.when( context.getSecurityService() ).thenReturn( new InMemorySecurityService( userKey, "test" ) );
+
+        storageService = new DefaultStorageClient( context, documentApi, metadataApi );
 
         Mockito.when( documentApi.createPendingDocument( Mockito.any( DocumentCreationRequest.class ) ) ).then(
                 new Answer<BasicResponse<DocumentId>>() {

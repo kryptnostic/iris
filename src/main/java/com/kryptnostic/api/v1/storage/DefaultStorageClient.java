@@ -21,7 +21,10 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
+import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
+import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
@@ -48,34 +51,31 @@ import com.kryptnostic.storage.v1.models.request.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 
 public class DefaultStorageClient implements StorageClient {
-    private static final Logger   log                      = LoggerFactory.getLogger( StorageClient.class );
+    private static final Logger      log                      = LoggerFactory.getLogger( StorageClient.class );
 
-    private static final int      PARALLEL_NETWORK_THREADS = 4;
+    private static final int         PARALLEL_NETWORK_THREADS = 4;
 
     /**
      * Server-side
      */
-    private final DocumentApi     documentApi;
-    private final MetadataApi     metadataApi;
+    private final DocumentApi        documentApi;
+    private final MetadataApi        metadataApi;
 
     /**
      * Client-side
      */
-    private final MetadataMapper  metadataMapper;
-    private final Indexer         indexer;
-    private final SecurityService securityService;
+    private final KryptnosticContext context;
+    private final MetadataMapper     metadataMapper;
+    private final Indexer            indexer;
+    private final SecurityService    securityService;
 
-    public DefaultStorageClient(
-            DocumentApi documentApi,
-            MetadataApi metadataApi,
-            MetadataMapper metadataMapper,
-            Indexer indexer,
-            SecurityService securityService ) {
+    public DefaultStorageClient( KryptnosticContext context, DocumentApi documentApi, MetadataApi metadataApi ) {
+        this.context = context;
         this.documentApi = documentApi;
         this.metadataApi = metadataApi;
-        this.metadataMapper = metadataMapper;
-        this.indexer = indexer;
-        this.securityService = securityService;
+        this.securityService = context.getSecurityService();
+        this.metadataMapper = new PaddedMetadataMapper( context );
+        this.indexer = new SimpleIndexer( securityService.getUserKey() );
     }
 
     @Override
