@@ -25,7 +25,7 @@ public class KryptnosticRestAdapter {
         // client.setReadTimeout( 0, TimeUnit.MILLISECONDS );
         // client.setConnectTimeout( 0, TimeUnit.MILLISECONDS );
 
-        return createWithDefaultClient(url, securityService);
+        return createWithDefaultClient( url, securityService );
     }
 
     public static RestAdapter createWithDefaultClient( String url, SecurityService securityService ) {
@@ -36,7 +36,6 @@ public class KryptnosticRestAdapter {
         return new RestAdapter.Builder()
                 .setConverter( new JacksonConverter( securityService.getSecurityConfigurationMapping() ) )
                 .setEndpoint( url )
-
                 .setRequestInterceptor(
                         new PreauthenticationRequestInterceptor( securityService.getUserKey(), securityService
                                 .getUserCredential() ) ).setErrorHandler( new DefaultErrorHandler() )
