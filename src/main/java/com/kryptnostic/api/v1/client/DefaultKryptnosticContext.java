@@ -64,7 +64,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
         SecurityConfigurationMapping mapping = this.securityService.getSecurityConfigurationMapping();
 
-        this.mapper = new KodexObjectMapperFactory().getObjectMapper( mapping );
+        this.mapper = KodexObjectMapperFactory.getObjectMapper( mapping );
 
         if ( mapping == null ) {
             throw new IrisException(

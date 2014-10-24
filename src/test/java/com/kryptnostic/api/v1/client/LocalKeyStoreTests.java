@@ -9,20 +9,19 @@ import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 
 public class LocalKeyStoreTests {
-    private final PrivateKey fhePriv = new PrivateKey(128, 64);
-    private final LocalKeyStore keyStore = new LocalKeyStore(
-            ( new KodexObjectMapperFactory() ).getObjectMapper(null));
+    private final PrivateKey    fhePriv  = new PrivateKey( 128, 64 );
+    private final LocalKeyStore keyStore = new LocalKeyStore( KodexObjectMapperFactory.getObjectMapper() );
 
     @Test
     public void testStoreConfiguration() throws IOException {
-        keyStore.storeFhePrivateKey(fhePriv);
+        keyStore.storeFhePrivateKey( fhePriv );
     }
 
     @Test
     public void testStoreRetrieveConfiguration() throws IOException {
-        keyStore.storeFhePrivateKey(fhePriv);
+        keyStore.storeFhePrivateKey( fhePriv );
         PrivateKey retrieved = keyStore.retrieveFhePrivateKey();
-        Assert.assertEquals(fhePriv, retrieved);
+        Assert.assertEquals( fhePriv, retrieved );
     }
 
 }
