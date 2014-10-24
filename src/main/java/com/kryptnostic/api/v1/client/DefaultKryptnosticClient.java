@@ -4,8 +4,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
-import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.api.v1.search.DefaultSearchClient;
 import com.kryptnostic.api.v1.storage.DefaultStorageClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
@@ -16,7 +14,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.security.SecurityService;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.search.v1.models.SearchResult;
@@ -30,8 +27,13 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     private final StorageClient      storageClient;
     private final KryptnosticContext context;
 
-    public DefaultKryptnosticClient( KryptnosticServicesFactory factory, SecurityService securityService ) throws IrisException {
-        this.context = new DefaultKryptnosticContext( factory.createSearchFunctionApi(), securityService );
+    public DefaultKryptnosticClient( KryptnosticServicesFactory factory, SecurityService securityService ) throws IrisException,
+            ResourceNotFoundException {
+        this.context = new DefaultKryptnosticContext(
+                factory.createSearchFunctionApi(),
+                factory.createSharingApi(),
+                factory.createKeyApi(),
+                securityService );
 
         this.storageClient = new DefaultStorageClient(
                 context,

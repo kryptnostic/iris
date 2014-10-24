@@ -8,8 +8,6 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.springframework.http.HttpStatus;
 
-import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
-import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.api.v1.security.InMemorySecurityService;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;

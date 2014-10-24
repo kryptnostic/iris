@@ -14,8 +14,6 @@ import cern.colt.bitvector.BitVector;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.kryptnostic.bitwise.BitVectors;
-import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -23,9 +21,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
 import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
-import com.kryptnostic.kodex.v1.models.FheEncryptable;
-import com.kryptnostic.linear.EnhancedBitMatrix;
-import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 
 public class PaddedMetadataMapper implements MetadataMapper {
     private static final Random      r           = new SecureRandom();
@@ -40,19 +35,8 @@ public class PaddedMetadataMapper implements MetadataMapper {
     @Override
     public MappedMetadata mapTokensToKeys(
             Set<Metadata> metadata,
-            BitVector documentNonce,
+            BitVector searchNonce,
             EncryptedSearchSharingKey sharingKey ) throws IrisException {
-
-        SimplePolynomialFunction globalHash;
-        try {
-            globalHash = context.getGlobalHashFunction();
-        } catch ( ResourceNotFoundException e ) {
-            throw new IrisException( e );
-        }
-
-        // TODO: ask nick if this will work in new code
-        EncryptedSearchPrivateKey privateKey = context.getSecurityService().getSecurityConfigurationMapping()
-                .get( FheEncryptable.class, EncryptedSearchPrivateKey.class );
 
         /*
          * Let's balance the metadatum set and generate random nonces. Generally, the list of metadatum should be of
@@ -70,11 +54,12 @@ public class PaddedMetadataMapper implements MetadataMapper {
             int fromIndex = 0, toIndex = Math.min( locations.size(), BUCKET_SIZE );
             do {
 
-                BitVector searchHash = privateKey.hash( token );
-                EnhancedBitMatrix expectedMatrix = EnhancedBitMatrix.squareMatrixfromBitVector( globalHash
-                        .apply( BitVectors.concatenate( searchHash, documentNonce ) ) );
-                BitVector indexForTerm = BitVectors.fromSquareMatrix( expectedMatrix.multiply( sharingKey.getMiddle() )
-                        .multiply( expectedMatrix ) );
+                BitVector indexForTerm;
+                try {
+                    indexForTerm = context.generateIndexForToken( token, searchNonce, sharingKey );
+                } catch ( ResourceNotFoundException e ) {
+                    throw new IrisException( e );
+                }
 
                 Metadata balancedMetadatum = new Metadata( metadatum.getDocumentId(), token, subListAndPad(
                         locations,

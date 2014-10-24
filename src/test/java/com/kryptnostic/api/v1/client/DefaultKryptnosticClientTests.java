@@ -32,41 +32,53 @@ import com.kryptnostic.users.v1.UserKey;
 
 public class DefaultKryptnosticClientTests extends BaseSerializationTest {
 
-    private KryptnosticClient client;
+    private KryptnosticClient          client;
+    private KryptnosticServicesFactory factory;
+    private SecurityService            securityService;
 
     @Rule
-    public WireMockRule       wireMockRule = new WireMockRule( 9990 );
+    public WireMockRule                wireMockRule = new WireMockRule( 9990 );
 
     @Before
-    public void initClient() throws IrisException {
-        final SecurityService securityService = new InMemorySecurityService( new UserKey( "krypt", "sina" ), "test" );
-        final KryptnosticServicesFactory factory = new DefaultKryptnosticServicesFactory(
-                KryptnosticRestAdapter.createWithDefaultClient( "http://localhost:9990".toString(), securityService ) );
-        client = new DefaultKryptnosticClient( factory, securityService );
+    public void initClient() {
+        securityService = new InMemorySecurityService( new UserKey( "krypt", "sina" ), "test" );
+        factory = new DefaultKryptnosticServicesFactory( KryptnosticRestAdapter.createWithDefaultClient(
+                "http://localhost:9990".toString(),
+                securityService ) );
     }
 
     @Test
-    public void initTest() {
-        Assert.assertNotNull( client.getContext() );
-    }
+    public void initTest() throws InterruptedException, JsonGenerationException, JsonMappingException, IOException,
+            ResourceNotFoundException, IrisException {
+        // set up http stubs for getting global hasher and checking query pair
+        SimplePolynomialFunction expectedGlobalHasher = generateGlobalHasherStub();
+        generateQueryHasherPairStub();
 
-    @Test
-    public void globalHasherTest() throws InterruptedException, JsonGenerationException, JsonMappingException,
-            IOException, ResourceNotFoundException {
-        SimplePolynomialFunction expected = SimplePolynomialFunctions.randomFunction( 128, 128 );
-        String response = wrap( serialize( expected ) );
+        KryptnosticClient client = new DefaultKryptnosticClient( factory, securityService );
 
-        stubFor( get( urlEqualTo( SearchFunctionApi.SEARCH_FUNCTION ) ).willReturn( aResponse().withBody( response ) ) );
+        SimplePolynomialFunction actualGlobalHasher = client.getContext().getGlobalHashFunction();
+        Assert.assertEquals( expectedGlobalHasher, actualGlobalHasher );
 
-        SimplePolynomialFunction actual = client.getContext().getGlobalHashFunction();
-        Assert.assertEquals( expected, actual );
-
-        SimplePolynomialFunction roundTwo = client.getContext().getGlobalHashFunction();
-        Assert.assertEquals( expected, roundTwo );
-
-        // verify we only request the global hasher once
+        // verify we only request the global hasher once (getGlobalHashFunction was called twice though, because it's
+        // called during client init)
         verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.SEARCH_FUNCTION ) ) );
 
+    }
+
+    private SimplePolynomialFunction generateGlobalHasherStub() throws JsonGenerationException, JsonMappingException,
+            IOException {
+        SimplePolynomialFunction expectedGlobalHasher = SimplePolynomialFunctions.randomFunction( 128, 128 );
+        String globalHasherResponse = wrap( serialize( expectedGlobalHasher ) );
+
+        stubFor( get( urlEqualTo( SearchFunctionApi.SEARCH_FUNCTION ) ).willReturn(
+                aResponse().withBody( globalHasherResponse ) ) );
+        return expectedGlobalHasher;
+    }
+
+    private void generateQueryHasherPairStub() throws JsonGenerationException, JsonMappingException, IOException {
+        String response = wrap( "true" );
+        stubFor( get( urlEqualTo( SearchFunctionApi.SEARCH_FUNCTION + "/hasher" ) ).willReturn(
+                aResponse().withBody( response ) ) );
     }
 
     private String wrap( String serialize ) {

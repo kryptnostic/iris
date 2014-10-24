@@ -215,15 +215,16 @@ public class DefaultStorageClient implements StorageClient {
         // index + map tokens for metadata
         Set<Metadata> metadata = indexer.index( documentId.getDocumentId(), documentBody );
 
-        throw new UnsupportedOperationException( "not yet implemented" );
-        //
-        // BitVector documentNonce =
-        // EncryptedSearchSharingKey sharingKey;
-        //
-        // MetadataRequest metadataRequest = prepareMetadata( metadata, documentNonce, sharingKey );
-        // uploadMetadata( metadataRequest );
-        //
-        // return documentId.getDocumentId();
+        // generate plain documentNonce
+        BitVector searchNonce = context.generateSearchNonce();
+        EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
+
+        context.submitBridgeKeyWithSearchNonce( documentId, sharingKey, searchNonce );
+
+        MetadataRequest metadataRequest = prepareMetadata( metadata, searchNonce, sharingKey );
+        uploadMetadata( metadataRequest );
+
+        return documentId.getDocumentId();
     }
 
     /**
@@ -235,13 +236,14 @@ public class DefaultStorageClient implements StorageClient {
      */
     private MetadataRequest prepareMetadata(
             Set<Metadata> metadata,
-            BitVector documentNonce,
+            BitVector searchNonce,
             EncryptedSearchSharingKey sharingKey ) throws IrisException {
+
         // create plaintext metadata
-        MappedMetadata keyedMetadata = metadataMapper.mapTokensToKeys( metadata, documentNonce, sharingKey );
+        MappedMetadata keyedMetadata = metadataMapper.mapTokensToKeys( metadata, searchNonce, sharingKey );
         log.debug( "generated plaintext metadata {}", keyedMetadata );
 
-        // encrypt the metadat and format for the server
+        // encrypt the metadata and format for the server
         Collection<IndexedMetadata> metadataIndex = Lists.newArrayList();
         for ( Map.Entry<BitVector, List<Metadata>> m : keyedMetadata.getMetadataMap().entrySet() ) {
             BitVector key = m.getKey();
