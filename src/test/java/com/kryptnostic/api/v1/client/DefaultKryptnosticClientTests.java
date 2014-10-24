@@ -43,7 +43,7 @@ public class DefaultKryptnosticClientTests extends BaseSerializationTest {
     public void initClient() {
         securityService = new InMemorySecurityService( new UserKey( "krypt", "sina" ), "test" );
         factory = new DefaultKryptnosticServicesFactory( KryptnosticRestAdapter.createWithDefaultClient(
-                "http://localhost:9990".toString(),
+                "http://localhost:9990",
                 securityService ) );
     }
 
@@ -63,12 +63,14 @@ public class DefaultKryptnosticClientTests extends BaseSerializationTest {
         // called during client init)
         verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.SEARCH_FUNCTION ) ) );
 
+        verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.SEARCH_FUNCTION + "/hasher" ) ) );
+
     }
 
     private SimplePolynomialFunction generateGlobalHasherStub() throws JsonGenerationException, JsonMappingException,
             IOException {
         SimplePolynomialFunction expectedGlobalHasher = SimplePolynomialFunctions.randomFunction( 128, 128 );
-        String globalHasherResponse = wrap( serialize( expectedGlobalHasher ) );
+        String globalHasherResponse = serialize( expectedGlobalHasher );
 
         stubFor( get( urlEqualTo( SearchFunctionApi.SEARCH_FUNCTION ) ).willReturn(
                 aResponse().withBody( globalHasherResponse ) ) );

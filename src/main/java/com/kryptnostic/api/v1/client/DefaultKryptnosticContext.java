@@ -103,7 +103,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     @Override
     public SimplePolynomialFunction getGlobalHashFunction() throws ResourceNotFoundException {
         if ( globalHashFunction == null ) {
-            globalHashFunction = this.searchFunctionClient.getFunction().getData();
+            globalHashFunction = this.searchFunctionClient.getFunction();
         }
         return globalHashFunction;
     }
