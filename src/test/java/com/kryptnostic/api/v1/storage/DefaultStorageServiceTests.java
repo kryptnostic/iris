@@ -1,7 +1,5 @@
 package com.kryptnostic.api.v1.storage;
 
-import java.io.IOException;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -10,16 +8,19 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.springframework.http.HttpStatus;
 
-import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
-import com.kryptnostic.api.v1.indexing.BaseIndexingService;
+import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
+import com.kryptnostic.api.v1.indexing.SimpleIndexer;
+import com.kryptnostic.api.v1.security.InMemorySecurityService;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
+import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.sharing.v1.DocumentId;
-import com.kryptnostic.storage.v1.StorageService;
+import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
 import com.kryptnostic.storage.v1.models.DocumentBlock;
@@ -30,8 +31,8 @@ import com.kryptnostic.users.v1.UserKey;
 
 public class DefaultStorageServiceTests extends AesEncryptableBase {
 
-    private StorageService storageService;
-    private UserKey        userKey;
+    private StorageClient storageService;
+    private UserKey       userKey;
 
     @Before
     public void setup() {
@@ -40,18 +41,17 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
     }
 
     @Test
-    public void uploadingWithoutMetadataTest() throws BadRequestException, SecurityConfigurationException, IOException,
-            ClassNotFoundException, ResourceNotFoundException, ResourceNotLockedException {
+    public void uploadingWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
+            ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException {
         DocumentApi documentApi = Mockito.mock( DocumentApi.class );
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
-        storageService = new DefaultStorageService(
+        storageService = new DefaultStorageClient(
                 documentApi,
                 metadataApi,
-                new BalancedMetadataKeyService( context ),
-                new BaseIndexingService( userKey ),
-                config,
-                userKey );
+                new PaddedMetadataMapper( context ),
+                new SimpleIndexer( userKey ),
+                new InMemorySecurityService( userKey, "test" ) );
 
         Mockito.when( documentApi.createPendingDocument( Mockito.any( DocumentCreationRequest.class ) ) ).then(
                 new Answer<BasicResponse<DocumentId>>() {

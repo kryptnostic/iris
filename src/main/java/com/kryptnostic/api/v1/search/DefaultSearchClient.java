@@ -11,9 +11,9 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.indexing.Indexes;
-import com.kryptnostic.kodex.v1.indexing.IndexingService;
+import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
-import com.kryptnostic.search.v1.SearchService;
+import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.search.v1.client.SearchApi;
 import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.search.v1.models.request.SearchRequest;
@@ -25,13 +25,13 @@ import com.kryptnostic.search.v1.models.response.SearchResultResponse;
  * @author Nick Hewitt &lt;nick@kryptnostic.com&gt;
  *
  */
-public class DefaultSearchService implements SearchService {
+public class DefaultSearchClient implements SearchClient {
     private final SearchApi searchService;
-    private final IndexingService indexingService;
+    private final Indexer   indexer;
 
-    public DefaultSearchService(SearchApi searchService, IndexingService indexingService) {
+    public DefaultSearchClient( SearchApi searchService, Indexer indexer ) {
         this.searchService = searchService;
-        this.indexingService = indexingService;
+        this.indexer = indexer;
     }
 
     /**
@@ -39,11 +39,11 @@ public class DefaultSearchService implements SearchService {
      * search service.
      */
     @Override
-    public Collection<SearchResult> search(String query) {
-        List<String> tokens = analyzeQuery(query);
-        SearchRequest searchRequest = generateSearchRequest(tokens);
+    public Collection<SearchResult> search( String query ) {
+        List<String> tokens = analyzeQuery( query );
+        SearchRequest searchRequest = generateSearchRequest( tokens );
 
-        SearchResultResponse searchResult = searchService.search(searchRequest);
+        SearchResultResponse searchResult = searchService.search( searchRequest );
 
         return searchResult.getData();
     }
@@ -51,32 +51,32 @@ public class DefaultSearchService implements SearchService {
     /**
      * @return List<BitVector> of search tokens, the ciphertext to be submitted to KryptnosticSearch.
      */
-    private SearchRequest generateSearchRequest(List<String> tokens) {
-        Preconditions.checkArgument(tokens != null, "Cannot pass null tokens param.");
+    private SearchRequest generateSearchRequest( List<String> tokens ) {
+        Preconditions.checkArgument( tokens != null, "Cannot pass null tokens param." );
 
         Collection<BitVector> searchTokens = Lists.newArrayList();
-        for (String token : tokens) {
-            searchTokens.add(Indexes.computeHashAndGetBits(token));
+        for ( String token : tokens ) {
+            searchTokens.add( Indexes.computeHashAndGetBits( token ) );
         }
 
-        return SearchRequest.searchToken(searchTokens);
+        return SearchRequest.searchToken( searchTokens );
     }
 
     /**
      * @return List<String> of unique tokens, the plaintext to be searched for in stored documents.
      */
-    private List<String> analyzeQuery(String query) {
-        Preconditions.checkArgument(query != null, "Cannot pass null query param.");
+    private List<String> analyzeQuery( String query ) {
+        Preconditions.checkArgument( query != null, "Cannot pass null query param." );
 
         Set<String> tokens = Sets.newHashSet();
-        Set<Analyzer> analyzers = indexingService.getAnalyzers();
-        for (Analyzer analyzer : analyzers) {
-            Map<String, List<Integer>> analysis = analyzer.analyze(query);
-            for (String token : analysis.keySet()) {
-                tokens.add(token);
+        Set<Analyzer> analyzers = indexer.getAnalyzers();
+        for ( Analyzer analyzer : analyzers ) {
+            Map<String, List<Integer>> analysis = analyzer.analyze( query );
+            for ( String token : analysis.keySet() ) {
+                tokens.add( token );
             }
         }
-        return Lists.newArrayList(tokens);
+        return Lists.newArrayList( tokens );
     }
 
 }
