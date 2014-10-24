@@ -14,6 +14,7 @@ import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.models.FheEncryptable;
 import com.kryptnostic.kodex.v1.security.SecurityConfigurationMapping;
 import com.kryptnostic.kodex.v1.security.SecurityService;
@@ -22,12 +23,12 @@ import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
 
 public class DefaultKryptnosticContext implements KryptnosticContext {
-    private final SearchFunctionApi  searchFunctionService;
+    private final SearchFunctionApi  searchFunctionClient;
     private final PrivateKey         privateKey;
     private final PublicKey          publicKey;
     private final SecurityService    securityService;
 
-    private SimplePolynomialFunction indexingHashFunction;
+    private SimplePolynomialFunction globalHashFunction;
 
     private static final Logger      logger          = LoggerFactory.getLogger( DefaultKryptnosticContext.class );
 
@@ -35,8 +36,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private static final int         LOCATION_LENGTH = 64;
     private static final int         NONCE_LENGTH    = 64;
 
-    public DefaultKryptnosticContext( SearchFunctionApi searchFunctionService, SecurityService securityService ) throws IrisException {
-        this.searchFunctionService = searchFunctionService;
+    public DefaultKryptnosticContext( SearchFunctionApi searchFunctionClient, SecurityService securityService ) throws IrisException {
+        this.searchFunctionClient = searchFunctionClient;
         this.securityService = securityService;
 
         SecurityConfigurationMapping mapping = this.securityService.getSecurityConfigurationMapping();
@@ -48,52 +49,16 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
         this.privateKey = mapping.get( FheEncryptable.class, PrivateKey.class );
         this.publicKey = mapping.get( FheEncryptable.class, PublicKey.class );
+        this.globalHashFunction = null;
 
     }
-
-    // /**
-    // * Gets a search function locally, or, if one does not exist, generates a search function and persists the
-    // * homomorphism to the search service.
-    // */
-    // @Override
-    // public SimplePolynomialFunction getSearchFunction() {
-    // if ( indexingHashFunction == null ) {
-    // try {
-    // indexingHashFunction = searchFunctionService.getFunction().getData();
-    // } catch ( Exception e ) {
-    //
-    // }
-    // if ( indexingHashFunction == null ) {
-    // logger.info( "Generating search function." );
-    // indexingHashFunction = Indexes.generateRandomIndexingFunction(
-    // NONCE_LENGTH,
-    // TOKEN_LENGTH,
-    // LOCATION_LENGTH );
-    //
-    // setFunction( indexingHashFunction );
-    // }
-    // }
-    // return indexingHashFunction;
-    // }
-
-    // /**
-    // * Wraps call to SearchFunctionService, first encrypting the function with FHE before sending it. TODO make this
-    // * async or something...hide latency of compose
-    // */
-    // private void setFunction( SimplePolynomialFunction indexingHashFunction ) {
-    // SimplePolynomialFunction indexingHomomorphism = indexingHashFunction.partialComposeLeft( privateKey
-    // .getDecryptor() );
-    // SearchFunctionUploadRequest request = new SearchFunctionUploadRequest( indexingHomomorphism );
-    // // searchFunctionService.setFunction(request);
-    // throw new UnsupportedOperationException( "not yet implemented" );
-    // }
-
+    
     /**
      * TODO need to decrypt cipher nonces for local use
      */
     @Override
     public List<EncryptedSearchDocumentKey> getDocumentKeys() {
-        throw new UnsupportedOperationException("not yet implemented");
+        throw new UnsupportedOperationException( "not yet implemented" );
         // Collection<EncryptedSearchDocumentKey> keys = documentKeyService.getDocumentKeys().getData();
         // return Lists.newArrayList( keys );
     }
@@ -124,8 +89,10 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public SimplePolynomialFunction getGlobalHashFunction() {
-        throw new UnsupportedOperationException( "not yet implemented" );
+    public SimplePolynomialFunction getGlobalHashFunction() throws ResourceNotFoundException {
+        if ( globalHashFunction == null ) {
+            globalHashFunction = this.searchFunctionClient.getFunction().getData();
+        }
+        return globalHashFunction;
     }
-
 }

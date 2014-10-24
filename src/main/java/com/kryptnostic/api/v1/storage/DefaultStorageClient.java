@@ -231,11 +231,12 @@ public class DefaultStorageClient implements StorageClient {
      * 
      * @param metadata
      * @return
+     * @throws IrisException
      */
     private MetadataRequest prepareMetadata(
             Set<Metadata> metadata,
             BitVector documentNonce,
-            EncryptedSearchSharingKey sharingKey ) {
+            EncryptedSearchSharingKey sharingKey ) throws IrisException {
         // create plaintext metadata
         MappedMetadata keyedMetadata = metadataMapper.mapTokensToKeys( metadata, documentNonce, sharingKey );
         log.debug( "generated plaintext metadata {}", keyedMetadata );

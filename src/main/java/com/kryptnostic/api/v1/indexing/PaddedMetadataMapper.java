@@ -18,6 +18,8 @@ import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
 import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
@@ -39,9 +41,14 @@ public class PaddedMetadataMapper implements MetadataMapper {
     public MappedMetadata mapTokensToKeys(
             Set<Metadata> metadata,
             BitVector documentNonce,
-            EncryptedSearchSharingKey sharingKey ) {
+            EncryptedSearchSharingKey sharingKey ) throws IrisException {
 
-        SimplePolynomialFunction globalHash = context.getGlobalHashFunction();
+        SimplePolynomialFunction globalHash;
+        try {
+            globalHash = context.getGlobalHashFunction();
+        } catch ( ResourceNotFoundException e ) {
+            throw new IrisException( e );
+        }
 
         // TODO: ask nick if this will work in new code
         EncryptedSearchPrivateKey privateKey = context.getSecurityService().getSecurityConfigurationMapping()
