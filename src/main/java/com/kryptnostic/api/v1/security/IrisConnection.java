@@ -131,9 +131,10 @@ public class IrisConnection implements KryptnosticConnection {
         }
     }
 
+    @Override
     public void flushKodex() throws IOException {
         ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
-        if ( keyService != null ) {
+        if ( dataStore != null ) {
             dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
         }
         if ( keyService != null ) {
