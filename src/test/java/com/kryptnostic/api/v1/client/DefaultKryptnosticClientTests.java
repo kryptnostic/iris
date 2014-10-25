@@ -6,6 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
@@ -131,7 +132,7 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
         String receivedDocId = client.uploadDocumentWithoutMetadata( "test" );
         Assert.assertEquals( docId.getDocumentId(), receivedDocId );
 
-        verify( 1, postRequestedFor( urlMatching( documentCreateUrl ) ) );
+        verify( 1, putRequestedFor( urlMatching( documentCreateUrl ) ) );
         verify( 1, postRequestedFor( urlMatching( documentUpdateUrl ) ) );
     }
 
