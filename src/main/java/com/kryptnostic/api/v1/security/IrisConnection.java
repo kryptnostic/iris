@@ -71,6 +71,9 @@ public class IrisConnection implements KryptnosticConnection {
 
             PublicKeyEnvelope envelope = keyService.getPublicKey( userKey.getRealm(), userKey.getName() );
             PublicKey publicKey = Keys.publicKeyFromBytes( PublicKeyAlgorithm.RSA, envelope.getBytes() );
+            PrivateKey privateKey = Keys.privateKeyFromBytes(
+                    PublicKeyAlgorithm.RSA,
+                    cryptoService.decryptBytes( encryptedPrivateKey ) );
 
             byte[] kodexBytes = dataStore.get( Kodex.class.getCanonicalName().getBytes() );
 
@@ -80,6 +83,7 @@ public class IrisConnection implements KryptnosticConnection {
                 kodex = keyService.getKodex();
                 if ( kodex == null ) {
                     kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_PKCS5_128, publicKey );
+                    kodex.unseal( privateKey );
                     com.kryptnostic.crypto.PrivateKey fhePrv = new com.kryptnostic.crypto.PrivateKey( 128, 64 );
                     com.kryptnostic.crypto.PublicKey fhePub = new com.kryptnostic.crypto.PublicKey( fhePrv );
                     kodex.setKey(
@@ -99,9 +103,6 @@ public class IrisConnection implements KryptnosticConnection {
                 dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
             }
 
-            PrivateKey privateKey = Keys.privateKeyFromBytes(
-                    PublicKeyAlgorithm.RSA,
-                    cryptoService.decryptBytes( encryptedPrivateKey ) );
             kodex.unseal( privateKey );
             this.userCredential = userCredential;
             this.userKey = userKey;
