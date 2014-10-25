@@ -56,13 +56,14 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
             InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException,
             InvalidKeySpecException, InvalidParameterSpecException, SealedKodexException, IOException {
         initImplicitEncryption();
-        generateKeyStubs();
+        initFheEncryption();
 
         securityService = new IrisConnection(
-                "http://localhost:9990",
+                kodex,
+                crypto,
                 new UserKey( "krypt", "sina" ),
                 "test",
-                new FileStore( "data" ) );
+                "http://localhost:9990" );
         factory = new DefaultKryptnosticServicesFactory(
                 KryptnosticRestAdapter.createWithDefaultClient( securityService ) );
     }
