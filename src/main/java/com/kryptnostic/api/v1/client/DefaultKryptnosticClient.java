@@ -38,8 +38,7 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
         this.storageClient = new DefaultStorageClient(
                 context,
                 factory.createDocumentApi(),
-                factory.createMetadataApi(),
-                securityService.getKodex() );
+                factory.createMetadataApi() );
         this.searchClient = new DefaultSearchClient( context, factory.createSearchApi() );
     }
 

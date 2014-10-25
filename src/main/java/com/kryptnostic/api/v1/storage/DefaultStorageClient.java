@@ -70,18 +70,14 @@ public class DefaultStorageClient implements StorageClient {
     private final KryptnosticConnection securityService;
     private final Kodex<String>         kodex;
 
-    public DefaultStorageClient(
-            KryptnosticContext context,
-            DocumentApi documentApi,
-            MetadataApi metadataApi,
-            Kodex<String> kodex ) {
+    public DefaultStorageClient( KryptnosticContext context, DocumentApi documentApi, MetadataApi metadataApi ) {
         this.context = context;
         this.documentApi = documentApi;
         this.metadataApi = metadataApi;
         this.securityService = context.getSecurityService();
         this.metadataMapper = new PaddedMetadataMapper( context );
         this.indexer = new SimpleIndexer( securityService.getUserKey() );
-        this.kodex = kodex;
+        this.kodex = context.getSecurityService().getKodex();
     }
 
     @Override

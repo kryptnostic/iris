@@ -27,9 +27,6 @@ public final class KryptnosticRestAdapter {
     }
 
     public static RestAdapter create( KryptnosticConnection securityService ) {
-        // OkHttpClient client = new OkHttpClient();
-        // client.setReadTimeout( 0, TimeUnit.MILLISECONDS );
-        // client.setConnectTimeout( 0, TimeUnit.MILLISECONDS );
         return createWithDefaultClient( securityService );
     }
 
