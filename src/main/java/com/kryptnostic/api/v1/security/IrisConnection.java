@@ -136,7 +136,7 @@ public class IrisConnection implements KryptnosticConnection {
         if ( keyService != null ) {
             dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
         }
-        if( keyService != null ) {
+        if ( keyService != null ) {
             keyService.setKodex( kodex );
         }
     }
@@ -189,13 +189,11 @@ public class IrisConnection implements KryptnosticConnection {
             ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
             PublicKeyEnvelope envelope;
             byte[] publicKeyBytes = dataStore.get( PublicKey.class.getCanonicalName().getBytes() );
-            if ( publicKeyBytes != null ) {
-                envelope = mapper.readValue( publicKeyBytes, PublicKeyEnvelope.class );
-            } else {
+            if ( publicKeyBytes == null ) {
                 envelope = keyService.getPublicKey( userKey.getRealm(), userKey.getName() );
-                dataStore.put( PublicKey.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( envelope ) );
+                dataStore.put( PublicKey.class.getCanonicalName().getBytes(), envelope.getBytes() );
             }
-            return Keys.publicKeyFromBytes( PublicKeyAlgorithm.RSA, envelope.getBytes() );
+            return Keys.publicKeyFromBytes( PublicKeyAlgorithm.RSA, publicKeyBytes );
         } catch ( Exception e ) {
             wrapException( e );
             return null;
