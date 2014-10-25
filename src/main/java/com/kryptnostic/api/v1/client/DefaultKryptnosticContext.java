@@ -19,6 +19,7 @@ import cern.colt.bitvector.BitVector;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
+import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
@@ -73,19 +74,19 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         this.keyClient = keyClient;
         this.securityService = securityService;
 
-        Kodex<String> mapping = securityService.getKodex();
-        if ( mapping == null ) {
+        Kodex<String> kodex = securityService.getKodex();
+        if ( kodex == null ) {
             throw new IrisException(
                     "Security mapping was null and no keys could be found, the DefaultKryptnosticContext cannot be initialized without these keys" );
         }
-        this.mapper = KodexObjectMapperFactory.getObjectMapper( mapping );
+        this.mapper = KodexObjectMapperFactory.getObjectMapper( kodex );
 
         try {
-            this.fhePrivateKey = mapping.getKey(
+            this.fhePrivateKey = kodex.getKey(
                     PrivateKey.class.getCanonicalName(),
                     new JacksonKodexMarshaller<PrivateKey>( PrivateKey.class ) );
 
-            this.fhePublicKey = mapping.getKey(
+            this.fhePublicKey = kodex.getKey(
                     PublicKey.class.getCanonicalName(),
                     new JacksonKodexMarshaller<PublicKey>( PublicKey.class ) );
 
@@ -114,12 +115,33 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             throw new IrisException( e1 );
         }
 
+        this.globalHashFunction = getGlobalHashFunction();
+
+        EncryptedSearchPrivateKey storedSearchPrivateKey;
         try {
-            this.encryptedSearchPrivateKey = new EncryptedSearchPrivateKey( fhePrivateKey, fhePublicKey );
-        } catch ( SingularMatrixException e ) {
+            storedSearchPrivateKey = kodex.getKeyWithJackson(
+                    EncryptedSearchPrivateKey.class.getCanonicalName(),
+                    EncryptedSearchPrivateKey.class );
+        } catch ( Exception e ) {
             throw new IrisException( e );
         }
-        this.globalHashFunction = getGlobalHashFunction();
+
+        try {
+            if ( storedSearchPrivateKey == null ) {
+                this.encryptedSearchPrivateKey = new EncryptedSearchPrivateKey( fhePublicKey.getEncrypter()
+                        .getInputLength(), (int) Math.sqrt( globalHashFunction.getInputLength() ) );
+                kodex.setKeyWithJackson(
+                        EncryptedSearchPrivateKey.class.getCanonicalName(),
+                        storedSearchPrivateKey,
+                        EncryptedSearchPrivateKey.class );
+                securityService.flushKodex();
+            } else {
+                this.encryptedSearchPrivateKey = storedSearchPrivateKey;
+            }
+        } catch ( Exception e ) {
+            throw new IrisException( e );
+        }
+
         queryHasherPairSubmitted = false;
         ensureQueryHasherPairSet( globalHashFunction );
     }
@@ -160,13 +182,22 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             if ( !queryHasherPairSubmitted ) {
                 logger.debug( "Generating query hasher pair because it was not set on the server" );
                 try {
-                    Pair<SimplePolynomialFunction, SimplePolynomialFunction> queryHasherPair = encryptedSearchPrivateKey
-                            .getQueryHasherPair( globalHashFunction, fhePrivateKey );
-                    searchFunctionClient.setQueryHasherPair( new QueryHasherPairRequest(
-                            queryHasherPair.getLeft(),
-                            queryHasherPair.getRight() ) );
+                    Kodex<String> kodex = securityService.getKodex();
+                    QueryHasherPairRequest qph = kodex.getKeyWithJackson(
+                            QueryHasherPairRequest.class.getCanonicalName(),
+                            QueryHasherPairRequest.class );
+                    if ( qph == null ) {
+                        Pair<SimplePolynomialFunction, SimplePolynomialFunction> queryHasherPair = encryptedSearchPrivateKey
+                                .getQueryHasherPair( globalHashFunction, fhePrivateKey );
+                        qph = new QueryHasherPairRequest( queryHasherPair.getLeft(), queryHasherPair.getRight() );
+                        kodex.setKeyWithJackson(
+                                QueryHasherPairRequest.class.getCanonicalName(),
+                                qph,
+                                QueryHasherPairRequest.class );
+                    }
+                    searchFunctionClient.setQueryHasherPair( qph );
                     queryHasherPairSubmitted = true;
-                } catch ( SingularMatrixException e1 ) {
+                } catch ( Exception e1 ) {
                     logger.error( e1.getMessage() );
                     throw new IrisException( e1 );
                 }
