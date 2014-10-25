@@ -3,6 +3,8 @@ package com.kryptnostic.api.v1.client;
 import java.io.File;
 import java.io.IOException;
 
+import org.apache.commons.codec.binary.Hex;
+
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
@@ -16,10 +18,9 @@ import com.kryptnostic.kodex.v1.storage.DataStore;
  */
 public class FileStore implements DataStore {
     private final File rootDirectory;
-    private static HashFunction hf = Hashing.murmur3_128();
 
     public FileStore(String name) {
-        this.rootDirectory = new File(System.getProperty("user.home"), name);
+        this.rootDirectory = new File(".kryptnostic", name);
         this.rootDirectory.mkdir();
     }
 
@@ -40,8 +41,6 @@ public class FileStore implements DataStore {
     }
 
     private File keyToFile(byte[] key) {
-        Long longEncodedKey = hf.hashBytes(key).asLong();
-        return new File(rootDirectory, longEncodedKey.toString());
+        return new File(rootDirectory, Hex.encodeHexString( key ) );
     }
-
 }
