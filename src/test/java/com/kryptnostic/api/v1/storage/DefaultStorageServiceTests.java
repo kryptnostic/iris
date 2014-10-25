@@ -1,5 +1,16 @@
 package com.kryptnostic.api.v1.storage;
 
+import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.InvalidParameterSpecException;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -9,6 +20,7 @@ import org.mockito.stubbing.Answer;
 import org.springframework.http.HttpStatus;
 
 import com.kryptnostic.api.v1.security.IrisConnection;
+import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -33,7 +45,9 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
     private UserKey       userKey;
 
     @Before
-    public void setup() {
+    public void setup() throws InvalidKeyException, IllegalBlockSizeException, BadPaddingException,
+            NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException, InvalidParameterSpecException,
+            InvalidAlgorithmParameterException, SealedKodexException, IOException {
         userKey = new UserKey( "krypt", "sina" );
         initImplicitEncryption();
     }

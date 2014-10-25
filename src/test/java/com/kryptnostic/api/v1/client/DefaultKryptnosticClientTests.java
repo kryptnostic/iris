@@ -9,6 +9,14 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 
 import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -20,6 +28,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.kryptnostic.BaseSerializationTest;
 import com.kryptnostic.api.v1.security.IrisConnection;
+import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -34,22 +43,25 @@ public class DefaultKryptnosticClientTests extends BaseSerializationTest {
 
     private KryptnosticClient          client;
     private KryptnosticServicesFactory factory;
-    private KryptnosticConnection            securityService;
+    private KryptnosticConnection      securityService;
 
     @Rule
     public WireMockRule                wireMockRule = new WireMockRule( 9990 );
 
     @Before
-    public void initClient() {
-        securityService = new IrisConnection( new UserKey( "krypt", "sina" ), "test" );
-        factory = new DefaultKryptnosticServicesFactory( KryptnosticRestAdapter.createWithDefaultClient(
+    public void initClient() throws IrisException {
+
+        securityService = new IrisConnection(
                 "http://localhost:9990",
-                securityService ) );
+                new UserKey( "krypt", "sina" ),
+                "test",
+                new FileStore( "data" ) );
+        factory = new DefaultKryptnosticServicesFactory(
+                KryptnosticRestAdapter.createWithDefaultClient( securityService ) );
     }
 
     @Test
-    public void initTest() throws InterruptedException, JsonGenerationException, JsonMappingException, IOException,
-            ResourceNotFoundException, IrisException {
+    public void initTest() throws ResourceNotFoundException, IrisException {
         // set up http stubs for getting global hasher and checking query pair
         SimplePolynomialFunction expectedGlobalHasher = generateGlobalHasherStub();
         generateQueryHasherPairStub();
@@ -67,17 +79,25 @@ public class DefaultKryptnosticClientTests extends BaseSerializationTest {
 
     }
 
-    private SimplePolynomialFunction generateGlobalHasherStub() throws JsonGenerationException, JsonMappingException,
-            IOException {
+    private SimplePolynomialFunction generateGlobalHasherStub() throws IrisException {
         SimplePolynomialFunction expectedGlobalHasher = SimplePolynomialFunctions.randomFunction( 128, 128 );
-        String globalHasherResponse = serialize( expectedGlobalHasher );
+        String globalHasherResponse = null;
+        try {
+            globalHasherResponse = serialize( expectedGlobalHasher );
+        } catch ( JsonGenerationException e ) {
+            throw new IrisException( e );
+        } catch ( JsonMappingException e ) {
+            throw new IrisException( e );
+        } catch ( IOException e ) {
+            throw new IrisException( e );
+        }
 
         stubFor( get( urlEqualTo( SearchFunctionApi.SEARCH_FUNCTION ) ).willReturn(
                 aResponse().withBody( globalHasherResponse ) ) );
         return expectedGlobalHasher;
     }
 
-    private void generateQueryHasherPairStub() throws JsonGenerationException, JsonMappingException, IOException {
+    private void generateQueryHasherPairStub() {
         String response = wrap( "true" );
         stubFor( get( urlEqualTo( SearchFunctionApi.SEARCH_FUNCTION + "/hasher" ) ).willReturn(
                 aResponse().withBody( response ) ) );

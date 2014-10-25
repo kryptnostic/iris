@@ -29,6 +29,7 @@ import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.crypto.v1.keys.PublicKeyAlgorithm;
 import com.kryptnostic.directory.v1.KeyApi;
 import com.kryptnostic.directory.v1.response.PublicKeyEnvelope;
+import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
@@ -39,88 +40,96 @@ public class IrisConnection implements KryptnosticConnection {
     private transient CryptoService cryptoService;
     private final UserKey           userKey;
     private final String            userCredential;
-    
-    private final String url;
 
-    public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore ) throws JsonParseException,
-            JsonMappingException,
-            IOException,
-            NoSuchAlgorithmException,
-            InvalidKeyException,
-            InvalidKeySpecException,
-            NoSuchPaddingException,
-            IllegalBlockSizeException,
-            BadPaddingException,
-            InvalidParameterSpecException,
-            SealedKodexException,
-            InvalidAlgorithmParameterException {
-        
-        //
-        // CryptoService cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, new BigInteger(
-        // 130,
-        // new SecureRandom() ).toString( 32 ).toCharArray() );
-        //
-        // this.mapping = new SecurityConfigurationMapping().add( FheEncryptable.class, fhePub )
-        // .add( FheEncryptable.class, fhePrv ).add( AesEncryptable.class, cryptoService );
+    private final String            url;
+
+    public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore ) throws IrisException {
         this.cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, userCredential.toCharArray() );
         ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
 
-        KeyApi keyService = KryptnosticRestAdapter.createWithDefaultJacksonConverter( url, userKey, userCredential ).create(
-                KeyApi.class );
+        KeyApi keyService = KryptnosticRestAdapter.createWithDefaultJacksonConverter( url, userKey, userCredential )
+                .create( KeyApi.class );
 
-        BlockCiphertext encryptedPrivateKey = mapper.readValue(
-                dataStore.get( PrivateKey.class.getCanonicalName().getBytes() ),
-                BlockCiphertext.class );
+        BlockCiphertext encryptedPrivateKey;
+        try {
+            encryptedPrivateKey = mapper.readValue(
+                    dataStore.get( PrivateKey.class.getCanonicalName().getBytes() ),
+                    BlockCiphertext.class );
 
-        if ( encryptedPrivateKey == null ) {
-            encryptedPrivateKey = keyService.getPrivateKey();
             if ( encryptedPrivateKey == null ) {
-                KeyPair pair = Keys.generateRsaKeyPair( 1024 );
-                encryptedPrivateKey = cryptoService.encrypt( pair.getPrivate().getEncoded() );
-                keyService.setPrivateKey( encryptedPrivateKey );
-                keyService.setPublicKey( new PublicKeyEnvelope( pair.getPublic().getEncoded() ) );
-                dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pair.getPublic().getEncoded() );
+                encryptedPrivateKey = keyService.getPrivateKey();
+                if ( encryptedPrivateKey == null ) {
+                    KeyPair pair = Keys.generateRsaKeyPair( 1024 );
+                    encryptedPrivateKey = cryptoService.encrypt( pair.getPrivate().getEncoded() );
+                    keyService.setPrivateKey( encryptedPrivateKey );
+                    keyService.setPublicKey( new PublicKeyEnvelope( pair.getPublic().getEncoded() ) );
+                    dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pair.getPublic().getEncoded() );
+                }
+                dataStore.put(
+                        PrivateKey.class.getCanonicalName().getBytes(),
+                        mapper.writeValueAsBytes( encryptedPrivateKey ) );
             }
-            dataStore.put(
-                    PrivateKey.class.getCanonicalName().getBytes(),
-                    mapper.writeValueAsBytes( encryptedPrivateKey ) );
-        }
 
-        PublicKey publicKey = Keys.publicKeyFromBytes(
-                PublicKeyAlgorithm.RSA,
-                keyService.getPublicKey( userKey.getRealm(), userKey.getName() ).getBytes() );
+            PublicKey publicKey = Keys.publicKeyFromBytes(
+                    PublicKeyAlgorithm.RSA,
+                    keyService.getPublicKey( userKey.getRealm(), userKey.getName() ).getBytes() );
 
-        Kodex<String> kodex = mapper.readValue(
-                dataStore.get( Kodex.class.getCanonicalName().getBytes() ),
-                new TypeReference<Kodex<String>>() {} );
+            Kodex<String> kodex = mapper.readValue(
+                    dataStore.get( Kodex.class.getCanonicalName().getBytes() ),
+                    new TypeReference<Kodex<String>>() {} );
 
-        if ( kodex == null ) {
-            kodex = keyService.getKodex();
             if ( kodex == null ) {
-                com.kryptnostic.crypto.PrivateKey fhePrv = new com.kryptnostic.crypto.PrivateKey( 128, 64 );
-                com.kryptnostic.crypto.PublicKey fhePub = new com.kryptnostic.crypto.PublicKey( fhePrv );
-                kodex = new Kodex<String>( Cypher.AES_CTR_PKCS5_128, Cypher.RSA_OAEP_SHA1_1024, publicKey );
-                kodex.setKey(
-                        com.kryptnostic.crypto.PrivateKey.class.getCanonicalName(),
-                        new JacksonKodexMarshaller<com.kryptnostic.crypto.PrivateKey>(
-                                com.kryptnostic.crypto.PrivateKey.class ),
-                        fhePrv );
-                kodex.setKey(
-                        com.kryptnostic.crypto.PublicKey.class.getCanonicalName(),
-                        new JacksonKodexMarshaller<com.kryptnostic.crypto.PublicKey>(
-                                com.kryptnostic.crypto.PublicKey.class ),
-                        fhePub );
+                kodex = keyService.getKodex();
+                if ( kodex == null ) {
+                    com.kryptnostic.crypto.PrivateKey fhePrv = new com.kryptnostic.crypto.PrivateKey( 128, 64 );
+                    com.kryptnostic.crypto.PublicKey fhePub = new com.kryptnostic.crypto.PublicKey( fhePrv );
+                    kodex = new Kodex<String>( Cypher.AES_CTR_PKCS5_128, Cypher.RSA_OAEP_SHA1_1024, publicKey );
+                    kodex.setKey(
+                            com.kryptnostic.crypto.PrivateKey.class.getCanonicalName(),
+                            new JacksonKodexMarshaller<com.kryptnostic.crypto.PrivateKey>(
+                                    com.kryptnostic.crypto.PrivateKey.class ),
+                            fhePrv );
+                    kodex.setKey(
+                            com.kryptnostic.crypto.PublicKey.class.getCanonicalName(),
+                            new JacksonKodexMarshaller<com.kryptnostic.crypto.PublicKey>(
+                                    com.kryptnostic.crypto.PublicKey.class ),
+                            fhePub );
+                }
+                dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
             }
-            dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
-        }
 
-        PrivateKey privateKey = Keys.privateKeyFromBytes(
-                PublicKeyAlgorithm.RSA,
-                cryptoService.decryptBytes( encryptedPrivateKey ) );
-        kodex.unseal( privateKey );
-        this.userCredential = userCredential;
-        this.userKey = userKey;
-        this.url = url;
+            PrivateKey privateKey = Keys.privateKeyFromBytes(
+                    PublicKeyAlgorithm.RSA,
+                    cryptoService.decryptBytes( encryptedPrivateKey ) );
+            kodex.unseal( privateKey );
+            this.userCredential = userCredential;
+            this.userKey = userKey;
+            this.url = url;
+        } catch ( JsonParseException e ) {
+            throw new IrisException( e );
+        } catch ( JsonMappingException e ) {
+            throw new IrisException( e );
+        } catch ( IOException e ) {
+            throw new IrisException( e );
+        } catch ( InvalidKeyException e ) {
+            throw new IrisException( e );
+        } catch ( IllegalBlockSizeException e ) {
+            throw new IrisException( e );
+        } catch ( BadPaddingException e ) {
+            throw new IrisException( e );
+        } catch ( NoSuchAlgorithmException e ) {
+            throw new IrisException( e );
+        } catch ( NoSuchPaddingException e ) {
+            throw new IrisException( e );
+        } catch ( InvalidKeySpecException e ) {
+            throw new IrisException( e );
+        } catch ( InvalidParameterSpecException e ) {
+            throw new IrisException( e );
+        } catch ( SealedKodexException e ) {
+            throw new IrisException( e );
+        } catch ( InvalidAlgorithmParameterException e ) {
+            throw new IrisException( e );
+        }
     }
 
     @Override

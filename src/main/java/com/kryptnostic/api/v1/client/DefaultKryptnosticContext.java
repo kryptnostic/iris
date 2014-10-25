@@ -52,7 +52,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private final PrivateKey                fhePrivateKey;
     private final PublicKey                 fhePublicKey;
     private final EncryptedSearchPrivateKey encryptedSearchPrivateKey;
-    private final KryptnosticConnection         securityService;
+    private final KryptnosticConnection     securityService;
 
     private SimplePolynomialFunction        globalHashFunction;
     private boolean                         queryHasherPairSubmitted;
@@ -67,17 +67,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             SearchFunctionApi searchFunctionClient,
             SharingApi sharingClient,
             KeyApi keyClient,
-            KryptnosticConnection securityService ) throws IrisException,
-            ResourceNotFoundException,
-            InvalidKeyException,
-            InvalidAlgorithmParameterException,
-            NoSuchAlgorithmException,
-            NoSuchPaddingException,
-            InvalidKeySpecException,
-            IllegalBlockSizeException,
-            BadPaddingException,
-            SealedKodexException,
-            IOException {
+            KryptnosticConnection securityService ) throws IrisException, ResourceNotFoundException {
         this.searchFunctionClient = searchFunctionClient;
         this.sharingClient = sharingClient;
         this.keyClient = keyClient;
@@ -90,15 +80,38 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         }
         this.mapper = KodexObjectMapperFactory.getObjectMapper( mapping );
 
-        this.fhePrivateKey = mapping.getKey(
-                PrivateKey.class.getCanonicalName(),
-                new JacksonKodexMarshaller<PrivateKey>( PrivateKey.class ) );
-        this.fhePublicKey = mapping.getKey( PublicKey.class.getCanonicalName(), new JacksonKodexMarshaller<PublicKey>(
-                PublicKey.class ) );
+        try {
+            this.fhePrivateKey = mapping.getKey(
+                    PrivateKey.class.getCanonicalName(),
+                    new JacksonKodexMarshaller<PrivateKey>( PrivateKey.class ) );
 
-        if ( this.fhePrivateKey == null || this.fhePublicKey == null ) {
-            throw new IrisException(
-                    "FHE keys not found, the DefaultKryptnosticContext cannot be initialized without these keys" );
+            this.fhePublicKey = mapping.getKey(
+                    PublicKey.class.getCanonicalName(),
+                    new JacksonKodexMarshaller<PublicKey>( PublicKey.class ) );
+
+            if ( this.fhePrivateKey == null || this.fhePublicKey == null ) {
+                throw new IrisException(
+                        "FHE keys not found, the DefaultKryptnosticContext cannot be initialized without these keys" );
+            }
+
+        } catch ( InvalidKeyException e1 ) {
+            throw new IrisException( e1 );
+        } catch ( InvalidAlgorithmParameterException e1 ) {
+            throw new IrisException( e1 );
+        } catch ( NoSuchAlgorithmException e1 ) {
+            throw new IrisException( e1 );
+        } catch ( NoSuchPaddingException e1 ) {
+            throw new IrisException( e1 );
+        } catch ( InvalidKeySpecException e1 ) {
+            throw new IrisException( e1 );
+        } catch ( IllegalBlockSizeException e1 ) {
+            throw new IrisException( e1 );
+        } catch ( BadPaddingException e1 ) {
+            throw new IrisException( e1 );
+        } catch ( SealedKodexException e1 ) {
+            throw new IrisException( e1 );
+        } catch ( IOException e1 ) {
+            throw new IrisException( e1 );
         }
 
         try {

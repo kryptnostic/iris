@@ -1,21 +1,11 @@
 package com.kryptnostic.api.v1.client;
 
-import java.io.IOException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-
 import com.kryptnostic.api.v1.search.DefaultSearchClient;
 import com.kryptnostic.api.v1.storage.DefaultStorageClient;
-import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
@@ -38,16 +28,7 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     private final KryptnosticContext context;
 
     public DefaultKryptnosticClient( KryptnosticServicesFactory factory, KryptnosticConnection securityService ) throws IrisException,
-            ResourceNotFoundException,
-            InvalidKeyException,
-            InvalidAlgorithmParameterException,
-            NoSuchAlgorithmException,
-            NoSuchPaddingException,
-            InvalidKeySpecException,
-            IllegalBlockSizeException,
-            BadPaddingException,
-            SealedKodexException,
-            IOException {
+            ResourceNotFoundException {
         this.context = new DefaultKryptnosticContext(
                 factory.createSearchFunctionApi(),
                 factory.createSharingApi(),
