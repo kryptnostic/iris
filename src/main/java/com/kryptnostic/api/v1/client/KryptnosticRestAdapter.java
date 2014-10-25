@@ -21,12 +21,9 @@ public final class KryptnosticRestAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger( KryptnosticRestAdapter.class );
 
-    public static RestAdapter create(
-            Client client,
-            String url,
-            KryptnosticConnection credentialService,
-            Kodex<String> kodex ) {
-        return builder( credentialService, new JacksonConverter( kodex ) ).setClient( client ).build();
+    public static RestAdapter create( Client client, KryptnosticConnection credentialService ) {
+        return builder( credentialService, new JacksonConverter( credentialService.getKodex() ) ).setClient( client )
+                .build();
     }
 
     public static RestAdapter create( KryptnosticConnection securityService ) {
@@ -49,9 +46,13 @@ public final class KryptnosticRestAdapter {
     public static RestAdapter createWithDefaultJacksonConverter( String url, UserKey user, String userCredential ) {
         return builder( url, user, userCredential, new JacksonConverter() ).build();
     }
-    
+
     public static RestAdapter.Builder builder( KryptnosticConnection credentialService, Converter converter ) {
-        return builder(credentialService.getUrl(),credentialService.getUserKey(), credentialService.getUserCredential(), converter );
+        return builder(
+                credentialService.getUrl(),
+                credentialService.getUserKey(),
+                credentialService.getUserCredential(),
+                converter );
     }
 
     public static RestAdapter.Builder builder( String url, UserKey user, String userCredential, Converter converter ) {

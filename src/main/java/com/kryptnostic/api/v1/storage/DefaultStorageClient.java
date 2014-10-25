@@ -51,26 +51,30 @@ import com.kryptnostic.storage.v1.models.request.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 
 public class DefaultStorageClient implements StorageClient {
-    private static final Logger      log                      = LoggerFactory.getLogger( StorageClient.class );
+    private static final Logger         log                      = LoggerFactory.getLogger( StorageClient.class );
 
-    private static final int         PARALLEL_NETWORK_THREADS = 4;
+    private static final int            PARALLEL_NETWORK_THREADS = 4;
 
     /**
      * Server-side
      */
-    private final DocumentApi        documentApi;
-    private final MetadataApi        metadataApi;
+    private final DocumentApi           documentApi;
+    private final MetadataApi           metadataApi;
 
     /**
      * Client-side
      */
-    private final KryptnosticContext context;
-    private final MetadataMapper     metadataMapper;
-    private final Indexer            indexer;
-    private final KryptnosticConnection    securityService;
-    private final Kodex<String> kodex;
+    private final KryptnosticContext    context;
+    private final MetadataMapper        metadataMapper;
+    private final Indexer               indexer;
+    private final KryptnosticConnection securityService;
+    private final Kodex<String>         kodex;
 
-    public DefaultStorageClient( KryptnosticContext context, DocumentApi documentApi, MetadataApi metadataApi , Kodex<String> kodex ) {
+    public DefaultStorageClient(
+            KryptnosticContext context,
+            DocumentApi documentApi,
+            MetadataApi metadataApi,
+            Kodex<String> kodex ) {
         this.context = context;
         this.documentApi = documentApi;
         this.metadataApi = metadataApi;
@@ -101,7 +105,7 @@ public class DefaultStorageClient implements StorageClient {
         VerifiedStringBlocks verified = createVerifiedBlocks( documentBody );
         DocumentCreationRequest documentRequest = new DocumentCreationRequest( verified.getStrings().size() );
         String documentId = documentApi.createPendingDocument( documentRequest ).getData().getDocumentId();
-        return updateDocumentWithoutMetadata( forCurrentUser( documentId ), documentBody, verified );
+        return updateDocumentWithoutMetadata( documentId, documentBody, verified );
     }
 
     @Override
@@ -115,7 +119,7 @@ public class DefaultStorageClient implements StorageClient {
     public String updateDocumentWithoutMetadata( String documentId, String documentBody ) throws BadRequestException,
             SecurityConfigurationException, IrisException {
         VerifiedStringBlocks verified = createVerifiedBlocks( documentBody );
-        return updateDocumentWithoutMetadata( forCurrentUser( documentId ), documentBody, verified );
+        return updateDocumentWithoutMetadata( documentId, documentBody, verified );
     }
 
     @Override
@@ -209,7 +213,7 @@ public class DefaultStorageClient implements StorageClient {
     private String updateDocumentWithMetadata( DocumentId documentId, String documentBody, VerifiedStringBlocks verified )
             throws BadRequestException, SecurityConfigurationException, IrisException {
         // upload the document blocks
-        updateDocumentWithoutMetadata( documentId.toString(), documentBody );
+        updateDocumentWithoutMetadata( documentId.getDocumentId(), documentBody );
 
         // index + map tokens for metadata
         Set<Metadata> metadata = indexer.index( documentId.getDocumentId(), documentBody );
@@ -271,14 +275,15 @@ public class DefaultStorageClient implements StorageClient {
      * @throws IrisException
      */
     private String updateDocumentWithoutMetadata(
-            final DocumentId documentId,
+            final String stringDocumentId,
             String documentBody,
             VerifiedStringBlocks verifiedStringBlocks ) throws SecurityConfigurationException, IrisException {
+        DocumentId documentId = forCurrentUser( stringDocumentId );
         Document doc = generateDocument( documentId, documentBody, verifiedStringBlocks );
 
         submitBlocksToServer( documentId, doc.getBlocks() );
 
-        return documentId.getDocumentId();
+        return stringDocumentId;
     }
 
     /**

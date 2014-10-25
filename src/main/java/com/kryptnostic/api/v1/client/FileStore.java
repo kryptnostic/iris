@@ -18,7 +18,7 @@ public class FileStore implements DataStore {
     private final File rootDirectory;
 
     public FileStore(String name) {
-        this.rootDirectory = new File("kryptnostic", name);
+        this.rootDirectory = new File(".kryptnostic", name);
         this.rootDirectory.mkdirs();
     }
 
