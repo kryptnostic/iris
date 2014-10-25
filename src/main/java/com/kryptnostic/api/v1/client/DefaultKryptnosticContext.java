@@ -19,7 +19,6 @@ import cern.colt.bitvector.BitVector;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
@@ -128,7 +127,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
         try {
             if ( storedSearchPrivateKey == null ) {
-                this.encryptedSearchPrivateKey = new EncryptedSearchPrivateKey( (int) Math.sqrt( globalHashFunction.getOutputLength() ) );
+                this.encryptedSearchPrivateKey = new EncryptedSearchPrivateKey( (int) Math.sqrt( globalHashFunction
+                        .getOutputLength() ) );
                 kodex.setKeyWithJackson(
                         EncryptedSearchPrivateKey.class.getCanonicalName(),
                         storedSearchPrivateKey,
@@ -244,5 +244,14 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         BitVector indexForTerm = BitVectors.fromSquareMatrix( expectedMatrix.multiply( sharingKey.getMiddle() )
                 .multiply( expectedMatrix ) );
         return indexForTerm;
+    }
+
+    @Override
+    public BitVector prepareSearchToken( String token ) throws IrisException {
+        try {
+            return encryptedSearchPrivateKey.prepareSearchToken( fhePublicKey, token );
+        } catch ( SingularMatrixException e ) {
+            throw new IrisException( e );
+        }
     }
 }
