@@ -187,12 +187,12 @@ public class IrisConnection implements KryptnosticConnection {
             CryptoService crypto,
             UserKey userKey ) throws IrisException {
         try {
-            ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
             PublicKeyEnvelope envelope;
             byte[] publicKeyBytes = dataStore.get( PublicKey.class.getCanonicalName().getBytes() );
             if ( publicKeyBytes == null ) {
                 envelope = keyService.getPublicKey( userKey.getRealm(), userKey.getName() );
-                dataStore.put( PublicKey.class.getCanonicalName().getBytes(), envelope.getBytes() );
+                publicKeyBytes = envelope.getBytes();
+                dataStore.put( PublicKey.class.getCanonicalName().getBytes(), publicKeyBytes );
             }
             return Keys.publicKeyFromBytes( PublicKeyAlgorithm.RSA, publicKeyBytes );
         } catch ( Exception e ) {
