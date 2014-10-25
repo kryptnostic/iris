@@ -64,11 +64,10 @@ public class IrisConnection implements KryptnosticConnection {
 
         BlockCiphertext encryptedPrivateKey;
         try {
-            encryptedPrivateKey = mapper.readValue(
-                    dataStore.get( PrivateKey.class.getCanonicalName().getBytes() ),
-                    BlockCiphertext.class );
-
-            if ( encryptedPrivateKey == null ) {
+            byte[] privateKeyCiphertext = dataStore.get( PrivateKey.class.getCanonicalName().getBytes() );
+            if ( privateKeyCiphertext != null ) {
+                encryptedPrivateKey = mapper.readValue( privateKeyCiphertext, BlockCiphertext.class );
+            } else {
                 encryptedPrivateKey = keyService.getPrivateKey();
                 if ( encryptedPrivateKey == null ) {
                     KeyPair pair = Keys.generateRsaKeyPair( 1024 );
@@ -82,15 +81,14 @@ public class IrisConnection implements KryptnosticConnection {
                         mapper.writeValueAsBytes( encryptedPrivateKey ) );
             }
 
-            PublicKey publicKey = Keys.publicKeyFromBytes(
-                    PublicKeyAlgorithm.RSA,
-                    keyService.getPublicKey( userKey.getRealm(), userKey.getName() ).getBytes() );
+            PublicKeyEnvelope envelope = keyService.getPublicKey( userKey.getRealm(), userKey.getName() );
+            PublicKey publicKey = Keys.publicKeyFromBytes( PublicKeyAlgorithm.RSA, envelope.getBytes() );
 
-            Kodex<String> kodex = mapper.readValue(
-                    dataStore.get( Kodex.class.getCanonicalName().getBytes() ),
-                    new TypeReference<Kodex<String>>() {} );
+            byte[] kodexBytes = dataStore.get( Kodex.class.getCanonicalName().getBytes() );
 
-            if ( kodex == null ) {
+            if ( kodexBytes != null ) {
+                kodex = mapper.readValue( kodexBytes, new TypeReference<Kodex<String>>() {} );
+            } else {
                 kodex = keyService.getKodex();
                 if ( kodex == null ) {
                     com.kryptnostic.crypto.PrivateKey fhePrv = new com.kryptnostic.crypto.PrivateKey( 128, 64 );
@@ -106,6 +104,9 @@ public class IrisConnection implements KryptnosticConnection {
                             new JacksonKodexMarshaller<com.kryptnostic.crypto.PublicKey>(
                                     com.kryptnostic.crypto.PublicKey.class ),
                             fhePub );
+                    kodex.setKey( CryptoService.class.getCanonicalName(), new JacksonKodexMarshaller<CryptoService>(
+                            CryptoService.class ), cryptoService );
+                    keyService.setKodex( kodex );
                 }
                 dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
             }
