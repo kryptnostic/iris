@@ -5,8 +5,6 @@ import java.io.IOException;
 
 import org.apache.commons.codec.binary.Hex;
 
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 
