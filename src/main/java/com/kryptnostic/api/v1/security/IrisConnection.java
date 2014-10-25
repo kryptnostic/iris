@@ -94,6 +94,9 @@ public class IrisConnection implements KryptnosticConnection {
                             new JacksonKodexMarshaller<com.kryptnostic.crypto.PublicKey>(
                                     com.kryptnostic.crypto.PublicKey.class ),
                             fhePub );
+                    kodex.setKey( CryptoService.class.getCanonicalName(), new JacksonKodexMarshaller<CryptoService>(
+                            CryptoService.class ), cryptoService );
+                    keyService.setKodex( kodex );
                 }
                 dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
             }
