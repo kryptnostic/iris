@@ -52,11 +52,10 @@ public class IrisConnection implements KryptnosticConnection {
 
         BlockCiphertext encryptedPrivateKey;
         try {
-            encryptedPrivateKey = mapper.readValue(
-                    dataStore.get( PrivateKey.class.getCanonicalName().getBytes() ),
-                    BlockCiphertext.class );
-
-            if ( encryptedPrivateKey == null ) {
+            byte[] privateKeyCiphertext = dataStore.get( PrivateKey.class.getCanonicalName().getBytes() );
+            if ( privateKeyCiphertext != null ) {
+                encryptedPrivateKey = mapper.readValue( privateKeyCiphertext, BlockCiphertext.class );
+            } else {
                 encryptedPrivateKey = keyService.getPrivateKey();
                 if ( encryptedPrivateKey == null ) {
                     KeyPair pair = Keys.generateRsaKeyPair( 1024 );
