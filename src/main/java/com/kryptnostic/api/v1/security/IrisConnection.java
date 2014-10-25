@@ -79,9 +79,9 @@ public class IrisConnection implements KryptnosticConnection {
             } else {
                 kodex = keyService.getKodex();
                 if ( kodex == null ) {
+                    kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_PKCS5_128, publicKey );
                     com.kryptnostic.crypto.PrivateKey fhePrv = new com.kryptnostic.crypto.PrivateKey( 128, 64 );
                     com.kryptnostic.crypto.PublicKey fhePub = new com.kryptnostic.crypto.PublicKey( fhePrv );
-                    kodex = new Kodex<String>( Cypher.AES_CTR_PKCS5_128, Cypher.RSA_OAEP_SHA1_1024, publicKey );
                     kodex.setKey(
                             com.kryptnostic.crypto.PrivateKey.class.getCanonicalName(),
                             new JacksonKodexMarshaller<com.kryptnostic.crypto.PrivateKey>(
