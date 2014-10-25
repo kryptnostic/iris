@@ -59,7 +59,8 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
 
-        Mockito.when( context.getSecurityService() ).thenReturn( new IrisConnection( userKey, "test" ) );
+        Mockito.when( context.getSecurityService() ).thenReturn(
+                new IrisConnection( kodex, crypto, userKey, null, null ) );
 
         storageService = new DefaultStorageClient( context, documentApi, metadataApi );
 

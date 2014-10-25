@@ -3,6 +3,7 @@ package com.kryptnostic.api.v1.client;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
@@ -13,6 +14,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.InvalidParameterSpecException;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -26,9 +28,9 @@ import org.junit.Test;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.kryptnostic.BaseSerializationTest;
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
+import com.kryptnostic.directory.v1.KeyApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -37,9 +39,10 @@ import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
+import com.kryptnostic.storage.v1.models.request.AesEncryptableBase;
 import com.kryptnostic.users.v1.UserKey;
 
-public class DefaultKryptnosticClientTests extends BaseSerializationTest {
+public class DefaultKryptnosticClientTests extends AesEncryptableBase {
 
     private KryptnosticClient          client;
     private KryptnosticServicesFactory factory;
@@ -49,7 +52,11 @@ public class DefaultKryptnosticClientTests extends BaseSerializationTest {
     public WireMockRule                wireMockRule = new WireMockRule( 9990 );
 
     @Before
-    public void initClient() throws IrisException {
+    public void initClient() throws IrisException, InvalidKeyException, NoSuchAlgorithmException,
+            InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException,
+            InvalidKeySpecException, InvalidParameterSpecException, SealedKodexException, IOException {
+        initImplicitEncryption();
+        generateKeyStubs();
 
         securityService = new IrisConnection(
                 "http://localhost:9990",
@@ -101,6 +108,16 @@ public class DefaultKryptnosticClientTests extends BaseSerializationTest {
         String response = wrap( "true" );
         stubFor( get( urlEqualTo( SearchFunctionApi.SEARCH_FUNCTION + "/hasher" ) ).willReturn(
                 aResponse().withBody( response ) ) );
+    }
+
+    private void generateKeyStubs() {
+        stubFor( get( urlEqualTo( KeyApi.CONTROLLER + KeyApi.PUBLIC_KEY ) ).willReturn( aResponse().withBody( "" ) ) );
+        stubFor( get( urlEqualTo( KeyApi.CONTROLLER + KeyApi.PRIVATE_KEY ) ).willReturn( aResponse().withBody( "" ) ) );
+        stubFor( get( urlEqualTo( KeyApi.CONTROLLER + KeyApi.KODEX ) ).willReturn( aResponse().withBody( "" ) ) );
+
+        stubFor( put( urlEqualTo( KeyApi.CONTROLLER + KeyApi.PUBLIC_KEY ) ).willReturn( aResponse().withBody( "" ) ) );
+        stubFor( put( urlEqualTo( KeyApi.CONTROLLER + KeyApi.PRIVATE_KEY ) ).willReturn( aResponse().withBody( "" ) ) );
+        stubFor( put( urlEqualTo( KeyApi.CONTROLLER + KeyApi.KODEX ) ).willReturn( aResponse().withBody( "" ) ) );
     }
 
     private String wrap( String serialize ) {
