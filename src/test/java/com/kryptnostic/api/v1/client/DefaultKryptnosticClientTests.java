@@ -19,12 +19,12 @@ import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.kryptnostic.BaseSerializationTest;
-import com.kryptnostic.api.v1.security.InMemorySecurityService;
+import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.kodex.v1.security.SecurityService;
+import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
@@ -34,14 +34,14 @@ public class DefaultKryptnosticClientTests extends BaseSerializationTest {
 
     private KryptnosticClient          client;
     private KryptnosticServicesFactory factory;
-    private SecurityService            securityService;
+    private KryptnosticConnection            securityService;
 
     @Rule
     public WireMockRule                wireMockRule = new WireMockRule( 9990 );
 
     @Before
     public void initClient() {
-        securityService = new InMemorySecurityService( new UserKey( "krypt", "sina" ), "test" );
+        securityService = new IrisConnection( new UserKey( "krypt", "sina" ), "test" );
         factory = new DefaultKryptnosticServicesFactory( KryptnosticRestAdapter.createWithDefaultClient(
                 "http://localhost:9990",
                 securityService ) );

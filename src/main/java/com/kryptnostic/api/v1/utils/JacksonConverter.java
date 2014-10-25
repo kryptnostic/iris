@@ -16,7 +16,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kryptnostic.kodex.v1.security.SecurityConfigurationMapping;
+import com.kryptnostic.crypto.v1.keys.Kodex;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 
 /**
@@ -29,7 +29,11 @@ public class JacksonConverter implements Converter {
 
     private final ObjectMapper  objectMapper;
 
-    public JacksonConverter( SecurityConfigurationMapping securityConfig ) {
+    public JacksonConverter() {
+        this.objectMapper = KodexObjectMapperFactory.getObjectMapper();
+    }
+    
+    public JacksonConverter( Kodex<String> securityConfig ) {
         this.objectMapper = KodexObjectMapperFactory.getObjectMapper( securityConfig );
     }
 

@@ -24,6 +24,7 @@ import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
+import com.kryptnostic.crypto.v1.keys.Kodex;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -37,8 +38,7 @@ import com.kryptnostic.kodex.v1.models.AesEncryptable;
 import com.kryptnostic.kodex.v1.models.Encryptable;
 import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils;
 import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils.VerifiedStringBlocks;
-import com.kryptnostic.kodex.v1.security.SecurityConfigurationMapping;
-import com.kryptnostic.kodex.v1.security.SecurityService;
+import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.sharing.v1.DocumentId;
 import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.client.DocumentApi;
@@ -67,15 +67,17 @@ public class DefaultStorageClient implements StorageClient {
     private final KryptnosticContext context;
     private final MetadataMapper     metadataMapper;
     private final Indexer            indexer;
-    private final SecurityService    securityService;
+    private final KryptnosticConnection    securityService;
+    private final Kodex<String> kodex;
 
-    public DefaultStorageClient( KryptnosticContext context, DocumentApi documentApi, MetadataApi metadataApi ) {
+    public DefaultStorageClient( KryptnosticContext context, DocumentApi documentApi, MetadataApi metadataApi , Kodex<String> kodex ) {
         this.context = context;
         this.documentApi = documentApi;
         this.metadataApi = metadataApi;
         this.securityService = context.getSecurityService();
         this.metadataMapper = new PaddedMetadataMapper( context );
         this.indexer = new SimpleIndexer( securityService.getUserKey() );
+        this.kodex = kodex;
     }
 
     @Override
@@ -141,13 +143,11 @@ public class DefaultStorageClient implements StorageClient {
         Map<Integer, List<DocumentBlock>> encrypted = documentApi.getDocumentFragments( id.toString(), fragmentRequest )
                 .getData();
 
-        SecurityConfigurationMapping mapping = this.securityService.getSecurityConfigurationMapping();
-
         for ( Entry<Integer, List<DocumentBlock>> e : encrypted.entrySet() ) {
             String preview = "";
             for ( DocumentBlock block : e.getValue() ) {
                 try {
-                    preview += block.getBlock().decrypt( mapping ).getData();
+                    preview += block.getBlock().decrypt( kodex ).getData();
                 } catch ( JsonParseException e1 ) {
                     throw new IrisException( e1 );
                 } catch ( JsonMappingException e1 ) {
@@ -174,9 +174,8 @@ public class DefaultStorageClient implements StorageClient {
     private VerifiedStringBlocks createVerifiedBlocks( String documentBody ) throws SecurityConfigurationException,
             IrisException {
         VerifiedStringBlocks verified = null;
-        SecurityConfigurationMapping mapping = this.securityService.getSecurityConfigurationMapping();
         try {
-            verified = AesEncryptableUtils.chunkStringWithVerification( documentBody, mapping );
+            verified = AesEncryptableUtils.chunkStringWithVerification( documentBody, kodex );
         } catch ( IOException e ) {
             throw new IrisException( e );
         } catch ( ClassNotFoundException e ) {

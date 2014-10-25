@@ -1,11 +1,21 @@
 package com.kryptnostic.api.v1.client;
 
+import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
 import com.kryptnostic.api.v1.search.DefaultSearchClient;
 import com.kryptnostic.api.v1.storage.DefaultStorageClient;
+import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
@@ -14,7 +24,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.security.SecurityService;
+import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.sharing.v1.DocumentId;
@@ -27,8 +37,17 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     private final StorageClient      storageClient;
     private final KryptnosticContext context;
 
-    public DefaultKryptnosticClient( KryptnosticServicesFactory factory, SecurityService securityService ) throws IrisException,
-            ResourceNotFoundException {
+    public DefaultKryptnosticClient( KryptnosticServicesFactory factory, KryptnosticConnection securityService ) throws IrisException,
+            ResourceNotFoundException,
+            InvalidKeyException,
+            InvalidAlgorithmParameterException,
+            NoSuchAlgorithmException,
+            NoSuchPaddingException,
+            InvalidKeySpecException,
+            IllegalBlockSizeException,
+            BadPaddingException,
+            SealedKodexException,
+            IOException {
         this.context = new DefaultKryptnosticContext(
                 factory.createSearchFunctionApi(),
                 factory.createSharingApi(),
@@ -38,7 +57,8 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
         this.storageClient = new DefaultStorageClient(
                 context,
                 factory.createDocumentApi(),
-                factory.createMetadataApi() );
+                factory.createMetadataApi(),
+                securityService.getKodex() );
         this.searchClient = new DefaultSearchClient( context, factory.createSearchApi() );
     }
 

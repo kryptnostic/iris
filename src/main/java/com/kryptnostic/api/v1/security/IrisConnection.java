@@ -1,0 +1,159 @@
+package com.kryptnostic.api.v1.security;
+
+import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.InvalidParameterSpecException;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
+import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
+import com.kryptnostic.crypto.v1.ciphers.CryptoService;
+import com.kryptnostic.crypto.v1.ciphers.Cypher;
+import com.kryptnostic.crypto.v1.keys.JacksonKodexMarshaller;
+import com.kryptnostic.crypto.v1.keys.Keys;
+import com.kryptnostic.crypto.v1.keys.Kodex;
+import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
+import com.kryptnostic.crypto.v1.keys.PublicKeyAlgorithm;
+import com.kryptnostic.directory.v1.KeyApi;
+import com.kryptnostic.directory.v1.response.PublicKeyEnvelope;
+import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
+import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
+import com.kryptnostic.kodex.v1.storage.DataStore;
+import com.kryptnostic.users.v1.UserKey;
+
+public class IrisConnection implements KryptnosticConnection {
+    private Kodex<String>           kodex;
+    private transient CryptoService cryptoService;
+    private final UserKey           userKey;
+    private final String            userCredential;
+    
+    private final String url;
+
+    public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore ) throws JsonParseException,
+            JsonMappingException,
+            IOException,
+            NoSuchAlgorithmException,
+            InvalidKeyException,
+            InvalidKeySpecException,
+            NoSuchPaddingException,
+            IllegalBlockSizeException,
+            BadPaddingException,
+            InvalidParameterSpecException,
+            SealedKodexException,
+            InvalidAlgorithmParameterException {
+        
+        //
+        // CryptoService cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, new BigInteger(
+        // 130,
+        // new SecureRandom() ).toString( 32 ).toCharArray() );
+        //
+        // this.mapping = new SecurityConfigurationMapping().add( FheEncryptable.class, fhePub )
+        // .add( FheEncryptable.class, fhePrv ).add( AesEncryptable.class, cryptoService );
+        this.cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, userCredential.toCharArray() );
+        ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
+
+        KeyApi keyService = KryptnosticRestAdapter.createWithDefaultJacksonConverter( url, userKey, userCredential ).create(
+                KeyApi.class );
+
+        BlockCiphertext encryptedPrivateKey = mapper.readValue(
+                dataStore.get( PrivateKey.class.getCanonicalName().getBytes() ),
+                BlockCiphertext.class );
+
+        if ( encryptedPrivateKey == null ) {
+            encryptedPrivateKey = keyService.getPrivateKey();
+            if ( encryptedPrivateKey == null ) {
+                KeyPair pair = Keys.generateRsaKeyPair( 1024 );
+                encryptedPrivateKey = cryptoService.encrypt( pair.getPrivate().getEncoded() );
+                keyService.setPrivateKey( encryptedPrivateKey );
+                keyService.setPublicKey( new PublicKeyEnvelope( pair.getPublic().getEncoded() ) );
+                dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pair.getPublic().getEncoded() );
+            }
+            dataStore.put(
+                    PrivateKey.class.getCanonicalName().getBytes(),
+                    mapper.writeValueAsBytes( encryptedPrivateKey ) );
+        }
+
+        PublicKey publicKey = Keys.publicKeyFromBytes(
+                PublicKeyAlgorithm.RSA,
+                keyService.getPublicKey( userKey.getRealm(), userKey.getName() ).getBytes() );
+
+        Kodex<String> kodex = mapper.readValue(
+                dataStore.get( Kodex.class.getCanonicalName().getBytes() ),
+                new TypeReference<Kodex<String>>() {} );
+
+        if ( kodex == null ) {
+            kodex = keyService.getKodex();
+            if ( kodex == null ) {
+                com.kryptnostic.crypto.PrivateKey fhePrv = new com.kryptnostic.crypto.PrivateKey( 128, 64 );
+                com.kryptnostic.crypto.PublicKey fhePub = new com.kryptnostic.crypto.PublicKey( fhePrv );
+                kodex = new Kodex<String>( Cypher.AES_CTR_PKCS5_128, Cypher.RSA_OAEP_SHA1_1024, publicKey );
+                kodex.setKey(
+                        com.kryptnostic.crypto.PrivateKey.class.getCanonicalName(),
+                        new JacksonKodexMarshaller<com.kryptnostic.crypto.PrivateKey>(
+                                com.kryptnostic.crypto.PrivateKey.class ),
+                        fhePrv );
+                kodex.setKey(
+                        com.kryptnostic.crypto.PublicKey.class.getCanonicalName(),
+                        new JacksonKodexMarshaller<com.kryptnostic.crypto.PublicKey>(
+                                com.kryptnostic.crypto.PublicKey.class ),
+                        fhePub );
+            }
+            dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
+        }
+
+        PrivateKey privateKey = Keys.privateKeyFromBytes(
+                PublicKeyAlgorithm.RSA,
+                cryptoService.decryptBytes( encryptedPrivateKey ) );
+        kodex.unseal( privateKey );
+        this.userCredential = userCredential;
+        this.userKey = userKey;
+        this.url = url;
+    }
+
+    @Override
+    public String getUserCredential() {
+        return userCredential;
+    }
+
+    @Override
+    public UserKey getUserKey() {
+        return userKey;
+    }
+
+    @Override
+    public PrivateKey decryptPrivateKey( BlockCiphertext encryptedPrivateKey ) throws InvalidKeyException,
+            InvalidKeySpecException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
+            NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
+        return Keys.privateKeyFromBytes( PublicKeyAlgorithm.RSA, cryptoService.decryptBytes( encryptedPrivateKey ) );
+    }
+
+    @Override
+    public BlockCiphertext encryptPrivateKey( PrivateKey privateKey ) throws InvalidKeyException,
+            InvalidKeySpecException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException,
+            BadPaddingException, InvalidParameterSpecException {
+        return cryptoService.encrypt( privateKey.getEncoded() );
+    }
+
+    @Override
+    public Kodex<String> getKodex() {
+        return kodex;
+    }
+
+    @Override
+    public String getUrl() {
+        return url;
+    }
+}

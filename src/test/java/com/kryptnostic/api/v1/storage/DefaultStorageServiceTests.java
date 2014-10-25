@@ -8,7 +8,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.springframework.http.HttpStatus;
 
-import com.kryptnostic.api.v1.security.InMemorySecurityService;
+import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -45,7 +45,7 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
 
-        Mockito.when( context.getSecurityService() ).thenReturn( new InMemorySecurityService( userKey, "test" ) );
+        Mockito.when( context.getSecurityService() ).thenReturn( new IrisConnection( userKey, "test" ) );
 
         storageService = new DefaultStorageClient( context, documentApi, metadataApi );
 

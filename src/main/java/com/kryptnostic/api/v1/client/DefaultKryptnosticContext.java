@@ -1,5 +1,15 @@
 package com.kryptnostic.api.v1.client;
 
+import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,13 +25,14 @@ import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
+import com.kryptnostic.crypto.v1.keys.JacksonKodexMarshaller;
+import com.kryptnostic.crypto.v1.keys.Kodex;
+import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.directory.v1.KeyApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.kodex.v1.models.FheEncryptable;
-import com.kryptnostic.kodex.v1.security.SecurityConfigurationMapping;
-import com.kryptnostic.kodex.v1.security.SecurityService;
+import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
@@ -41,7 +52,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private final PrivateKey                fhePrivateKey;
     private final PublicKey                 fhePublicKey;
     private final EncryptedSearchPrivateKey encryptedSearchPrivateKey;
-    private final SecurityService           securityService;
+    private final KryptnosticConnection         securityService;
 
     private SimplePolynomialFunction        globalHashFunction;
     private boolean                         queryHasherPairSubmitted;
@@ -56,23 +67,34 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             SearchFunctionApi searchFunctionClient,
             SharingApi sharingClient,
             KeyApi keyClient,
-            SecurityService securityService ) throws IrisException, ResourceNotFoundException {
+            KryptnosticConnection securityService ) throws IrisException,
+            ResourceNotFoundException,
+            InvalidKeyException,
+            InvalidAlgorithmParameterException,
+            NoSuchAlgorithmException,
+            NoSuchPaddingException,
+            InvalidKeySpecException,
+            IllegalBlockSizeException,
+            BadPaddingException,
+            SealedKodexException,
+            IOException {
         this.searchFunctionClient = searchFunctionClient;
         this.sharingClient = sharingClient;
         this.keyClient = keyClient;
         this.securityService = securityService;
 
-        SecurityConfigurationMapping mapping = this.securityService.getSecurityConfigurationMapping();
-
-        this.mapper = KodexObjectMapperFactory.getObjectMapper( mapping );
-
+        Kodex<String> mapping = securityService.getKodex();
         if ( mapping == null ) {
             throw new IrisException(
                     "Security mapping was null and no keys could be found, the DefaultKryptnosticContext cannot be initialized without these keys" );
         }
+        this.mapper = KodexObjectMapperFactory.getObjectMapper( mapping );
 
-        this.fhePrivateKey = mapping.get( FheEncryptable.class, PrivateKey.class );
-        this.fhePublicKey = mapping.get( FheEncryptable.class, PublicKey.class );
+        this.fhePrivateKey = mapping.getKey(
+                PrivateKey.class.getCanonicalName(),
+                new JacksonKodexMarshaller<PrivateKey>( PrivateKey.class ) );
+        this.fhePublicKey = mapping.getKey( PublicKey.class.getCanonicalName(), new JacksonKodexMarshaller<PublicKey>(
+                PublicKey.class ) );
 
         if ( this.fhePrivateKey == null || this.fhePublicKey == null ) {
             throw new IrisException(
@@ -87,11 +109,10 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         this.globalHashFunction = getGlobalHashFunction();
         queryHasherPairSubmitted = false;
         ensureQueryHasherPairSet( globalHashFunction );
-
     }
 
     @Override
-    public SecurityService getSecurityService() {
+    public KryptnosticConnection getSecurityService() {
         return this.securityService;
     }
 
