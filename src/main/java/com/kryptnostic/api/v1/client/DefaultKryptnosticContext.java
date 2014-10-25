@@ -128,8 +128,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
         try {
             if ( storedSearchPrivateKey == null ) {
-                this.encryptedSearchPrivateKey = new EncryptedSearchPrivateKey( fhePublicKey.getEncrypter()
-                        .getInputLength(), (int) Math.sqrt( globalHashFunction.getInputLength() ) );
+                this.encryptedSearchPrivateKey = new EncryptedSearchPrivateKey( (int) Math.sqrt( globalHashFunction.getOutputLength() ) );
                 kodex.setKeyWithJackson(
                         EncryptedSearchPrivateKey.class.getCanonicalName(),
                         storedSearchPrivateKey,
