@@ -40,8 +40,20 @@ public class IrisConnection implements KryptnosticConnection {
     private transient CryptoService cryptoService;
     private final UserKey           userKey;
     private final String            userCredential;
-
     private final String            url;
+
+    public IrisConnection(
+            Kodex<String> kodex,
+            CryptoService cryptoService,
+            UserKey userKey,
+            String userCredential,
+            String url ) {
+        this.kodex = kodex;
+        this.cryptoService = cryptoService;
+        this.userKey = userKey;
+        this.userCredential = userCredential;
+        this.url = url;
+    }
 
     public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore ) throws IrisException {
         this.cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, userCredential.toCharArray() );
