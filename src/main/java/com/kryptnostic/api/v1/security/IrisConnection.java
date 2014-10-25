@@ -146,17 +146,45 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     @Override
-    public PrivateKey decryptPrivateKey( BlockCiphertext encryptedPrivateKey ) throws InvalidKeyException,
-            InvalidKeySpecException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
-            NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
-        return Keys.privateKeyFromBytes( PublicKeyAlgorithm.RSA, cryptoService.decryptBytes( encryptedPrivateKey ) );
+    public PrivateKey decryptPrivateKey( BlockCiphertext encryptedPrivateKey ) throws IrisException {
+        try {
+            return Keys.privateKeyFromBytes( PublicKeyAlgorithm.RSA, cryptoService.decryptBytes( encryptedPrivateKey ) );
+        } catch ( InvalidKeyException e ) {
+            throw new IrisException( e );
+        } catch ( InvalidKeySpecException e ) {
+            throw new IrisException( e );
+        } catch ( NoSuchAlgorithmException e ) {
+            throw new IrisException( e );
+        } catch ( InvalidAlgorithmParameterException e ) {
+            throw new IrisException( e );
+        } catch ( NoSuchPaddingException e ) {
+            throw new IrisException( e );
+        } catch ( IllegalBlockSizeException e ) {
+            throw new IrisException( e );
+        } catch ( BadPaddingException e ) {
+            throw new IrisException( e );
+        }
     }
 
     @Override
-    public BlockCiphertext encryptPrivateKey( PrivateKey privateKey ) throws InvalidKeyException,
-            InvalidKeySpecException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException,
-            BadPaddingException, InvalidParameterSpecException {
-        return cryptoService.encrypt( privateKey.getEncoded() );
+    public BlockCiphertext encryptPrivateKey( PrivateKey privateKey ) throws IrisException {
+        try {
+            return cryptoService.encrypt( privateKey.getEncoded() );
+        } catch ( InvalidKeyException e ) {
+            throw new IrisException( e );
+        } catch ( InvalidKeySpecException e ) {
+            throw new IrisException( e );
+        } catch ( NoSuchAlgorithmException e ) {
+            throw new IrisException( e );
+        } catch ( NoSuchPaddingException e ) {
+            throw new IrisException( e );
+        } catch ( IllegalBlockSizeException e ) {
+            throw new IrisException( e );
+        } catch ( BadPaddingException e ) {
+            throw new IrisException( e );
+        } catch ( InvalidParameterSpecException e ) {
+            throw new IrisException( e );
+        }
     }
 
     @Override
