@@ -21,7 +21,7 @@ public class FileStore implements DataStore {
 
     public FileStore(String name) {
         this.rootDirectory = new File("kryptnostic", name);
-        this.rootDirectory.mkdir();
+        this.rootDirectory.mkdirs();
     }
 
     @Override
