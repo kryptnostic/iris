@@ -18,6 +18,7 @@ import java.net.URLEncoder;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
 
@@ -68,7 +69,7 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
     public void initClient() throws IrisException, InvalidKeyException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException,
             InvalidKeySpecException, InvalidParameterSpecException, SealedKodexException, IOException,
-            ResourceNotFoundException {
+            ResourceNotFoundException, SignatureException, Exception {
         if ( client == null ) {
             initImplicitEncryption();
             initFheEncryption();

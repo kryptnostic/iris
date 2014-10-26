@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
 
@@ -47,7 +48,7 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
     @Before
     public void setup() throws InvalidKeyException, IllegalBlockSizeException, BadPaddingException,
             NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException, InvalidParameterSpecException,
-            InvalidAlgorithmParameterException, SealedKodexException, IOException {
+            InvalidAlgorithmParameterException, SealedKodexException, IOException, SignatureException, Exception {
         userKey = new UserKey( "krypt", "sina" );
         initImplicitEncryption();
     }

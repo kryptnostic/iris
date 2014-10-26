@@ -75,7 +75,7 @@ public class IrisConnection implements KryptnosticConnection {
         try {
             PrivateKey privateKey = loadOrCreatePrivateKey( keyService, dataStore, cryptoService );
             PublicKey publicKey = loadOrCreatePublicKey( keyService, dataStore, cryptoService, userKey );
-            k = loadOrCreateKodex( keyService, dataStore, cryptoService, publicKey, privateKey );
+            k = loadOrCreateUnsealedKodex( keyService, dataStore, cryptoService, publicKey, privateKey );
             k.unseal( privateKey );
         } catch ( Exception e ) {
             wrapException( e );
@@ -223,7 +223,7 @@ public class IrisConnection implements KryptnosticConnection {
         }
     }
 
-    public static Kodex<String> loadOrCreateKodex(
+    public static Kodex<String> loadOrCreateUnsealedKodex(
             KeyApi keyService,
             DataStore dataStore,
             CryptoService crypto,
@@ -239,10 +239,11 @@ public class IrisConnection implements KryptnosticConnection {
                 watch.reset();watch.start();
                 kodex = mapper.readValue( kodexBytes, new TypeReference<Kodex<String>>() {} );
                 logger.debug( "Time to deserialize kodex from disk: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+                kodex.verify( publicKey );
             } else {
                 watch.reset();watch.start();
                 kodex = keyService.getKodex();
-                logger.error( "Time to load kodex from service: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+                logger.debug( "Time to load kodex from service: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
                 if ( kodex == null ) {
                     kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_PKCS5_128, publicKey );
                     kodex.unseal( privateKey );
@@ -260,10 +261,14 @@ public class IrisConnection implements KryptnosticConnection {
                             fhePub );
                     kodex.setKey( CryptoService.class.getCanonicalName(), new JacksonKodexMarshaller<CryptoService>(
                             CryptoService.class ), crypto );
+                    //trigger recomputation of signature
+                    kodex.updateSignature();
+                    kodex.verify( publicKey ); 
+                        
                     watch.reset();watch.start();
                     keyService.setKodex( kodex );
                     logger.debug( "Time to write kodex to service: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-                }
+                } 
                 watch.reset();watch.start();
                 dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
                 logger.debug( "Time to load kodex from service: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
