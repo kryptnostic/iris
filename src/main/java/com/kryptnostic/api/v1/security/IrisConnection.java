@@ -248,6 +248,7 @@ public class IrisConnection implements KryptnosticConnection {
                 }
                 watch.reset();
                 watch.start();
+                kodex.unseal( privateKey );
                 dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
                 logger.debug( "Time to load kodex from service: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
             }
