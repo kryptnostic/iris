@@ -37,6 +37,7 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
+import com.kryptnostic.directory.v1.KeyApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
@@ -83,9 +84,15 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
             // set up http stubs for getting global hasher and checking query pair
             expectedGlobalHasher = generateGlobalHasherStub();
             generateQueryHasherPairStub();
+            generateKodexStubs();
 
             client = new DefaultKryptnosticClient( factory, connection );
         }
+    }
+
+    private void generateKodexStubs() throws JsonGenerationException, JsonMappingException, IOException {
+        stubFor( put( urlMatching( KeyApi.CONTROLLER + KeyApi.KODEX ) ).willReturn(
+                jsonResponse( serialize( new BasicResponse<String>( "", 200, true ) ) ) ) );
     }
 
     @Test
