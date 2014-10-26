@@ -43,7 +43,7 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     }
 
     @Override
-    public Collection<SearchResult> search( String query ) throws IrisException {
+    public Collection<SearchResult> search( String query ) {
         return searchClient.search( query );
     }
 

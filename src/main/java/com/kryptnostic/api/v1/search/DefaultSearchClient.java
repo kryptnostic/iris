@@ -45,7 +45,7 @@ public class DefaultSearchClient implements SearchClient {
      * @throws IrisException
      */
     @Override
-    public Collection<SearchResult> search( String query ) throws IrisException {
+    public Collection<SearchResult> search( String query ) {
         List<String> tokens = analyzeQuery( query );
         SearchRequest searchRequest = generateSearchRequest( tokens );
 
@@ -58,7 +58,7 @@ public class DefaultSearchClient implements SearchClient {
      * @return List<BitVector> of search tokens, the ciphertext to be submitted to KryptnosticSearch.
      * @throws IrisException
      */
-    private SearchRequest generateSearchRequest( List<String> tokens ) throws IrisException {
+    private SearchRequest generateSearchRequest( List<String> tokens ) {
         Preconditions.checkArgument( tokens != null, "Cannot pass null tokens param." );
 
         Collection<BitVector> searchTokens = Lists.newArrayList();

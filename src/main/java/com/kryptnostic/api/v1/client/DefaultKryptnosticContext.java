@@ -116,7 +116,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                     throw new IrisException( e );
                 }
             }
-            if( kodex.isDirty() ) {
+            if ( kodex.isDirty() ) {
                 Stopwatch watch = Stopwatch.createStarted();
                 keyClient.setKodex( kodex );
                 logger.debug( "Time to write kodex to service: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
@@ -250,12 +250,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public BitVector prepareSearchToken( String token ) throws IrisException {
-        try {
-            return encryptedSearchPrivateKey.prepareSearchToken( fhePublicKey, token );
-        } catch ( SingularMatrixException e ) {
-            throw new IrisException( e );
-        }
+    public BitVector prepareSearchToken( String token ) {
+        return encryptedSearchPrivateKey.prepareSearchToken( fhePublicKey, token );
     }
 
     public static EncryptedSearchPrivateKey loadOrCreateEncryptedSearchPrivateKey(
