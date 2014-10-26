@@ -9,15 +9,19 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
+import java.util.concurrent.TimeUnit;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Stopwatch;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
-import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
 import com.kryptnostic.crypto.v1.ciphers.CryptoService;
 import com.kryptnostic.crypto.v1.ciphers.Cypher;
@@ -34,6 +38,7 @@ import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.users.v1.UserKey;
 
 public class IrisConnection implements KryptnosticConnection {
+    private static final Logger logger = LoggerFactory.getLogger( KryptnosticConnection.class );
     private final Kodex<String>     kodex;
     private transient CryptoService cryptoService;
     private final UserKey           userKey;
@@ -157,22 +162,39 @@ public class IrisConnection implements KryptnosticConnection {
         try {
             ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
             BlockCiphertext encryptedPrivateKey;
+            Stopwatch watch = Stopwatch.createStarted();
             byte[] privateKeyCiphertext = dataStore.get( PrivateKey.class.getCanonicalName().getBytes() );
+            logger.debug( "Time to load private key from disk: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
             if ( privateKeyCiphertext != null ) {
+                watch.reset();watch.start();
                 encryptedPrivateKey = mapper.readValue( privateKeyCiphertext, BlockCiphertext.class );
+                logger.debug( "Time to load private key from disk: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
             } else {
+                watch.reset();watch.start();
                 encryptedPrivateKey = keyService.getPrivateKey();
+                logger.debug( "Time to load private key from disk: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
                 if ( encryptedPrivateKey == null ) {
                     KeyPair pair = Keys.generateRsaKeyPair( 1024 );
                     encryptedPrivateKey = crypto.encrypt( pair.getPrivate().getEncoded() );
+                
+                    watch.reset();watch.start();
                     keyService.setPrivateKey( encryptedPrivateKey );
+                    logger.debug( "Time to upload private key to service: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+                    watch.reset();watch.start();
                     keyService.setPublicKey( new PublicKeyEnvelope( pair.getPublic().getEncoded() ) );
+                    logger.debug( "Time to upload public key to service: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
+                    
+                    watch.reset();watch.start();
                     dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pair.getPublic().getEncoded() );
+                    logger.debug( "Time to write public key to file: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
                 }
+                watch.reset();watch.start();
                 // Always write the private key to local storage
                 dataStore.put(
                         PrivateKey.class.getCanonicalName().getBytes(),
                         mapper.writeValueAsBytes( encryptedPrivateKey ) );
+                logger.debug( "Time to write private key to file: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
             }
             return Keys.privateKeyFromBytes( PublicKeyAlgorithm.RSA, crypto.decryptBytes( encryptedPrivateKey ) );
         } catch ( Exception e ) {
@@ -210,12 +232,17 @@ public class IrisConnection implements KryptnosticConnection {
         Kodex<String> kodex;
         try {
             ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
+            Stopwatch watch = Stopwatch.createStarted();
             byte[] kodexBytes = dataStore.get( Kodex.class.getCanonicalName().getBytes() );
-
+            logger.debug( "Time to load kodex from disk: {} ,s", watch.elapsed( TimeUnit.MILLISECONDS ) );
             if ( kodexBytes != null ) {
+                watch.reset();watch.start();
                 kodex = mapper.readValue( kodexBytes, new TypeReference<Kodex<String>>() {} );
+                logger.debug( "Time to deserialize kodex from disk: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
             } else {
+                watch.reset();watch.start();
                 kodex = keyService.getKodex();
+                logger.error( "Time to load kodex from service: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
                 if ( kodex == null ) {
                     kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_PKCS5_128, publicKey );
                     kodex.unseal( privateKey );
@@ -233,26 +260,19 @@ public class IrisConnection implements KryptnosticConnection {
                             fhePub );
                     kodex.setKey( CryptoService.class.getCanonicalName(), new JacksonKodexMarshaller<CryptoService>(
                             CryptoService.class ), crypto );
+                    watch.reset();watch.start();
                     keyService.setKodex( kodex );
+                    logger.debug( "Time to write kodex to service: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
                 }
+                watch.reset();watch.start();
                 dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
+                logger.debug( "Time to load kodex from service: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
             }
             return kodex;
         } catch ( Exception e ) {
             wrapException( e );
             return null;
         }
-    }
-
-    public static <T> void store( KeyApi keyService, DataStore dataStore, T encryptedSearchPrivateKey, Class<T> clazz ) {
-
-    }
-
-    public static void store(
-            KeyApi keyService,
-            DataStore dataStore,
-            EncryptedSearchPrivateKey encryptedSearchPrivateKey ) {
-
     }
 
     public static void wrapException( Exception e ) throws IrisException {
