@@ -37,7 +37,6 @@ import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.models.AesEncryptable;
 import com.kryptnostic.kodex.v1.models.Encryptable;
 import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils;
-import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils.VerifiedString;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.sharing.v1.DocumentId;
 import com.kryptnostic.storage.v1.StorageClient;

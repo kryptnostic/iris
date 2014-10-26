@@ -5,6 +5,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.InvalidParameterSpecException;
 import java.util.concurrent.TimeUnit;
 
 import javax.crypto.BadPaddingException;
@@ -69,110 +70,58 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             SearchFunctionApi searchFunctionClient,
             SharingApi sharingClient,
             KeyApi keyClient,
-            KryptnosticConnection securityService ) throws IrisException, ResourceNotFoundException {
+            KryptnosticConnection securityService ) throws IrisException {
         this.searchFunctionClient = searchFunctionClient;
         this.sharingClient = sharingClient;
         this.keyClient = keyClient;
         this.securityService = securityService;
-
-        Kodex<String> kodex = securityService.getKodex();
-        if ( kodex == null ) {
-            throw new IrisException(
-                    "Security mapping was null and no keys could be found, the DefaultKryptnosticContext cannot be initialized without these keys" );
-        }
-        this.mapper = KodexObjectMapperFactory.getObjectMapper( kodex );
-        Stopwatch watch = Stopwatch.createStarted();
+        this.fhePublicKey = securityService.getPublicKey();
+        this.fhePrivateKey = securityService.getPrivateKey();
         try {
-            this.fhePrivateKey = kodex.getKey(
-                    PrivateKey.class.getCanonicalName(),
-                    new JacksonKodexMarshaller<PrivateKey>( PrivateKey.class ) );
-            logger.debug( "Time to unmarshall FHE private from kodex: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-            watch.reset();
-            watch.start();
-            this.fhePublicKey = kodex.getKey(
-                    PublicKey.class.getCanonicalName(),
-                    new JacksonKodexMarshaller<PublicKey>( PublicKey.class ) );
-            logger.debug( "Time to unmarshall FHE public from kodex: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-            if ( this.fhePrivateKey == null || this.fhePublicKey == null ) {
+            Kodex<String> kodex = securityService.getKodex();
+
+            if ( kodex == null ) {
                 throw new IrisException(
-                        "FHE keys not found, the DefaultKryptnosticContext cannot be initialized without these keys" );
+                        "Security mapping was null and no keys could be found, the DefaultKryptnosticContext cannot be initialized without these keys" );
             }
 
-        } catch ( InvalidKeyException e1 ) {
-            throw new IrisException( e1 );
-        } catch ( InvalidAlgorithmParameterException e1 ) {
-            throw new IrisException( e1 );
-        } catch ( NoSuchAlgorithmException e1 ) {
-            throw new IrisException( e1 );
-        } catch ( NoSuchPaddingException e1 ) {
-            throw new IrisException( e1 );
-        } catch ( InvalidKeySpecException e1 ) {
-            throw new IrisException( e1 );
-        } catch ( IllegalBlockSizeException e1 ) {
-            throw new IrisException( e1 );
-        } catch ( BadPaddingException e1 ) {
-            throw new IrisException( e1 );
-        } catch ( SealedKodexException e1 ) {
-            throw new IrisException( e1 );
-        } catch ( IOException e1 ) {
-            throw new IrisException( e1 );
-        }
-        watch.reset();
-        watch.start();
-        this.globalHashFunction = getGlobalHashFunction();
-        logger.debug( "Time to download global hash function from server: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-
-        EncryptedSearchPrivateKey storedSearchPrivateKey;
-        try {
-            watch.reset();
-            watch.start();
-            storedSearchPrivateKey = kodex.getKeyWithJackson(
-                    EncryptedSearchPrivateKey.class.getCanonicalName(),
-                    EncryptedSearchPrivateKey.class );
-            logger.debug(
-                    "Time to deserialize encrypted search private key from kodex: {} ms",
-                    watch.elapsed( TimeUnit.MILLISECONDS ) );
-        } catch ( Exception e ) {
-            throw new IrisException( e );
-        }
-
-        try {
-            if ( storedSearchPrivateKey == null ) {
+            this.mapper = KodexObjectMapperFactory.getObjectMapper( securityService.getKodex() );
+            SimplePolynomialFunction ghf = kodex.getKey(
+                    "global-hash-function",
+                    new JacksonKodexMarshaller<SimplePolynomialFunction>( SimplePolynomialFunction.class ) );
+            if ( ghf == null ) {
+                Stopwatch watch = Stopwatch.createStarted();
                 watch.reset();
                 watch.start();
-                this.encryptedSearchPrivateKey = new EncryptedSearchPrivateKey( (int) Math.sqrt( globalHashFunction
-                        .getOutputLength() ) );
+                this.globalHashFunction = getGlobalHashFunction();
                 logger.debug(
-                        "Time to generate new encrypted search private: {} ms",
+                        "Time to download global hash function from server: {} ms",
                         watch.elapsed( TimeUnit.MILLISECONDS ) );
+                kodex.setKey( "global-hash-function", new JacksonKodexMarshaller<SimplePolynomialFunction>(
+                        SimplePolynomialFunction.class ), globalHashFunction );
+            }
 
-                watch.reset();
-                watch.start();
-                kodex.setKeyWithJackson(
-                        EncryptedSearchPrivateKey.class.getCanonicalName(),
-                        storedSearchPrivateKey,
-                        EncryptedSearchPrivateKey.class );
-                logger.debug(
-                        "Time to serialized new encrypted search private to kodex: {} ms",
-                        watch.elapsed( TimeUnit.MILLISECONDS ) );
-                watch.reset();
+            encryptedSearchPrivateKey = loadOrCreateEncryptedSearchPrivateKey( kodex, this.globalHashFunction );
 
-            } else {
-                this.encryptedSearchPrivateKey = storedSearchPrivateKey;
+            queryHasherPairSubmitted = false;
+            ensureQueryHasherPairSet( globalHashFunction );
+            if ( kodex.isDirty() ) {
+                try {
+                    Stopwatch watch = Stopwatch.createStarted();
+                    securityService.flushKodex();
+                    logger.debug(
+                            "Time to flush kodex after context is configured: {} ms",
+                            watch.elapsed( TimeUnit.MILLISECONDS ) );
+                } catch ( IOException e ) {
+                    throw new IrisException( e );
+                }
+            }
+            if( kodex.isDirty() ) {
+                Stopwatch watch = Stopwatch.createStarted();
+                keyClient.setKodex( kodex );
+                logger.debug( "Time to write kodex to service: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
             }
         } catch ( Exception e ) {
-            throw new IrisException( e );
-        }
-
-        queryHasherPairSubmitted = false;
-        ensureQueryHasherPairSet( globalHashFunction );
-        try {
-            watch.start();
-            securityService.flushKodex();
-            logger.debug(
-                    "Time to flush kodex after writing new encrypted search private: {} ms",
-                    watch.elapsed( TimeUnit.MILLISECONDS ) );
-        } catch ( IOException e ) {
             throw new IrisException( e );
         }
     }
@@ -307,5 +256,43 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         } catch ( SingularMatrixException e ) {
             throw new IrisException( e );
         }
+    }
+
+    public static EncryptedSearchPrivateKey loadOrCreateEncryptedSearchPrivateKey(
+            Kodex<String> kodex,
+            SimplePolynomialFunction globalHashFunction ) throws InvalidKeyException, InvalidKeySpecException,
+            NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
+            InvalidParameterSpecException, SealedKodexException, IOException, SingularMatrixException,
+            InvalidAlgorithmParameterException {
+
+        EncryptedSearchPrivateKey storedSearchPrivateKey;
+        Stopwatch watch = Stopwatch.createStarted();
+        storedSearchPrivateKey = kodex.getKeyWithJackson(
+                EncryptedSearchPrivateKey.class.getCanonicalName(),
+                EncryptedSearchPrivateKey.class );
+        logger.debug(
+                "Time to deserialize encrypted search private key from kodex: {} ms",
+                watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+        if ( storedSearchPrivateKey == null ) {
+            watch.reset();
+            watch.start();
+            storedSearchPrivateKey = new EncryptedSearchPrivateKey( (int) Math.sqrt( globalHashFunction
+                    .getOutputLength() ) );
+            logger.debug( "Time to generate new encrypted search private: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+            watch.reset();
+            watch.start();
+            kodex.setKeyWithJackson(
+                    EncryptedSearchPrivateKey.class.getCanonicalName(),
+                    storedSearchPrivateKey,
+                    EncryptedSearchPrivateKey.class );
+            logger.debug(
+                    "Time to serialize new encrypted search private to kodex: {} ms",
+                    watch.elapsed( TimeUnit.MILLISECONDS ) );
+            watch.reset();
+
+        }
+        return storedSearchPrivateKey;
     }
 }

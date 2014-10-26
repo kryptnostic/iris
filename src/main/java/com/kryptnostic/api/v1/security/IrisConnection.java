@@ -9,6 +9,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import javax.crypto.BadPaddingException;
@@ -28,6 +29,7 @@ import com.kryptnostic.crypto.v1.ciphers.Cypher;
 import com.kryptnostic.crypto.v1.keys.JacksonKodexMarshaller;
 import com.kryptnostic.crypto.v1.keys.Keys;
 import com.kryptnostic.crypto.v1.keys.Kodex;
+import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.crypto.v1.keys.PublicKeyAlgorithm;
 import com.kryptnostic.directory.v1.KeyApi;
 import com.kryptnostic.directory.v1.response.PublicKeyEnvelope;
@@ -38,21 +40,23 @@ import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.users.v1.UserKey;
 
 public class IrisConnection implements KryptnosticConnection {
-    private static final Logger logger = LoggerFactory.getLogger( KryptnosticConnection.class );
-    private final Kodex<String>     kodex;
-    private transient CryptoService cryptoService;
-    private final UserKey           userKey;
-    private final String            userCredential;
-    private final String            url;
-    private final KeyApi            keyService;
-    private final DataStore         dataStore;
+    private static final Logger                     logger = LoggerFactory.getLogger( KryptnosticConnection.class );
+    private final Kodex<String>                     kodex;
+    private transient CryptoService                 cryptoService;
+    private final UserKey                           userKey;
+    private final String                            userCredential;
+    private final String                            url;
+    private final KeyApi                            keyService;
+    private final DataStore                         dataStore;
+    private final com.kryptnostic.crypto.PrivateKey fhePrivateKey;
+    private final com.kryptnostic.crypto.PublicKey  fhePublicKey;
 
     public IrisConnection(
             Kodex<String> kodex,
             CryptoService cryptoService,
             UserKey userKey,
             String userCredential,
-            String url ) {
+            String url ) throws IrisException {
         this.kodex = kodex;
         this.cryptoService = cryptoService;
         this.userKey = userKey;
@@ -60,10 +64,16 @@ public class IrisConnection implements KryptnosticConnection {
         this.url = url;
         this.keyService = null;
         this.dataStore = null;
+        try {
+            fhePrivateKey = getFhePrivateKey( kodex );
+            fhePublicKey = getFhePublicKey( kodex, fhePrivateKey );
+            verifyOrSetCryptoService( kodex, cryptoService );
+        } catch ( Exception e ) {
+            throw new IrisException( e );
+        }
     }
 
     public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore ) throws IrisException {
-        Kodex<String> k = null;
         this.cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, userCredential.toCharArray() );
         keyService = KryptnosticRestAdapter.createWithDefaultJacksonConverter( url, userKey, userCredential ).create(
                 KeyApi.class );
@@ -75,12 +85,13 @@ public class IrisConnection implements KryptnosticConnection {
         try {
             PrivateKey privateKey = loadOrCreatePrivateKey( keyService, dataStore, cryptoService );
             PublicKey publicKey = loadOrCreatePublicKey( keyService, dataStore, cryptoService, userKey );
-            k = loadOrCreateUnsealedKodex( keyService, dataStore, cryptoService, publicKey, privateKey );
-            k.unseal( privateKey );
+            kodex = loadOrCreateUnsealedKodex( keyService, dataStore, cryptoService, publicKey, privateKey );
+            verifyOrSetCryptoService( kodex, cryptoService );
+            fhePrivateKey = getFhePrivateKey( kodex );
+            fhePublicKey = getFhePublicKey( kodex, fhePrivateKey );
         } catch ( Exception e ) {
-            wrapException( e );
+            throw new IrisException( e );
         }
-        this.kodex = k;
         this.dataStore = dataStore;
     }
 
@@ -98,19 +109,7 @@ public class IrisConnection implements KryptnosticConnection {
     public PrivateKey decryptPrivateKey( BlockCiphertext encryptedPrivateKey ) throws IrisException {
         try {
             return Keys.privateKeyFromBytes( PublicKeyAlgorithm.RSA, cryptoService.decryptBytes( encryptedPrivateKey ) );
-        } catch ( InvalidKeyException e ) {
-            throw new IrisException( e );
-        } catch ( InvalidKeySpecException e ) {
-            throw new IrisException( e );
-        } catch ( NoSuchAlgorithmException e ) {
-            throw new IrisException( e );
-        } catch ( InvalidAlgorithmParameterException e ) {
-            throw new IrisException( e );
-        } catch ( NoSuchPaddingException e ) {
-            throw new IrisException( e );
-        } catch ( IllegalBlockSizeException e ) {
-            throw new IrisException( e );
-        } catch ( BadPaddingException e ) {
+        } catch ( Exception e ) {
             throw new IrisException( e );
         }
     }
@@ -119,19 +118,7 @@ public class IrisConnection implements KryptnosticConnection {
     public BlockCiphertext encryptPrivateKey( PrivateKey privateKey ) throws IrisException {
         try {
             return cryptoService.encrypt( privateKey.getEncoded() );
-        } catch ( InvalidKeyException e ) {
-            throw new IrisException( e );
-        } catch ( InvalidKeySpecException e ) {
-            throw new IrisException( e );
-        } catch ( NoSuchAlgorithmException e ) {
-            throw new IrisException( e );
-        } catch ( NoSuchPaddingException e ) {
-            throw new IrisException( e );
-        } catch ( IllegalBlockSizeException e ) {
-            throw new IrisException( e );
-        } catch ( BadPaddingException e ) {
-            throw new IrisException( e );
-        } catch ( InvalidParameterSpecException e ) {
+        } catch ( Exception e ) {
             throw new IrisException( e );
         }
     }
@@ -166,30 +153,36 @@ public class IrisConnection implements KryptnosticConnection {
             byte[] privateKeyCiphertext = dataStore.get( PrivateKey.class.getCanonicalName().getBytes() );
             logger.debug( "Time to load private key from disk: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
             if ( privateKeyCiphertext != null ) {
-                watch.reset();watch.start();
+                watch.reset();
+                watch.start();
                 encryptedPrivateKey = mapper.readValue( privateKeyCiphertext, BlockCiphertext.class );
                 logger.debug( "Time to load private key from disk: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
             } else {
-                watch.reset();watch.start();
+                watch.reset();
+                watch.start();
                 encryptedPrivateKey = keyService.getPrivateKey();
                 logger.debug( "Time to load private key from disk: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
                 if ( encryptedPrivateKey == null ) {
                     KeyPair pair = Keys.generateRsaKeyPair( 1024 );
                     encryptedPrivateKey = crypto.encrypt( pair.getPrivate().getEncoded() );
-                
-                    watch.reset();watch.start();
+
+                    watch.reset();
+                    watch.start();
                     keyService.setPrivateKey( encryptedPrivateKey );
                     logger.debug( "Time to upload private key to service: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-                    watch.reset();watch.start();
+                    watch.reset();
+                    watch.start();
                     keyService.setPublicKey( new PublicKeyEnvelope( pair.getPublic().getEncoded() ) );
                     logger.debug( "Time to upload public key to service: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
-                    
-                    watch.reset();watch.start();
+
+                    watch.reset();
+                    watch.start();
                     dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pair.getPublic().getEncoded() );
                     logger.debug( "Time to write public key to file: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
                 }
-                watch.reset();watch.start();
+                watch.reset();
+                watch.start();
                 // Always write the private key to local storage
                 dataStore.put(
                         PrivateKey.class.getCanonicalName().getBytes(),
@@ -236,52 +229,95 @@ public class IrisConnection implements KryptnosticConnection {
             byte[] kodexBytes = dataStore.get( Kodex.class.getCanonicalName().getBytes() );
             logger.debug( "Time to load kodex from disk: {} ,s", watch.elapsed( TimeUnit.MILLISECONDS ) );
             if ( kodexBytes != null ) {
-                watch.reset();watch.start();
+                watch.reset();
+                watch.start();
                 kodex = mapper.readValue( kodexBytes, new TypeReference<Kodex<String>>() {} );
                 logger.debug( "Time to deserialize kodex from disk: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
                 kodex.verify( publicKey );
+                kodex.unseal( privateKey );
             } else {
-                watch.reset();watch.start();
+                watch.reset();
+                watch.start();
                 kodex = keyService.getKodex();
                 logger.debug( "Time to load kodex from service: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
                 if ( kodex == null ) {
                     kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_PKCS5_128, publicKey );
                     kodex.unseal( privateKey );
-                    com.kryptnostic.crypto.PrivateKey fhePrv = new com.kryptnostic.crypto.PrivateKey( 128, 64 );
-                    com.kryptnostic.crypto.PublicKey fhePub = new com.kryptnostic.crypto.PublicKey( fhePrv );
-                    kodex.setKey(
-                            com.kryptnostic.crypto.PrivateKey.class.getCanonicalName(),
-                            new JacksonKodexMarshaller<com.kryptnostic.crypto.PrivateKey>(
-                                    com.kryptnostic.crypto.PrivateKey.class ),
-                            fhePrv );
-                    kodex.setKey(
-                            com.kryptnostic.crypto.PublicKey.class.getCanonicalName(),
-                            new JacksonKodexMarshaller<com.kryptnostic.crypto.PublicKey>(
-                                    com.kryptnostic.crypto.PublicKey.class ),
-                            fhePub );
-                    kodex.setKey( CryptoService.class.getCanonicalName(), new JacksonKodexMarshaller<CryptoService>(
-                            CryptoService.class ), crypto );
-                    //trigger recomputation of signature
                     kodex.updateSignature();
-                    kodex.verify( publicKey ); 
-                        
-                    watch.reset();watch.start();
-                    keyService.setKodex( kodex );
-                    logger.debug( "Time to write kodex to service: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-                } 
-                watch.reset();watch.start();
+                    kodex.verify( publicKey );
+                }
+                watch.reset();
+                watch.start();
                 dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( kodex ) );
                 logger.debug( "Time to load kodex from service: {}", watch.elapsed( TimeUnit.MILLISECONDS ) );
             }
             return kodex;
         } catch ( Exception e ) {
-            wrapException( e );
-            return null;
+            throw new IrisException( e );
+        }
+    }
+
+    public static com.kryptnostic.crypto.PrivateKey getFhePrivateKey( Kodex<String> kodex ) throws InvalidKeyException,
+            InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException,
+            InvalidKeySpecException, IllegalBlockSizeException, BadPaddingException, SealedKodexException, IOException {
+        Stopwatch watch = Stopwatch.createStarted();
+        com.kryptnostic.crypto.PrivateKey fhePrivateKey = kodex
+                .getKey(
+                        com.kryptnostic.crypto.PrivateKey.class.getCanonicalName(),
+                        new JacksonKodexMarshaller<com.kryptnostic.crypto.PrivateKey>(
+                                com.kryptnostic.crypto.PrivateKey.class ) );
+        if ( fhePrivateKey == null ) {
+            fhePrivateKey = new com.kryptnostic.crypto.PrivateKey( 128, 64 );
+            logger.debug( "Time to generate new FHE private from kodex: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        } else {
+            logger.debug( "Time to unmarshall FHE private from kodex: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        }
+        return fhePrivateKey;
+    }
+
+    public static com.kryptnostic.crypto.PublicKey getFhePublicKey(
+            Kodex<String> kodex,
+            com.kryptnostic.crypto.PrivateKey privateKey ) throws InvalidKeyException,
+            InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException,
+            InvalidKeySpecException, IllegalBlockSizeException, BadPaddingException, SealedKodexException, IOException {
+        Stopwatch watch = Stopwatch.createStarted();
+        com.kryptnostic.crypto.PublicKey fhePublicKey = kodex.getKey(
+                com.kryptnostic.crypto.PublicKey.class.getCanonicalName(),
+                new JacksonKodexMarshaller<com.kryptnostic.crypto.PublicKey>( com.kryptnostic.crypto.PublicKey.class ) );
+        if ( fhePublicKey == null ) {
+            fhePublicKey = new com.kryptnostic.crypto.PublicKey( privateKey );
+            logger.debug( "Time to generate new FHE public from kodex: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        } else {
+            logger.debug( "Time to unmarshall FHE public from kodex: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        }
+        return fhePublicKey;
+    }
+
+    public static void verifyOrSetCryptoService( Kodex<String> kodex, CryptoService service )
+            throws InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException,
+            NoSuchPaddingException, InvalidKeySpecException, IllegalBlockSizeException, BadPaddingException,
+            SealedKodexException, IOException, InvalidParameterSpecException, IrisException {
+        CryptoService cs = kodex.getKeyWithJackson( CryptoService.class.getCanonicalName(), CryptoService.class );
+        if ( cs == null ) {
+            kodex.setKey( CryptoService.class.getCanonicalName(), new JacksonKodexMarshaller<CryptoService>(
+                    CryptoService.class ), service );
+        } else if ( !Arrays.equals( cs.getPassword(), service.getPassword() ) ) {
+            throw new IrisException( "Crypto service mismatch-- password was changed without updating kodex properly." );
         }
     }
 
     public static void wrapException( Exception e ) throws IrisException {
         throw new IrisException( e );
+    }
+
+    @Override
+    public com.kryptnostic.crypto.PrivateKey getPrivateKey() {
+        return this.fhePrivateKey;
+    }
+
+    @Override
+    public com.kryptnostic.crypto.PublicKey getPublicKey() {
+        return this.fhePublicKey;
     }
 
 }
