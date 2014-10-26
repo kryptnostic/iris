@@ -37,7 +37,7 @@ import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.models.AesEncryptable;
 import com.kryptnostic.kodex.v1.models.Encryptable;
 import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils;
-import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils.VerifiedStringBlocks;
+import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils.VerifiedString;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.sharing.v1.DocumentId;
 import com.kryptnostic.storage.v1.StorageClient;
@@ -84,22 +84,22 @@ public class DefaultStorageClient implements StorageClient {
     public String uploadDocumentWithMetadata( String documentBody ) throws SecurityConfigurationException,
             IrisException, BadRequestException {
         // Figure out the number of blocks we're sending
-        VerifiedStringBlocks verified = createVerifiedBlocks( documentBody );
+        List<VerifiedString> verified = createVerifiedBlocks( documentBody );
 
         // Create a new pending document on the server
-        DocumentCreationRequest documentRequest = new DocumentCreationRequest( verified.getStrings().size() );
+        DocumentCreationRequest documentRequest = new DocumentCreationRequest( verified.size() );
         DocumentId documentId = documentApi.createPendingDocument( documentRequest ).getData();
 
         // Update this pending document with the necessary blocks to complete the upload
         // Also make sure metadata is uploaded
-        return updateDocumentWithMetadata( documentId, documentBody, verified );
+        return updateDocumentWithMetadata( documentId, documentBody );
     }
 
     @Override
     public String uploadDocumentWithoutMetadata( String documentBody ) throws BadRequestException,
             SecurityConfigurationException, IrisException {
-        VerifiedStringBlocks verified = createVerifiedBlocks( documentBody );
-        DocumentCreationRequest documentRequest = new DocumentCreationRequest( verified.getStrings().size() );
+        List<VerifiedString> verified = createVerifiedBlocks( documentBody );
+        DocumentCreationRequest documentRequest = new DocumentCreationRequest( verified.size() );
         String documentId = documentApi.createPendingDocument( documentRequest ).getData().getDocumentId();
         return updateDocumentWithoutMetadata( documentId, documentBody, verified );
     }
@@ -107,14 +107,13 @@ public class DefaultStorageClient implements StorageClient {
     @Override
     public String updateDocumentWithMetadata( String documentId, String documentBody )
             throws ResourceNotFoundException, BadRequestException, SecurityConfigurationException, IrisException {
-        VerifiedStringBlocks verified = createVerifiedBlocks( documentBody );
-        return updateDocumentWithMetadata( forCurrentUser( documentId ), documentBody, verified );
+        return updateDocumentWithMetadata( forCurrentUser( documentId ), documentBody );
     }
 
     @Override
     public String updateDocumentWithoutMetadata( String documentId, String documentBody ) throws BadRequestException,
             SecurityConfigurationException, IrisException {
-        VerifiedStringBlocks verified = createVerifiedBlocks( documentBody );
+        List<VerifiedString> verified = createVerifiedBlocks( documentBody );
         return updateDocumentWithoutMetadata( documentId, documentBody, verified );
     }
 
@@ -171,9 +170,9 @@ public class DefaultStorageClient implements StorageClient {
      * @throws SecurityConfigurationException
      * @throws IrisException
      */
-    private VerifiedStringBlocks createVerifiedBlocks( String documentBody ) throws SecurityConfigurationException,
+    private List<VerifiedString> createVerifiedBlocks( String documentBody ) throws SecurityConfigurationException,
             IrisException {
-        VerifiedStringBlocks verified = null;
+        List<VerifiedString> verified = null;
         try {
             verified = AesEncryptableUtils.chunkStringWithVerification( documentBody, kodex );
         } catch ( IOException e ) {
@@ -206,8 +205,8 @@ public class DefaultStorageClient implements StorageClient {
      * @throws SecurityConfigurationException
      * @throws IrisException
      */
-    private String updateDocumentWithMetadata( DocumentId documentId, String documentBody, VerifiedStringBlocks verified )
-            throws BadRequestException, SecurityConfigurationException, IrisException {
+    private String updateDocumentWithMetadata( DocumentId documentId, String documentBody ) throws BadRequestException,
+            SecurityConfigurationException, IrisException {
         // upload the document blocks
         updateDocumentWithoutMetadata( documentId.getDocumentId(), documentBody );
 
@@ -273,7 +272,7 @@ public class DefaultStorageClient implements StorageClient {
     private String updateDocumentWithoutMetadata(
             final String stringDocumentId,
             String documentBody,
-            VerifiedStringBlocks verifiedStringBlocks ) throws SecurityConfigurationException, IrisException {
+            List<VerifiedString> verifiedStringBlocks ) throws SecurityConfigurationException, IrisException {
         DocumentId documentId = forCurrentUser( stringDocumentId );
         Document doc = generateDocument( documentId, documentBody, verifiedStringBlocks );
 
@@ -295,12 +294,12 @@ public class DefaultStorageClient implements StorageClient {
     private Document generateDocument(
             DocumentId documentId,
             String documentBody,
-            VerifiedStringBlocks verifiedStringBlocks ) throws IrisException, SecurityConfigurationException {
+            List<VerifiedString> verifiedStringBlocks ) throws IrisException, SecurityConfigurationException {
         try {
             return AesEncryptableUtils.createEncryptedDocument(
                     documentId.getDocumentId(),
                     documentBody,
-                    verifiedStringBlocks.getStrings() );
+                    VerifiedString.getEncryptables( verifiedStringBlocks ) );
         } catch ( ClassNotFoundException e ) {
             throw new IrisException( e );
         } catch ( IOException e ) {
