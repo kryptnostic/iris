@@ -31,15 +31,21 @@ public class LocalKodexLoader extends KodexLoader {
     @Override
     public Kodex<String> tryLoadingKodex() throws KodexException {
         try {
-            byte[] encryptedPrivateKeyBytes = dataStore.get( PrivateKey.class.getCanonicalName().getBytes() );
+            byte[] encryptedPrivateKeyBytes = Preconditions.checkNotNull(
+                    dataStore.get( PrivateKey.class.getCanonicalName().getBytes() ),
+                    "No public key data found locally." );
             BlockCiphertext privateKeyCiphertext = mapper.readValue( encryptedPrivateKeyBytes, BlockCiphertext.class );
             byte[] privateKey = crypto.decryptBytes( privateKeyCiphertext );
 
-            byte[] decryptedPublicKeyBytes = dataStore.get( PublicKey.class.getCanonicalName().getBytes() );
-            byte[] kodexBytes = dataStore.get( Kodex.class.getCanonicalName().getBytes() );
+            byte[] decryptedPublicKeyBytes = Preconditions.checkNotNull(
+                    dataStore.get( PublicKey.class.getCanonicalName().getBytes() ),
+                    "No public key data found locally." );
+            byte[] kodexBytes = Preconditions.checkNotNull(
+                    dataStore.get( Kodex.class.getCanonicalName().getBytes() ),
+                    "No kodex data found locally" );
 
             return unsealAndVerifyKodex( privateKey, decryptedPublicKeyBytes, kodexBytes );
-        } catch ( IOException | KodexException | SecurityConfigurationException | IrisException e ) {
+        } catch ( IOException | KodexException | SecurityConfigurationException | IrisException | NullPointerException e ) {
             throw new KodexException( e );
         }
     }
