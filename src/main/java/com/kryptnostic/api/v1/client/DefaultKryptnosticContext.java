@@ -156,6 +156,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private void ensureQueryHasherPairSet( SimplePolynomialFunction globalHashFunction ) throws IrisException,
             ResourceNotFoundException {
         Stopwatch watch = Stopwatch.createStarted();
+        QueryHasherPairRequest  qph = null;
         if ( !queryHasherPairSubmitted ) {
             logger.debug( "Checking server if query hasher pair needs to be set" );
             queryHasherPairSubmitted = searchFunctionClient.hasQueryHasherPair().getData();
@@ -167,7 +168,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                     Kodex<String> kodex = securityService.getKodex();
                     logger.info( "Attempting to retreive query hasher pair from kodex." );
                     watch.start();
-                    QueryHasherPairRequest qph = kodex.getKeyWithJackson(
+                    qph = kodex.getKeyWithJackson(
                             QueryHasherPairRequest.class.getCanonicalName(),
                             QueryHasherPairRequest.class );
                     logger.debug(
@@ -193,16 +194,16 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                                 watch.elapsed( TimeUnit.MILLISECONDS ) );
                         watch.reset();
                     }
-                    watch.start();
-                    searchFunctionClient.setQueryHasherPair( qph );
-                    logger.debug(
-                            "Time to upload new queryHasherPair to service: {} ms",
-                            watch.elapsed( TimeUnit.MILLISECONDS ) );
                     queryHasherPairSubmitted = true;
                 } catch ( Exception e1 ) {
                     logger.error( e1.getMessage() );
                     throw new IrisException( e1 );
                 }
+                watch.start();
+                searchFunctionClient.setQueryHasherPair( qph );
+                logger.debug(
+                        "Time to upload new queryHasherPair to service: {} ms",
+                        watch.elapsed( TimeUnit.MILLISECONDS ) );
             }
         }
     }
@@ -249,7 +250,6 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         return indexForTerm;
     }
 
-    @Override
     public BitVector prepareSearchToken( String token ) {
         return encryptedSearchPrivateKey.prepareSearchToken( fhePublicKey, token );
     }
