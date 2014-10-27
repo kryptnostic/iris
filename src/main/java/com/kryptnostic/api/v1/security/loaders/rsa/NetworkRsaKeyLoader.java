@@ -6,7 +6,6 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
-import com.google.common.base.Preconditions;
 import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
 import com.kryptnostic.crypto.v1.ciphers.CryptoService;
 import com.kryptnostic.crypto.v1.keys.Keys;
@@ -22,9 +21,10 @@ public final class NetworkRsaKeyLoader extends RsaKeyLoader {
     private final KeyApi        keyClient;
     private final UserKey       userKey;
 
-    public NetworkRsaKeyLoader( CryptoService crypto, KeyApi keyClient, UserKey userKey ) {
-        Preconditions.checkNotNull( crypto );
-        Preconditions.checkNotNull( keyClient );
+    public NetworkRsaKeyLoader( CryptoService crypto, KeyApi keyClient, UserKey userKey ) throws KodexException {
+        if ( crypto == null || keyClient == null || userKey == null ) {
+            throw new KodexException( "null values" );
+        }
         this.crypto = crypto;
         this.keyClient = keyClient;
         this.userKey = userKey;

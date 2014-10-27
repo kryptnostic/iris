@@ -8,7 +8,6 @@ import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Preconditions;
 import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
 import com.kryptnostic.crypto.v1.ciphers.CryptoService;
 import com.kryptnostic.crypto.v1.keys.Keys;
@@ -23,9 +22,10 @@ public final class LocalRsaKeyLoader extends RsaKeyLoader {
     private final CryptoService crypto;
     private final DataStore     dataStore;
 
-    public LocalRsaKeyLoader( CryptoService crypto, DataStore dataStore ) {
-        Preconditions.checkNotNull( crypto );
-        Preconditions.checkNotNull( dataStore );
+    public LocalRsaKeyLoader( CryptoService crypto, DataStore dataStore ) throws KodexException {
+        if ( crypto == null || dataStore == null ) {
+            throw new KodexException( "Crypto service and data store are required to load from disk" );
+        }
         this.crypto = crypto;
         this.dataStore = dataStore;
     }
