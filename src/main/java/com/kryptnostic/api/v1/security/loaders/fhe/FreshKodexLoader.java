@@ -1,27 +1,20 @@
-package com.kryptnostic.api.v1.security.loaders;
+package com.kryptnostic.api.v1.security.loaders.fhe;
 
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.security.SignatureException;
 
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Preconditions;
-import com.kryptnostic.api.v1.security.KodexLoader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
-import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
-import com.kryptnostic.crypto.v1.ciphers.CryptoService;
 import com.kryptnostic.crypto.v1.ciphers.Cypher;
-import com.kryptnostic.crypto.v1.keys.Keys;
 import com.kryptnostic.crypto.v1.keys.Kodex;
 import com.kryptnostic.crypto.v1.keys.Kodex.CorruptKodexException;
 import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
-import com.kryptnostic.directory.v1.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
@@ -30,13 +23,13 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class FreshKodexLoader extends KodexLoader {
 
-    private final CryptoService            crypto;
+    private final KeyPair                  keyPair;
     private final SimplePolynomialFunction globalHashFunction;
 
-    public FreshKodexLoader( CryptoService crypto, SimplePolynomialFunction globalHashFunction ) {
+    public FreshKodexLoader( KeyPair keyPair, SimplePolynomialFunction globalHashFunction ) {
         Preconditions.checkNotNull( globalHashFunction );
-        Preconditions.checkNotNull( crypto );
-        this.crypto = crypto;
+        Preconditions.checkNotNull( keyPair );
+        this.keyPair = keyPair;
         this.globalHashFunction = globalHashFunction;
     }
 
@@ -46,45 +39,17 @@ public class FreshKodexLoader extends KodexLoader {
      * @throws KodexException
      */
     @Override
-    public Kodex<String> tryLoadingKodex() throws KodexException {
-        KeyPair pair;
+    public Kodex<String> tryLoading() throws KodexException {
         try {
-            pair = Keys.generateRsaKeyPair( 1024 );
-            BlockCiphertext privateKeyCiphertext = crypto.encrypt( pair.getPrivate().getEncoded() );
-            byte[] publicKey = pair.getPublic().getEncoded();
-
             Kodex<String> kodex = new Kodex<String>(
                     Cypher.RSA_OAEP_SHA1_1024,
                     Cypher.AES_CTR_PKCS5_128,
-                    pair.getPublic() );
+                    keyPair.getPublic() );
 
-            kodex.verify( pair.getPublic() );
-            kodex.unseal( pair.getPrivate() );
+            kodex.verify( keyPair.getPublic() );
+            kodex.unseal( keyPair.getPrivate() );
 
-            kodex.setKeyWithJackson( PrivateKey.class.getCanonicalName(), privateKeyCiphertext, BlockCiphertext.class );
-            kodex.setKeyWithJackson(
-                    PublicKey.class.getCanonicalName(),
-                    new PublicKeyEnvelope( publicKey ),
-                    PublicKeyEnvelope.class );
-
-            com.kryptnostic.crypto.PrivateKey fhePrivateKey = getFhePrivateKey();
-            com.kryptnostic.crypto.PublicKey fhePublicKey = getFhePublicKey( fhePrivateKey );
-
-            kodex.setKeyWithClassAndJackson( com.kryptnostic.crypto.PrivateKey.class, fhePrivateKey );
-            kodex.setKeyWithClassAndJackson( com.kryptnostic.crypto.PublicKey.class, fhePublicKey );
-
-            EncryptedSearchPrivateKey encryptedSearchPrivateKey = getEncryptedSearchPrivateKey();
-            QueryHasherPairRequest queryHasher = getQueryHasher( encryptedSearchPrivateKey, fhePrivateKey );
-
-            kodex.setKeyWithClassAndJackson( EncryptedSearchPrivateKey.class, encryptedSearchPrivateKey );
-            kodex.setKeyWithJackson(
-                    SimplePolynomialFunction.class.getCanonicalName() + KodexLoader.LEFT_HASHER,
-                    queryHasher.getLeft(),
-                    SimplePolynomialFunction.class );
-            kodex.setKeyWithJackson(
-                    SimplePolynomialFunction.class.getCanonicalName() + KodexLoader.LEFT_HASHER,
-                    queryHasher.getRight(),
-                    SimplePolynomialFunction.class );
+            generateAllKeys( kodex );
 
             return kodex;
         } catch (
@@ -99,6 +64,29 @@ public class FreshKodexLoader extends KodexLoader {
                 | CorruptKodexException e ) {
             throw new KodexException( e );
         }
+    }
+
+    private void generateAllKeys( Kodex<String> kodex ) throws SealedKodexException, KodexException,
+            SecurityConfigurationException, SingularMatrixException {
+        com.kryptnostic.crypto.PrivateKey fhePrivateKey = getFhePrivateKey();
+        com.kryptnostic.crypto.PublicKey fhePublicKey = getFhePublicKey( fhePrivateKey );
+
+        kodex.setKeyWithClassAndJackson( com.kryptnostic.crypto.PrivateKey.class, fhePrivateKey );
+        kodex.setKeyWithClassAndJackson( com.kryptnostic.crypto.PublicKey.class, fhePublicKey );
+
+        EncryptedSearchPrivateKey encryptedSearchPrivateKey = getEncryptedSearchPrivateKey();
+        QueryHasherPairRequest queryHasher = getQueryHasher( encryptedSearchPrivateKey, fhePrivateKey );
+
+        kodex.setKeyWithClassAndJackson( EncryptedSearchPrivateKey.class, encryptedSearchPrivateKey );
+        kodex.setKeyWithJackson(
+                SimplePolynomialFunction.class.getCanonicalName() + KodexLoader.LEFT_HASHER,
+                queryHasher.getLeft(),
+                SimplePolynomialFunction.class );
+        kodex.setKeyWithJackson(
+                SimplePolynomialFunction.class.getCanonicalName() + KodexLoader.LEFT_HASHER,
+                queryHasher.getRight(),
+                SimplePolynomialFunction.class );
+
     }
 
     private QueryHasherPairRequest getQueryHasher(

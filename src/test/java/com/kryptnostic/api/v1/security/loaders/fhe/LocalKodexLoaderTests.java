@@ -1,4 +1,4 @@
-package com.kryptnostic.api.v1.security.loaders;
+package com.kryptnostic.api.v1.security.loaders.fhe;
 
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kryptnostic.api.v1.security.KodexLoader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
@@ -68,7 +67,7 @@ public class LocalKodexLoaderTests {
         KeyPair pair = makeValidRsa();
         makeValidKodex( pair );
 
-        Kodex<String> kodex = new LocalKodexLoader( dataStore, cryptoService ).loadKodex();
+        Kodex<String> kodex = new LocalKodexLoader( pair, dataStore ).load();
 
         Assert.assertFalse( kodex.isSealed() );
         Assert.assertFalse( kodex.isDirty() );

@@ -1,22 +1,13 @@
-package com.kryptnostic.api.v1.security;
-
-import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.spec.InvalidKeySpecException;
+package com.kryptnostic.api.v1.security.loaders.fhe;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kryptnostic.api.v1.security.loaders.Loader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
-import com.kryptnostic.crypto.v1.keys.Keys;
 import com.kryptnostic.crypto.v1.keys.Kodex;
-import com.kryptnostic.crypto.v1.keys.Kodex.CorruptKodexException;
 import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
-import com.kryptnostic.crypto.v1.keys.PublicKeyAlgorithm;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
@@ -29,48 +20,16 @@ import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
  * @author sinaiman
  *
  */
-public abstract class KodexLoader {
+public abstract class KodexLoader extends Loader<Kodex<String>> {
 
     private static final Logger  logger       = LoggerFactory.getLogger( KodexLoader.class );
 
     public static final String   LEFT_HASHER  = "LEFT";
     public static final String   RIGHT_HASHER = "LEFT";
 
-    protected PrivateKey         rsaPriv;
-    protected PublicKey          rsaPub;
     protected final ObjectMapper mapper       = KodexObjectMapperFactory.getObjectMapper();
 
     public KodexLoader() {}
-
-    /**
-     * Helper method to correctly verify and unseal a Kodex
-     * 
-     * @param privateKey
-     * @param publicKey
-     * @param kodexBytes
-     * @return
-     * @throws IrisException
-     * @throws KodexException
-     */
-    protected final Kodex<String> unsealAndVerifyKodex( byte[] privateKey, byte[] publicKey, byte[] kodexBytes )
-            throws IrisException, KodexException {
-
-        try {
-            rsaPriv = Keys.privateKeyFromBytes( PublicKeyAlgorithm.RSA, privateKey );
-            rsaPub = Keys.publicKeyFromBytes( PublicKeyAlgorithm.RSA, publicKey );
-
-            Kodex<String> kodex = mapper.readValue( kodexBytes, new TypeReference<Kodex<String>>() {} );
-
-            kodex.unseal( rsaPriv );
-
-            return kodex;
-
-        } catch ( InvalidKeySpecException | IOException | NoSuchAlgorithmException e ) {
-            throw new IrisException( e );
-        } catch ( KodexException | SecurityConfigurationException | CorruptKodexException e ) {
-            throw new KodexException( e );
-        }
-    }
 
     /**
      * Enforces validity of the returned Kodex
@@ -81,10 +40,11 @@ public abstract class KodexLoader {
      *         loading process
      * @throws IrisException If the Kodex candidate was determined to be invalid
      */
-    public final Kodex<String> loadKodex() throws KodexException {
+    @Override
+    public final Kodex<String> load() throws KodexException {
         Kodex<String> candidate;
-        candidate = tryLoadingKodex();
-        if ( validateKodex( candidate ) ) {
+        candidate = tryLoading();
+        if ( validate( candidate ) ) {
             return candidate;
         } else {
             throw new KodexException(
@@ -92,7 +52,8 @@ public abstract class KodexLoader {
         }
     }
 
-    protected abstract Kodex<String> tryLoadingKodex() throws KodexException;
+    @Override
+    protected abstract Kodex<String> tryLoading() throws KodexException;
 
     /**
      * Determines whether a specific Kodex is valid or not
@@ -102,7 +63,9 @@ public abstract class KodexLoader {
      * @throws IrisException
      * @throws SealedKodexException
      */
-    private static final boolean validateKodex( Kodex<String> kodex ) throws KodexException {
+
+    @Override
+    protected final boolean validate( Kodex<String> kodex ) throws KodexException {
         try {
             return kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class ) != null
                     && kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class ) != null
