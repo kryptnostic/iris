@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import retrofit.RestAdapter;
 
 import com.kryptnostic.directory.v1.KeyApi;
+import com.kryptnostic.directory.v1.UsersApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.search.v1.client.SearchApi;
@@ -23,6 +24,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     private final SearchFunctionApi searchFunctionService;
     private final SharingApi        sharingService;
     private final KeyApi            keyService;
+    private final UsersApi          usersService;
 
     public DefaultKryptnosticServicesFactory( KryptnosticConnection credentialService ) {
         this( KryptnosticRestAdapter.create( credentialService ) );
@@ -35,6 +37,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
         searchFunctionService = restAdapter.create( SearchFunctionApi.class );
         sharingService = restAdapter.create( SharingApi.class );
         keyService = restAdapter.create( KeyApi.class );
+        usersService = restAdapter.create( UsersApi.class );
     }
 
     @Override
@@ -65,6 +68,11 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     @Override
     public KeyApi createKeyApi() {
         return keyService;
+    }
+
+    @Override
+    public UsersApi createUsersApi() {
+        return usersService;
     }
 
 }

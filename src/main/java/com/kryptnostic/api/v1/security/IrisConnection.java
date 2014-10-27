@@ -1,9 +1,11 @@
 package com.kryptnostic.api.v1.security;
 
+import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
 
@@ -13,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import retrofit.RestAdapter;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.fhe.FreshKodexLoader;
 import com.kryptnostic.api.v1.security.loaders.fhe.LocalKodexLoader;
@@ -21,6 +24,7 @@ import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.LocalRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.NetworkRsaKeyLoader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
+import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
 import com.kryptnostic.crypto.v1.ciphers.CryptoService;
 import com.kryptnostic.crypto.v1.ciphers.Cypher;
 import com.kryptnostic.crypto.v1.keys.JacksonKodexMarshaller;
@@ -28,18 +32,20 @@ import com.kryptnostic.crypto.v1.keys.Kodex;
 import com.kryptnostic.crypto.v1.keys.Kodex.CorruptKodexException;
 import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.directory.v1.KeyApi;
+import com.kryptnostic.directory.v1.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
+import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.kryptnostic.users.v1.UserKey;
 
 public class IrisConnection implements KryptnosticConnection {
-    private static final Logger                     logger = LoggerFactory.getLogger( IrisConnection.class );
+    private static final Logger                     logger  = LoggerFactory.getLogger( IrisConnection.class );
     private final Kodex<String>                     kodex;
     private transient CryptoService                 cryptoService;
     private final UserKey                           userKey;
@@ -51,6 +57,7 @@ public class IrisConnection implements KryptnosticConnection {
     private final com.kryptnostic.crypto.PublicKey  fhePublicKey;
     private final EncryptedSearchPrivateKey         encryptedSearchPrivateKey;
     private final PublicKey                         rsaPublicKey;
+    boolean                                         doFresh = false;
 
     public IrisConnection(
             KeyPair keyPair,
@@ -114,6 +121,26 @@ public class IrisConnection implements KryptnosticConnection {
         } catch ( KodexException | SecurityConfigurationException e ) {
             throw new IrisException( e );
         }
+
+        if ( doFresh ) {
+            try {
+                BlockCiphertext encPrivKey = cryptoService.encrypt( keyPair.getPrivate().getEncoded() );
+                byte[] pubKey = keyPair.getPublic().getEncoded();
+                ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
+                //Flush to disk
+                dataStore.put( PrivateKey.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( encPrivKey ) );
+                dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pubKey );
+                dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( searchKodex ) );
+                
+                //Flush to service.
+                keyService.setPrivateKey( encPrivKey );
+                keyService.setPublicKey( new PublicKeyEnvelope( pubKey ) );
+                keyService.setKodex( searchKodex );
+
+            } catch ( SecurityConfigurationException | IOException e ) {
+                throw new IrisException( e );
+            }
+        }
     }
 
     private KeyPair loadRsaKeys( CryptoService crypto, UserKey userKey, DataStore dataStore, KeyApi keyClient )
@@ -134,6 +161,7 @@ public class IrisConnection implements KryptnosticConnection {
         }
         if ( keyPair == null ) {
             try {
+                doFresh = true;
                 keyPair = new FreshRsaKeyLoader().load();
             } catch ( KodexException e ) {
                 logger.info( "Could not generate RSA Keys! {}", e );
@@ -164,8 +192,9 @@ public class IrisConnection implements KryptnosticConnection {
                 logger.info( "Could not load Kodex from network, trying to generate... {}", e );
             }
         }
-        if ( searchKodex == null ) {
+        if ( searchKodex == null && ( doFresh == true ) ) {
             try {
+                doFresh = true;
                 searchKodex = new FreshKodexLoader( keyPair, globalHashFunction ).load();
             } catch ( KodexException e ) {
                 logger.info( "Could not generate Kodex! {}", e );

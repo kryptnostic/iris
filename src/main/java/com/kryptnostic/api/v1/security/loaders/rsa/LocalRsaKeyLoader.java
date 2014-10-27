@@ -8,6 +8,7 @@ import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Preconditions;
 import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
 import com.kryptnostic.crypto.v1.ciphers.CryptoService;
 import com.kryptnostic.crypto.v1.keys.Keys;
@@ -33,17 +34,17 @@ public final class LocalRsaKeyLoader extends RsaKeyLoader {
     @Override
     protected KeyPair tryLoading() throws KodexException {
         try {
-            byte[] encryptedPrivateKeyBytes = dataStore.get( PrivateKey.class.getCanonicalName().getBytes() );
+            byte[] encryptedPrivateKeyBytes = Preconditions.checkNotNull( dataStore.get( PrivateKey.class.getCanonicalName().getBytes() ) , "Couldn't load private key from data store." );
             BlockCiphertext privateKeyCiphertext = mapper.readValue( encryptedPrivateKeyBytes, BlockCiphertext.class );
             byte[] decryptedPrivateKeyBytes = crypto.decryptBytes( privateKeyCiphertext );
 
-            byte[] decryptedPublicKeyBytes = dataStore.get( PublicKey.class.getCanonicalName().getBytes() );
+            byte[] decryptedPublicKeyBytes = Preconditions.checkNotNull(  dataStore.get( PublicKey.class.getCanonicalName().getBytes() ) , "Couldn't load public key from data store." );
 
             PrivateKey rsaPrivateKey = Keys.privateKeyFromBytes( PublicKeyAlgorithm.RSA, decryptedPrivateKeyBytes );
             PublicKey rsaPublicKey = Keys.publicKeyFromBytes( PublicKeyAlgorithm.RSA, decryptedPublicKeyBytes );
 
             return new KeyPair( rsaPublicKey, rsaPrivateKey );
-        } catch ( InvalidKeySpecException | NoSuchAlgorithmException | SecurityConfigurationException | IOException e ) {
+        } catch ( InvalidKeySpecException | NoSuchAlgorithmException | SecurityConfigurationException | IOException | NullPointerException e ) {
             throw new KodexException( e );
         }
 
