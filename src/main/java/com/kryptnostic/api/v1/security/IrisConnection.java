@@ -127,6 +127,8 @@ public class IrisConnection implements KryptnosticConnection {
                 BlockCiphertext encPrivKey = cryptoService.encrypt( keyPair.getPrivate().getEncoded() );
                 byte[] pubKey = keyPair.getPublic().getEncoded();
                 ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
+                this.kodex.setKeyWithClassAndJackson( CryptoService.class , cryptoService );
+                
                 //Flush to disk
                 dataStore.put( PrivateKey.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( encPrivKey ) );
                 dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pubKey );
@@ -136,8 +138,7 @@ public class IrisConnection implements KryptnosticConnection {
                 keyService.setPrivateKey( encPrivKey );
                 keyService.setPublicKey( new PublicKeyEnvelope( pubKey ) );
                 keyService.setKodex( searchKodex );
-
-            } catch ( SecurityConfigurationException | IOException e ) {
+            } catch ( SecurityConfigurationException | IOException | SealedKodexException | KodexException e ) {
                 throw new IrisException( e );
             }
         }
