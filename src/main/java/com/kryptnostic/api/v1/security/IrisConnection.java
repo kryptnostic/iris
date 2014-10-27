@@ -18,6 +18,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.fhe.FreshKodexLoader;
+import com.kryptnostic.api.v1.security.loaders.fhe.KodexLoader;
 import com.kryptnostic.api.v1.security.loaders.fhe.LocalKodexLoader;
 import com.kryptnostic.api.v1.security.loaders.fhe.NetworkKodexLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
@@ -42,6 +43,7 @@ import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
+import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 import com.kryptnostic.users.v1.UserKey;
 
 public class IrisConnection implements KryptnosticConnection {
@@ -112,7 +114,7 @@ public class IrisConnection implements KryptnosticConnection {
         Kodex<String> searchKodex = loadSearchKodex( dataStore, keyPair, keyService, globalHashFunction );
 
         // TODO: insert document keyring/kodex here!
-        this.kodex = null;
+        this.kodex = searchKodex;
 
         try {
             this.fhePrivateKey = searchKodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class );
@@ -122,25 +124,47 @@ public class IrisConnection implements KryptnosticConnection {
             throw new IrisException( e );
         }
 
+        try {
+            this.kodex.setKeyWithClassAndJackson( CryptoService.class, cryptoService );
+        } catch ( SealedKodexException e1 ) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        } catch ( KodexException e1 ) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        } catch ( SecurityConfigurationException e1 ) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
         if ( doFresh ) {
             try {
                 BlockCiphertext encPrivKey = cryptoService.encrypt( keyPair.getPrivate().getEncoded() );
                 byte[] pubKey = keyPair.getPublic().getEncoded();
                 ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
-                this.kodex.setKeyWithClassAndJackson( CryptoService.class , cryptoService );
-                
-                //Flush to disk
+
+                // Flush to disk
                 dataStore.put( PrivateKey.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( encPrivKey ) );
                 dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pubKey );
                 dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( searchKodex ) );
-                
-                //Flush to service.
+
+                // Flush to service.
                 keyService.setPrivateKey( encPrivKey );
                 keyService.setPublicKey( new PublicKeyEnvelope( pubKey ) );
                 keyService.setKodex( searchKodex );
-            } catch ( SecurityConfigurationException | IOException | SealedKodexException | KodexException e ) {
+                try {
+                    searchFunctionService.setQueryHasherPair( new QueryHasherPairRequest( searchKodex
+                            .getKeyWithJackson( SimplePolynomialFunction.class.getCanonicalName()
+                                    + KodexLoader.LEFT_HASHER, SimplePolynomialFunction.class ), searchKodex
+                            .getKeyWithJackson( SimplePolynomialFunction.class.getCanonicalName()
+                                    + KodexLoader.RIGHT_HASHER, SimplePolynomialFunction.class ) ) );
+                } catch ( SealedKodexException | SecurityConfigurationException | KodexException e ) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            } catch ( SecurityConfigurationException | IOException e ) {
                 throw new IrisException( e );
             }
+
         }
     }
 
