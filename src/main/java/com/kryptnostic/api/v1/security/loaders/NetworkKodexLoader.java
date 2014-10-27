@@ -30,12 +30,12 @@ public class NetworkKodexLoader extends KodexLoader {
     @Override
     public Kodex<String> tryLoadingKodex() throws KodexException {
         try {
-            byte[] privateKey = crypto.decryptBytes( keyClient.getPrivateKey() );
-            byte[] publicKeyBytes = keyClient.getPublicKey( userKey.getRealm(), userKey.getName() ).getBytes();
-            byte[] kodexBytes = keyClient.getKodex().getEncryptedKey();
+            byte[] privateKey = Preconditions.checkNotNull( crypto.decryptBytes( keyClient.getPrivateKey() ) , "Private key unavailable from server." );
+            byte[] publicKeyBytes = Preconditions.checkNotNull( keyClient.getPublicKey( userKey.getRealm(), userKey.getName() ).getBytes() , "Public key unavailable from server." );
+            byte[] kodexBytes = Preconditions.checkNotNull( keyClient.getKodex().getEncryptedKey() , "Kodex unavailable from server." );
 
             return unsealAndVerifyKodex( privateKey, publicKeyBytes, kodexBytes );
-        } catch ( SecurityConfigurationException | IrisException e ) {
+        } catch ( SecurityConfigurationException | IrisException | NullPointerException e ) {
             throw new KodexException( e );
         }
 
