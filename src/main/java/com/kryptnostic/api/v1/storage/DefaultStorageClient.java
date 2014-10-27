@@ -213,7 +213,7 @@ public class DefaultStorageClient implements StorageClient {
         // index + map tokens for metadata
         Set<Metadata> metadata = indexer.index( documentId.getDocumentId(), documentBody );
 
-        // generate plain documentNonce
+        // generate nonce
         BitVector searchNonce = context.generateSearchNonce();
         EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
 
