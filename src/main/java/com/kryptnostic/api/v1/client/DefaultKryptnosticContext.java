@@ -1,18 +1,5 @@
 package com.kryptnostic.api.v1.client;
 
-import java.io.IOException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.InvalidParameterSpecException;
-import java.util.concurrent.TimeUnit;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +7,6 @@ import cern.colt.bitvector.BitVector;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
@@ -28,9 +14,6 @@ import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
-import com.kryptnostic.crypto.v1.keys.JacksonKodexMarshaller;
-import com.kryptnostic.crypto.v1.keys.Kodex;
-import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.directory.v1.KeyApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -45,10 +28,9 @@ import com.kryptnostic.sharing.v1.models.PairedEncryptedSearchDocumentKey;
 import com.kryptnostic.sharing.v1.requests.SharingApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
-import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class DefaultKryptnosticContext implements KryptnosticContext {
-    private final ObjectMapper              mapper;
+    private final ObjectMapper              mapper          = KodexObjectMapperFactory.getObjectMapper();
     private final SharingApi                sharingClient;
     private final KeyApi                    keyClient;
     private final SearchFunctionApi         searchFunctionClient;
@@ -58,7 +40,6 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private final KryptnosticConnection     securityService;
 
     private SimplePolynomialFunction        globalHashFunction;
-    private boolean                         queryHasherPairSubmitted;
 
     private static final Logger             logger          = LoggerFactory.getLogger( DefaultKryptnosticContext.class );
 
@@ -75,55 +56,9 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         this.sharingClient = sharingClient;
         this.keyClient = keyClient;
         this.securityService = securityService;
-        this.fhePublicKey = securityService.getPublicKey();
-        this.fhePrivateKey = securityService.getPrivateKey();
-        try {
-            Kodex<String> kodex = securityService.getKodex();
-
-            if ( kodex == null ) {
-                throw new IrisException(
-                        "Security mapping was null and no keys could be found, the DefaultKryptnosticContext cannot be initialized without these keys" );
-            }
-
-            this.mapper = KodexObjectMapperFactory.getObjectMapper( securityService.getKodex() );
-            SimplePolynomialFunction ghf = kodex.getKey(
-                    "global-hash-function",
-                    new JacksonKodexMarshaller<SimplePolynomialFunction>( SimplePolynomialFunction.class ) );
-            if ( ghf == null ) {
-                Stopwatch watch = Stopwatch.createStarted();
-                watch.reset();
-                watch.start();
-                this.globalHashFunction = getGlobalHashFunction();
-                logger.debug(
-                        "Time to download global hash function from server: {} ms",
-                        watch.elapsed( TimeUnit.MILLISECONDS ) );
-                kodex.setKey( "global-hash-function", new JacksonKodexMarshaller<SimplePolynomialFunction>(
-                        SimplePolynomialFunction.class ), globalHashFunction );
-            }
-
-            encryptedSearchPrivateKey = loadOrCreateEncryptedSearchPrivateKey( kodex, this.globalHashFunction );
-
-            queryHasherPairSubmitted = false;
-            ensureQueryHasherPairSet( globalHashFunction );
-            if ( kodex.isDirty() ) {
-                try {
-                    Stopwatch watch = Stopwatch.createStarted();
-                    securityService.flushKodex();
-                    logger.debug(
-                            "Time to flush kodex after context is configured: {} ms",
-                            watch.elapsed( TimeUnit.MILLISECONDS ) );
-                } catch ( IOException e ) {
-                    throw new IrisException( e );
-                }
-            }
-            if ( kodex.isDirty() ) {
-                Stopwatch watch = Stopwatch.createStarted();
-                keyClient.setKodex( kodex );
-                logger.debug( "Time to write kodex to service: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-            }
-        } catch ( Exception e ) {
-            throw new IrisException( e );
-        }
+        this.fhePublicKey = securityService.getFhePublicKey();
+        this.fhePrivateKey = securityService.getFhePrivateKey();
+        this.encryptedSearchPrivateKey = securityService.getEncryptedSearchPrivateKey();
     }
 
     @Override
@@ -151,61 +86,6 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         EncryptedSearchSharingKey sharingKey = new EncryptedSearchSharingKey( documentKey );
 
         return sharingKey;
-    }
-
-    private void ensureQueryHasherPairSet( SimplePolynomialFunction globalHashFunction ) throws IrisException,
-            ResourceNotFoundException {
-        Stopwatch watch = Stopwatch.createStarted();
-        QueryHasherPairRequest  qph = null;
-        if ( !queryHasherPairSubmitted ) {
-            logger.debug( "Checking server if query hasher pair needs to be set" );
-            queryHasherPairSubmitted = searchFunctionClient.hasQueryHasherPair().getData();
-            logger.debug( "Time to check for query hasher pair: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-            watch.reset();
-            if ( !queryHasherPairSubmitted ) {
-                logger.debug( "Generating query hasher pair because it was not set on the server" );
-                try {
-                    Kodex<String> kodex = securityService.getKodex();
-                    logger.info( "Attempting to retreive query hasher pair from kodex." );
-                    watch.start();
-                    qph = kodex.getKeyWithJackson(
-                            QueryHasherPairRequest.class.getCanonicalName(),
-                            QueryHasherPairRequest.class );
-                    logger.debug(
-                            "Time to deserialize query hash pair from kodex: {} ms",
-                            watch.elapsed( TimeUnit.MILLISECONDS ) );
-                    watch.reset();
-                    if ( qph == null ) {
-                        watch.start();
-                        Pair<SimplePolynomialFunction, SimplePolynomialFunction> queryHasherPair = encryptedSearchPrivateKey
-                                .getQueryHasherPair( globalHashFunction, fhePrivateKey );
-                        logger.debug(
-                                "Time to generate new query hasher pair: {} ms",
-                                watch.elapsed( TimeUnit.MILLISECONDS ) );
-                        watch.reset();
-                        qph = new QueryHasherPairRequest( queryHasherPair.getLeft(), queryHasherPair.getRight() );
-                        watch.start();
-                        kodex.setKeyWithJackson(
-                                QueryHasherPairRequest.class.getCanonicalName(),
-                                qph,
-                                QueryHasherPairRequest.class );
-                        logger.debug(
-                                "Time to write new query hash pair into kodex: {} ms",
-                                watch.elapsed( TimeUnit.MILLISECONDS ) );
-                        watch.reset();
-                    }
-                    queryHasherPairSubmitted = true;
-                } catch ( Exception e1 ) {
-                    logger.error( e1.getMessage() );
-                    throw new IrisException( e1 );
-                }
-                watch.start();
-                searchFunctionClient.setQueryHasherPair( qph );
-                logger.debug(
-                        "Time to upload new queryHasherPair to service: {} ms",
-                        watch.elapsed( TimeUnit.MILLISECONDS ) );
-            }
-        }
     }
 
     @Override
@@ -250,45 +130,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         return indexForTerm;
     }
 
+    @Override
     public BitVector prepareSearchToken( String token ) {
         return encryptedSearchPrivateKey.prepareSearchToken( fhePublicKey, token );
-    }
-
-    public static EncryptedSearchPrivateKey loadOrCreateEncryptedSearchPrivateKey(
-            Kodex<String> kodex,
-            SimplePolynomialFunction globalHashFunction ) throws InvalidKeyException, InvalidKeySpecException,
-            NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
-            InvalidParameterSpecException, SealedKodexException, IOException, SingularMatrixException,
-            InvalidAlgorithmParameterException {
-
-        EncryptedSearchPrivateKey storedSearchPrivateKey;
-        Stopwatch watch = Stopwatch.createStarted();
-        storedSearchPrivateKey = kodex.getKeyWithJackson(
-                EncryptedSearchPrivateKey.class.getCanonicalName(),
-                EncryptedSearchPrivateKey.class );
-        logger.debug(
-                "Time to deserialize encrypted search private key from kodex: {} ms",
-                watch.elapsed( TimeUnit.MILLISECONDS ) );
-
-        if ( storedSearchPrivateKey == null ) {
-            watch.reset();
-            watch.start();
-            storedSearchPrivateKey = new EncryptedSearchPrivateKey( (int) Math.sqrt( globalHashFunction
-                    .getOutputLength() ) );
-            logger.debug( "Time to generate new encrypted search private: {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-
-            watch.reset();
-            watch.start();
-            kodex.setKeyWithJackson(
-                    EncryptedSearchPrivateKey.class.getCanonicalName(),
-                    storedSearchPrivateKey,
-                    EncryptedSearchPrivateKey.class );
-            logger.debug(
-                    "Time to serialize new encrypted search private to kodex: {} ms",
-                    watch.elapsed( TimeUnit.MILLISECONDS ) );
-            watch.reset();
-
-        }
-        return storedSearchPrivateKey;
     }
 }
