@@ -53,6 +53,7 @@ public class IrisConnection implements KryptnosticConnection {
     private final PublicKey                         rsaPublicKey;
 
     public IrisConnection(
+            KeyPair keyPair,
             Kodex<String> kodex,
             CryptoService cryptoService,
             UserKey userKey,
@@ -67,7 +68,7 @@ public class IrisConnection implements KryptnosticConnection {
         this.dataStore = null;
         try {
 
-            KeyPair keyPair = loadRsaKeys( cryptoService, userKey, dataStore, keyService );
+            // loadRsaKeys( cryptoService, userKey, dataStore, keyService );
             this.rsaPublicKey = keyPair.getPublic();
 
             kodex.unseal( keyPair.getPrivate() );

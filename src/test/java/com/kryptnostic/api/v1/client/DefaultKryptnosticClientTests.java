@@ -77,7 +77,7 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
 
             userKey = new UserKey( "krypt", "sina" );
 
-            connection = new IrisConnection( kodex, crypto, userKey, "test", "http://localhost:9990" );
+            connection = new IrisConnection( pair, kodex, crypto, userKey, "test", "http://localhost:9990" );
             factory = new DefaultKryptnosticServicesFactory(
                     KryptnosticRestAdapter.createWithDefaultClient( connection ) );
 

@@ -55,13 +55,14 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
 
     @Test
     public void uploadingWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
-            ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException {
+            ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
+            NoSuchAlgorithmException {
         DocumentApi documentApi = Mockito.mock( DocumentApi.class );
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
 
         Mockito.when( context.getSecurityService() ).thenReturn(
-                new IrisConnection( kodex, crypto, userKey, null, null ) );
+                new IrisConnection( pair, kodex, crypto, userKey, null, null ) );
 
         storageService = new DefaultStorageClient( context, documentApi, metadataApi );
 
