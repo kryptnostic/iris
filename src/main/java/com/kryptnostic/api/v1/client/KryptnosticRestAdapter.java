@@ -44,6 +44,10 @@ public final class KryptnosticRestAdapter {
         return builder( url, user, userCredential, new JacksonConverter() ).build();
     }
 
+    public static RestAdapter createWithDefaultJacksonConverter( String url, UserKey user, String userCredential , Client client) {
+        return builder( url, user, userCredential, new JacksonConverter() ).setClient( client ).build();
+    }
+    
     public static RestAdapter.Builder builder( KryptnosticConnection credentialService, Converter converter ) {
         return builder(
                 credentialService.getUrl(),

@@ -102,8 +102,8 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
 
         // verify we only request the global hasher once (getGlobalHashFunction was called twice though, because it's
         // called during client init)
-        verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.SEARCH_FUNCTION ) ) );
-        verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.SEARCH_FUNCTION + "/hasher" ) ) );
+        verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.CONTROLLER ) ) );
+        verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.CONTROLLER + "/hasher" ) ) );
     }
 
     @Test
@@ -161,14 +161,14 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
             throw new IrisException( e );
         }
 
-        stubFor( get( urlEqualTo( SearchFunctionApi.SEARCH_FUNCTION ) ).willReturn(
+        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER ) ).willReturn(
                 aResponse().withBody( globalHasherResponse ) ) );
         return expectedGlobalHasher;
     }
 
     private void generateQueryHasherPairStub() {
         String response = wrap( "true" );
-        stubFor( get( urlEqualTo( SearchFunctionApi.SEARCH_FUNCTION + "/hasher" ) ).willReturn(
+        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + "/hasher" ) ).willReturn(
                 aResponse().withBody( response ) ) );
     }
 

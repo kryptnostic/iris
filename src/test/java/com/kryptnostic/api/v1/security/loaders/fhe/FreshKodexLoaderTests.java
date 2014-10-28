@@ -7,6 +7,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.kryptnostic.api.v1.client.InMemoryStore;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.v1.keys.Keys;
 import com.kryptnostic.crypto.v1.keys.Kodex;
@@ -32,7 +33,7 @@ public class FreshKodexLoaderTests {
     @Test
     public void initTest() throws IrisException, KodexException, SecurityConfigurationException, SealedKodexException,
             CorruptKodexException {
-        Kodex<String> kodex = new FreshKodexLoader( keyPair, globalHashFunction ).load();
+        Kodex<String> kodex = new FreshKodexLoader( keyPair, globalHashFunction , new InMemoryStore() ).load();
         Assert.assertFalse( kodex.isSealed() );
         Assert.assertTrue( kodex.isDirty() );
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class ) );
@@ -47,7 +48,7 @@ public class FreshKodexLoaderTests {
     @Test(
         expected = NullPointerException.class )
     public void nullTest() throws KodexException {
-        new FreshKodexLoader( keyPair, null ).load();
+        new FreshKodexLoader( keyPair, null , new InMemoryStore() ).load();
     }
 
 }

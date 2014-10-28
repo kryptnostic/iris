@@ -1,5 +1,9 @@
 package com.kryptnostic.api.v1.client;
 
+import java.io.IOException;
+
+import org.apache.commons.codec.binary.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -7,19 +11,25 @@ import cern.colt.bitvector.BitVector;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.hash.Hashing;
 import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
+import com.kryptnostic.crypto.v1.keys.JacksonKodexMarshaller;
 import com.kryptnostic.directory.v1.KeyApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
+import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
+import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
@@ -28,6 +38,7 @@ import com.kryptnostic.sharing.v1.models.PairedEncryptedSearchDocumentKey;
 import com.kryptnostic.sharing.v1.requests.SharingApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
+import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class DefaultKryptnosticContext implements KryptnosticContext {
     private final ObjectMapper              mapper          = KodexObjectMapperFactory.getObjectMapper();
@@ -38,7 +49,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private final PublicKey                 fhePublicKey;
     private final EncryptedSearchPrivateKey encryptedSearchPrivateKey;
     private final KryptnosticConnection     securityService;
-
+    private final DataStore                 dataStore;
     private SimplePolynomialFunction        globalHashFunction;
 
     private static final Logger             logger          = LoggerFactory.getLogger( DefaultKryptnosticContext.class );
@@ -59,6 +70,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         this.fhePublicKey = securityService.getFhePublicKey();
         this.fhePrivateKey = securityService.getFhePrivateKey();
         this.encryptedSearchPrivateKey = securityService.getEncryptedSearchPrivateKey();
+        this.dataStore = securityService.getDataStore();
     }
 
     @Override
@@ -73,9 +85,36 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public SimplePolynomialFunction getGlobalHashFunction() throws ResourceNotFoundException {
+        final String checksumKey = "global-hash-checksum";
+        final String functionKey = "global-hash-function";
         if ( globalHashFunction == null ) {
-            globalHashFunction = this.searchFunctionClient.getFunction();
+            try {
+                String checksum = StringUtils.newStringUtf8( dataStore.get( checksumKey.getBytes() ) );
+                byte[] gbh = dataStore.get( functionKey.getBytes() );
+                // If function isn't set retrieve it and persist it.
+                if ( gbh == null ) {
+                    globalHashFunction = searchFunctionClient.getFunction();
+                    gbh = new JacksonKodexMarshaller<SimplePolynomialFunction>( SimplePolynomialFunction.class ).toBytes( globalHashFunction );
+                    checksum = Hashing.murmur3_128().hashBytes( gbh ).toString();
+                    dataStore.put( checksumKey.getBytes(), StringUtils.getBytesUtf8( checksum ) );
+                    dataStore.put( functionKey.getBytes(), gbh );
+                } else {
+                    // Verify integrity of glabal hash function
+                    Preconditions.checkState( Preconditions.checkNotNull( checksum, "Checksum should not be null!" )
+                            .equals( Hashing.murmur3_128().hashBytes( gbh ).toString() ) );
+
+                    // Make sure it matches server hash
+                    Preconditions.checkState( searchFunctionClient.getGlobalHasherChecksum().getData()
+                            .equals( checksum ) );
+                    globalHashFunction = new JacksonKodexMarshaller<SimplePolynomialFunction>( SimplePolynomialFunction.class ).fromBytes( gbh );
+                }
+
+            } catch ( IOException e ) {
+                logger.error( "Unable to save global hash function. Will try again upon restart." );
+                return null;
+            }
         }
+
         return globalHashFunction;
     }
 
@@ -123,10 +162,84 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     public BitVector generateIndexForToken( String token, BitVector searchNonce, EncryptedSearchSharingKey sharingKey )
             throws ResourceNotFoundException {
         BitVector searchHash = encryptedSearchPrivateKey.hash( token );
+        BitVector searchToken = BitVectors.concatenate( searchHash, searchNonce );
         EnhancedBitMatrix expectedMatrix = EnhancedBitMatrix.squareMatrixfromBitVector( getGlobalHashFunction().apply(
-                BitVectors.concatenate( searchHash, searchNonce ) ) );
+                searchToken ) );
         BitVector indexForTerm = BitVectors.fromSquareMatrix( expectedMatrix.multiply( sharingKey.getMiddle() )
                 .multiply( expectedMatrix ) );
+
+//        QueryHasherPairRequest req = null;
+//        SimplePolynomialFunction lh = null;
+//        SimplePolynomialFunction rh = null;
+//        Pair<SimplePolynomialFunction, SimplePolynomialFunction> p = null;
+//        try {
+//             p = encryptedSearchPrivateKey.getQueryHasherPair(
+//                    globalHashFunction,
+//                    fhePrivateKey );
+//            req = securityService.getKodex().getKeyWithJackson( QueryHasherPairRequest.class );
+//            lh = req.getLeft();
+//            rh = req.getRight();
+//            Preconditions.checkState( p.getLeft().equals( lh ) );
+//            Preconditions.checkState( p.getRight().equals( rh ) );
+//        } catch ( SecurityConfigurationException | KodexException e ) {
+//            // TODO Auto-generated catch block
+//            e.printStackTrace();
+//        } catch ( IOException e ) {
+//            // TODO Auto-generated catch block
+//            e.printStackTrace();
+//        } catch ( SingularMatrixException e ) {
+//            // TODO Auto-generated catch block
+//            e.printStackTrace();
+//        }
+//
+//        BitVector t = prepareSearchToken( token );
+//        BitVector simulatedSearchToken = BitVectors.concatenate(
+//                t,
+//                fhePublicKey.getEncrypter().apply( searchNonce, BitVectors.randomVector( searchNonce.size() ) ) );
+//        EnhancedBitMatrix lv = EnhancedBitMatrix.squareMatrixfromBitVector( lh.apply( simulatedSearchToken ) );
+//        EnhancedBitMatrix rv = EnhancedBitMatrix.squareMatrixfromBitVector( rh.apply( simulatedSearchToken ) );
+//
+//        EnhancedBitMatrix bridge = null;
+//        try {
+//            Preconditions.checkState( lv.multiply( encryptedSearchPrivateKey.getLeftSquaringMatrix().inverse() )
+//                    .equals( expectedMatrix ) );
+//            Preconditions.checkState( encryptedSearchPrivateKey.getRightSquaringMatrix().inverse().multiply( rv )
+//                    .equals( expectedMatrix ) );
+//            bridge = new EncryptedSearchBridgeKey( encryptedSearchPrivateKey, sharingKey ).getBridge();
+//        } catch ( SingularMatrixException e1 ) {
+//            e1.printStackTrace();
+//        }
+//        
+//        lh = p.getLeft();
+//        rh = p.getRight();
+//        lv = EnhancedBitMatrix.squareMatrixfromBitVector( lh.apply( simulatedSearchToken ) );
+//        rv = EnhancedBitMatrix.squareMatrixfromBitVector( rh.apply( simulatedSearchToken ) );
+//        try {
+//            Preconditions.checkState( lv.multiply( encryptedSearchPrivateKey.getLeftSquaringMatrix().inverse() )
+//                    .equals( expectedMatrix ) );
+//            Preconditions.checkState( encryptedSearchPrivateKey.getRightSquaringMatrix().inverse().multiply( rv )
+//                    .equals( expectedMatrix ) );
+//            bridge = new EncryptedSearchBridgeKey( encryptedSearchPrivateKey, sharingKey ).getBridge();
+//        } catch ( SingularMatrixException e1 ) {
+//            e1.printStackTrace();
+//        }
+//
+//        Preconditions.checkState( encryptedSearchPrivateKey.getLeftSquaringMatrix()
+//                .multiply( bridge.multiply( encryptedSearchPrivateKey.getRightSquaringMatrix() ) )
+//                .equals( sharingKey.getMiddle() ) );
+//
+//        BitVector actual = BitVectors.fromSquareMatrix( lv.multiply( bridge ).multiply( rv ) );
+//        try {
+//            Preconditions.checkState( indexForTerm.equals( actual ) );
+//            Preconditions.checkState( lv.multiply( encryptedSearchPrivateKey.getLeftSquaringMatrix().inverse() )
+//                    .equals( expectedMatrix ) );
+//            Preconditions.checkState( encryptedSearchPrivateKey.getRightSquaringMatrix().inverse().multiply( rv )
+//                    .equals( expectedMatrix ) );
+//        } catch ( SingularMatrixException e ) {
+//            // TODO Auto-generated catch block
+//            e.printStackTrace();
+//        }
+
         return indexForTerm;
     }
 
