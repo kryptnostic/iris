@@ -141,11 +141,10 @@ public class IrisConnection implements KryptnosticConnection {
                     Preconditions.checkState( checksum.equals( qph.computeChecksum() ) );
                     Preconditions.checkState( searchFunctionService.validateQueryHasherPair( getValidators() )
                             .getData() );
-                }
-                Preconditions.checkState( checksum.equals( qph.computeChecksum() ) );
-                SimplePolynomialFunctionValidator[] validators = getValidators();
-                if ( validators != null ) {
-                    Preconditions.checkState( searchFunctionService.validateQueryHasherPair( validators ).getData() );
+                    SimplePolynomialFunctionValidator[] validators = getValidators();
+                    if ( validators != null ) {
+                        Preconditions.checkState( searchFunctionService.validateQueryHasherPair( validators ).getData() );
+                    }
                 }
             }
         } catch ( KodexException | SecurityConfigurationException | SealedKodexException e ) {
