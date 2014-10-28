@@ -12,7 +12,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
-import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.search.v1.SearchClient;
@@ -41,8 +40,6 @@ public class DefaultSearchClient implements SearchClient {
     /**
      * Analyze query into tokens, convert tokens into searchTokens, and generate a SearchRequest to Kryptnostic RESTful
      * search service.
-     * 
-     * @throws IrisException
      */
     @Override
     public Collection<SearchResult> search( String query ) {
@@ -56,7 +53,6 @@ public class DefaultSearchClient implements SearchClient {
 
     /**
      * @return List<BitVector> of search tokens, the ciphertext to be submitted to KryptnosticSearch.
-     * @throws IrisException
      */
     private SearchRequest generateSearchRequest( List<String> tokens ) {
         Preconditions.checkArgument( tokens != null, "Cannot pass null tokens param." );
