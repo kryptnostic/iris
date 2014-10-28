@@ -97,8 +97,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                     dataStore.put( FUNCTION_KEY.getBytes(), gbh );
                 } else {
                     // Verify integrity of glabal hash function
-                    Preconditions.checkState( Preconditions.checkNotNull( checksum, "Checksum should not be null!" )
-                            .equals( Hashing.murmur3_128().hashBytes( gbh ).toString() ) );
+//                    Preconditions.checkState( Preconditions.checkNotNull( checksum, "Checksum should not be null!" )
+//                            .equals( Hashing.murmur3_128().hashBytes( gbh ).toString() ) );
 
                     // Make sure it matches server hash
                     Preconditions.checkState( searchFunctionClient.getGlobalHasherChecksum().getData()
