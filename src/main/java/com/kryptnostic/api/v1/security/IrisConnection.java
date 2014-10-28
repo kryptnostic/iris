@@ -19,6 +19,7 @@ import retrofit.client.Client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
+import com.kryptnostic.api.v1.client.InMemoryStore;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.fhe.FreshKodexLoader;
 import com.kryptnostic.api.v1.security.loaders.fhe.KodexLoader;
@@ -78,7 +79,7 @@ public class IrisConnection implements KryptnosticConnection {
         this.userCredential = userCredential;
         this.url = url;
         this.keyService = null;
-        this.dataStore = null;
+        this.dataStore = new InMemoryStore();
         try {
 
             // loadRsaKeys( cryptoService, userKey, dataStore, keyService );
@@ -94,9 +95,13 @@ public class IrisConnection implements KryptnosticConnection {
         }
     }
 
-    public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore , Client client ) throws IrisException {
+    public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore, Client client ) throws IrisException {
         this.cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, userCredential.toCharArray() );
-        RestAdapter adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter( url, userKey, userCredential , client );
+        RestAdapter adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
+                url,
+                userKey,
+                userCredential,
+                client );
         this.keyService = adapter.create( KeyApi.class );
         SearchFunctionApi searchFunctionService = adapter.create( SearchFunctionApi.class );
         SimplePolynomialFunction globalHashFunction;
