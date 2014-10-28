@@ -1,66 +1,43 @@
 package com.kryptnostic.api.v1.client;
 
-import java.util.concurrent.TimeUnit;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import retrofit.RestAdapter;
-import retrofit.RestAdapter.LogLevel;
-import retrofit.client.OkClient;
 
-import com.kryptnostic.api.v1.indexing.BalancedMetadataKeyService;
-import com.kryptnostic.api.v1.indexing.BaseIndexingService;
-import com.kryptnostic.api.v1.utils.JacksonConverter;
-import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.directory.v1.KeyApi;
+import com.kryptnostic.directory.v1.UsersApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
-import com.kryptnostic.kodex.v1.exceptions.DefaultErrorHandler;
-import com.kryptnostic.kodex.v1.indexing.IndexingService;
-import com.kryptnostic.kodex.v1.indexing.MetadataKeyService;
-import com.kryptnostic.kodex.v1.security.SecurityService;
+import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.search.v1.client.SearchApi;
+import com.kryptnostic.sharing.v1.requests.SharingApi;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
-import com.kryptnostic.storage.v1.client.NonceApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
-import com.squareup.okhttp.OkHttpClient;
 
 public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFactory {
-    private final static Logger logger = LoggerFactory.getLogger(DefaultKryptnosticServicesFactory.class);
+    private final static Logger     logger = LoggerFactory.getLogger( DefaultKryptnosticServicesFactory.class );
 
-    private MetadataKeyService metadataKeyService;
-    private final IndexingService indexingService;
-    private final MetadataApi metadataService;
-    private final DocumentApi documentService;
-    private final SearchApi searchService;
-    private final NonceApi nonceService;
+    private final MetadataApi       metadataService;
+    private final DocumentApi       documentService;
+    private final SearchApi         searchService;
     private final SearchFunctionApi searchFunctionService;
-    private final SecurityService securityService;
+    private final SharingApi        sharingService;
+    private final KeyApi            keyService;
+    private final UsersApi          usersService;
 
-    public DefaultKryptnosticServicesFactory(String url, SecurityService service) {
-        securityService = service;
-        OkHttpClient client = new OkHttpClient();
-        client.setReadTimeout( 0 , TimeUnit.MILLISECONDS );
-        client.setConnectTimeout( 0 , TimeUnit.MILLISECONDS );
-        
-        // connection
-        RestAdapter restAdapter = new RestAdapter.Builder()
-                .setConverter(new JacksonConverter(securityService.getSecurityConfigurationMapping())).setEndpoint(url)
-                .setClient( new OkClient( client  ) )
-                .setErrorHandler(new DefaultErrorHandler()).setLogLevel(LogLevel.FULL).setLog(new RestAdapter.Log() {
-                    @Override
-                    public void log(String msg) {
-                        logger.debug(msg);
-                    }
-                }).build();
+    public DefaultKryptnosticServicesFactory( KryptnosticConnection credentialService ) {
+        this( KryptnosticRestAdapter.create( credentialService ) );
+    }
 
-        documentService = restAdapter.create(DocumentApi.class);
-        metadataService = restAdapter.create(MetadataApi.class);
-        searchService = restAdapter.create(SearchApi.class);
-        nonceService = restAdapter.create(NonceApi.class);
-        searchFunctionService = restAdapter.create(SearchFunctionApi.class);
-
-        indexingService = new BaseIndexingService();
+    public DefaultKryptnosticServicesFactory( RestAdapter restAdapter ) {
+        documentService = restAdapter.create( DocumentApi.class );
+        metadataService = restAdapter.create( MetadataApi.class );
+        searchService = restAdapter.create( SearchApi.class );
+        searchFunctionService = restAdapter.create( SearchFunctionApi.class );
+        sharingService = restAdapter.create( SharingApi.class );
+        keyService = restAdapter.create( KeyApi.class );
+        usersService = restAdapter.create( UsersApi.class );
     }
 
     @Override
@@ -79,30 +56,23 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     }
 
     @Override
-    public MetadataKeyService createMetadataKeyService(KryptnosticContext context) {
-        if (metadataKeyService == null) {
-            this.metadataKeyService = new BalancedMetadataKeyService(context);
-        }
-        return metadataKeyService;
-    }
-
-    @Override
-    public IndexingService createIndexingService() {
-        return indexingService;
-    }
-
-    @Override
-    public SearchFunctionApi createSearchFunctionService() {
+    public SearchFunctionApi createSearchFunctionApi() {
         return searchFunctionService;
     }
 
     @Override
-    public NonceApi createNonceService() {
-        return nonceService;
+    public SharingApi createSharingApi() {
+        return sharingService;
     }
 
     @Override
-    public SecurityService createSecurityService() {
-        return securityService;
+    public KeyApi createKeyApi() {
+        return keyService;
     }
+
+    @Override
+    public UsersApi createUsersApi() {
+        return usersService;
+    }
+
 }

@@ -96,16 +96,16 @@ dependencies {
       compile project(":fhe-core:kryptnostic-api")
       compile project(":fhe-core:kryptnostic-core")
       compile project(":kodex")
+      testCompile project(path: ":kodex", configuration: "tests")
     } else {
       logger.quiet("$project.name is using jar dependencies")
       compile "com.kryptnostic:kryptnostic-api:${fhe_core_version}"
       compile "com.kryptnostic:kryptnostic-core:${fhe_core_version}"
       compile "com.kryptnostic:kodex:${kodex_version}"
+      testCompile "com.kryptnostic:test-kodex:${kodex_version}"
     }
     
     compile "com.squareup.retrofit:retrofit:${retrofit_version}"
-    compile "com.squareup.okhttp:okhttp-urlconnection:2.0.0"
-    compile "com.squareup.okhttp:okhttp:2.0.0"
     
 	// FIXME: not working! use the following to replace com.kryptnostic.api.v1.utils.JacksonConverter plz!
 	// compile "com.squareup.retrofit:retrofit-converters:1.6.0" // not available for 1.6.1 //#${retrofit_version}
@@ -122,8 +122,9 @@ dependencies {
     /*
      * TESTING
      */
-    testCompile 'junit:junit:4.11'
+    testCompile "junit:junit:4.11"
     testCompile "org.mockito:mockito-all:1.9.5"
+    testCompile "com.github.tomakehurst:wiremock:1.51"
 }
 
 task sourcesJar(type : Jar) {
@@ -140,14 +141,15 @@ artifacts {
 	archives sourcesJar,javadocJar
 }
 
+sourceCompatibility=JavaVersion.VERSION_1_7
+
 eclipse {
-    ext.sourceCompatibility=JavaVersion.VERSION_1_6
-    ext.targetCompatibility=JavaVersion.VERSION_1_6
     ext.downloadSources = true
     ext.downloadJavadoc = true
+    ext.sourceCompatibility=JavaVersion.VERSION_1_7
     classpath {
          containers.remove('org.eclipse.jdt.launching.JRE_CONTAINER')
-         containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6'
+         containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7'
     }
 }
 

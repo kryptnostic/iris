@@ -1,53 +1,83 @@
 package com.kryptnostic.api.v1.client;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import com.kryptnostic.api.v1.search.DefaultSearchService;
-import com.kryptnostic.api.v1.storage.DefaultStorageService;
+import com.kryptnostic.api.v1.search.DefaultSearchClient;
+import com.kryptnostic.api.v1.storage.DefaultStorageClient;
+import com.kryptnostic.directory.v1.UsersApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
+import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.search.v1.SearchService;
+import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
+import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.search.v1.models.SearchResult;
-import com.kryptnostic.storage.v1.StorageService;
+import com.kryptnostic.sharing.v1.DocumentId;
+import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.models.Document;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
+import com.kryptnostic.users.v1.UserKey;
 
-// TODO: exception handling
 public class DefaultKryptnosticClient implements KryptnosticClient {
-    private final SearchService searchService;
-    private final StorageService storageService;
+    private final SearchClient       searchClient;
+    private final StorageClient      storageClient;
     private final KryptnosticContext context;
+    private final UsersApi usersClient;
+    public DefaultKryptnosticClient( KryptnosticServicesFactory factory, KryptnosticConnection securityService ) throws IrisException,
+            ResourceNotFoundException {
+        this.context = new DefaultKryptnosticContext(
+                factory.createSearchFunctionApi(),
+                factory.createSharingApi(),
+                factory.createKeyApi(),
+                securityService );
 
-    public DefaultKryptnosticClient(KryptnosticServicesFactory factory) {
-        this.context = new DefaultKryptnosticContext(factory.createSearchFunctionService(),
-                factory.createNonceService(), factory.createSecurityService());
-
-        this.storageService = new DefaultStorageService(factory.createDocumentApi(), factory.createMetadataApi(),
-                factory.createMetadataKeyService(context), factory.createIndexingService());
-        this.searchService = new DefaultSearchService(factory.createSearchApi(), factory.createIndexingService());
+        this.storageClient = new DefaultStorageClient(
+                context,
+                factory.createDocumentApi(),
+                factory.createMetadataApi() );
+        this.searchClient = new DefaultSearchClient( context, factory.createSearchApi() );
+        this.usersClient = factory.createUsersApi();
     }
 
     @Override
-    public Collection<SearchResult> search(String query) {
-        return searchService.search(query);
+    public Collection<SearchResult> search( String query ) {
+        return searchClient.search( query );
     }
 
     @Override
-    public String uploadDocument(String document) throws BadRequestException {
-        return storageService.uploadDocument(document);
+    public String uploadDocumentWithMetadata( String document ) throws BadRequestException,
+            SecurityConfigurationException, IrisException {
+        return storageClient.uploadDocumentWithMetadata( document );
     }
 
     @Override
-    public String updateDocument(String id, String document) throws ResourceNotFoundException {
-        return storageService.updateDocument(id, document);
+    public String uploadDocumentWithoutMetadata( String document ) throws BadRequestException,
+            SecurityConfigurationException, IrisException {
+        return storageClient.uploadDocumentWithoutMetadata( document );
     }
 
     @Override
-    public Document getDocument(String id) throws ResourceNotFoundException {
-        return storageService.getDocument(id);
+    public String updateDocumentWithMetadata( String id, String document ) throws ResourceNotFoundException,
+            BadRequestException, SecurityConfigurationException, ResourceLockedException, IrisException {
+        return storageClient.updateDocumentWithMetadata( id, document );
+    }
+
+    @Override
+    public String updateDocumentWithoutMetadata( String id, String document ) throws BadRequestException,
+            SecurityConfigurationException, ResourceNotFoundException, ResourceLockedException, IrisException {
+        return storageClient.updateDocumentWithoutMetadata( id, document );
+    }
+
+    @Override
+    public Document getDocument( DocumentId id ) throws ResourceNotFoundException {
+        return storageClient.getDocument( id );
     }
 
     @Override
@@ -56,17 +86,24 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     }
 
     @Override
-    public String uploadMetadata(MetadataRequest metadata) throws BadRequestException {
-        return storageService.uploadMetadata(metadata);
+    public String uploadMetadata( MetadataRequest metadata ) throws BadRequestException {
+        return storageClient.uploadMetadata( metadata );
     }
 
     @Override
-    public Collection<String> getDocumentIds() {
-        return storageService.getDocumentIds();
+    public Collection<DocumentId> getDocumentIds() {
+        return storageClient.getDocumentIds();
     }
 
     @Override
-    public String uploadDocumentWithoutMetadata(String document) throws BadRequestException {
-        return storageService.uploadDocumentWithoutMetadata(document);
+    public Map<Integer, String> getDocumentFragments( DocumentId id, List<Integer> offsets, int characterWindow )
+            throws ResourceNotFoundException, SecurityConfigurationException, IrisException {
+        return storageClient.getDocumentFragments( id, offsets, characterWindow );
     }
+
+    @Override
+    public Set<UserKey> listUserInRealm( String realm ) {
+        return usersClient.listUserInRealm( realm );
+    }
+
 }
