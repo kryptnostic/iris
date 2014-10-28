@@ -1,5 +1,6 @@
 package com.kryptnostic.api.v1.security.loaders.fhe;
 
+import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
@@ -8,7 +9,6 @@ import java.security.SignatureException;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Preconditions;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.v1.ciphers.Cypher;
@@ -59,15 +59,15 @@ public class FreshKodexLoader extends KodexLoader {
                 | SignatureException
                 | NoSuchAlgorithmException
                 | InvalidAlgorithmParameterException
-                | JsonProcessingException
                 | SecurityConfigurationException
-                | CorruptKodexException e ) {
+                | CorruptKodexException
+                | IOException e ) {
             throw new KodexException( e );
         }
     }
 
     private void generateAllKeys( Kodex<String> kodex ) throws SealedKodexException, KodexException,
-            SecurityConfigurationException, SingularMatrixException {
+            SecurityConfigurationException, SingularMatrixException, IOException {
         com.kryptnostic.crypto.PrivateKey fhePrivateKey = getFhePrivateKey();
         com.kryptnostic.crypto.PublicKey fhePublicKey = getFhePublicKey( fhePrivateKey );
 
@@ -91,7 +91,7 @@ public class FreshKodexLoader extends KodexLoader {
 
     private QueryHasherPairRequest getQueryHasher(
             EncryptedSearchPrivateKey encryptedSearchPrivateKey,
-            com.kryptnostic.crypto.PrivateKey fhePrivateKey ) throws SingularMatrixException {
+            com.kryptnostic.crypto.PrivateKey fhePrivateKey ) throws SingularMatrixException, IOException {
         Pair<SimplePolynomialFunction, SimplePolynomialFunction> pair = encryptedSearchPrivateKey.getQueryHasherPair(
                 globalHashFunction,
                 fhePrivateKey );
