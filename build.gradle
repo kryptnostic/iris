@@ -96,11 +96,13 @@ dependencies {
       compile project(":fhe-core:kryptnostic-api")
       compile project(":fhe-core:kryptnostic-core")
       compile project(":kodex")
+      testCompile project(path: ":kodex", configuration: "tests")
     } else {
       logger.quiet("$project.name is using jar dependencies")
       compile "com.kryptnostic:kryptnostic-api:${fhe_core_version}"
       compile "com.kryptnostic:kryptnostic-core:${fhe_core_version}"
       compile "com.kryptnostic:kodex:${kodex_version}"
+      testCompile "com.kryptnostic:test-kodex:${kodex_version}"
     }
     
     compile "com.squareup.retrofit:retrofit:${retrofit_version}"

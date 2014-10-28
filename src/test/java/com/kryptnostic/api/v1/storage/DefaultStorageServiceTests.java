@@ -35,10 +35,10 @@ import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
 import com.kryptnostic.storage.v1.models.DocumentBlock;
+import com.kryptnostic.storage.v1.models.request.AesEncryptableBase;
 import com.kryptnostic.storage.v1.models.request.DocumentCreationRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.users.v1.UserKey;
-import com.kryptnostic.utils.AesEncryptableBase;
 
 public class DefaultStorageServiceTests extends AesEncryptableBase {
 
