@@ -85,7 +85,7 @@ public class IrisConnection implements KryptnosticConnection {
             // loadRsaKeys( cryptoService, userKey, dataStore, keyService );
             this.rsaPublicKey = keyPair.getPublic();
 
-            kodex.unseal( keyPair.getPrivate() );
+            kodex.unseal( keyPair.getPublic(), keyPair.getPrivate() );
 
             this.fhePrivateKey = kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class );
             this.fhePublicKey = kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class );
@@ -139,11 +139,10 @@ public class IrisConnection implements KryptnosticConnection {
                     doFresh = true;
                 } else {
                     Preconditions.checkState( checksum.equals( qph.computeChecksum() ) );
-                    Preconditions.checkState( searchFunctionService.validateQueryHasherPair( getValidators() )
-                            .getData() );
                     SimplePolynomialFunctionValidator[] validators = getValidators();
                     if ( validators != null ) {
-                        Preconditions.checkState( searchFunctionService.validateQueryHasherPair( validators ).getData() );
+                        Preconditions
+                                .checkState( searchFunctionService.validateQueryHasherPair( validators ).getData() );
                     }
                 }
             }

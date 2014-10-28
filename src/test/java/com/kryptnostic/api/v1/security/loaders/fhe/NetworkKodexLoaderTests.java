@@ -84,7 +84,7 @@ public class NetworkKodexLoaderTests {
                 Cypher.AES_CTR_PKCS5_128,
                 keyPair.getPublic() );
 
-        kodex.unseal( keyPair.getPrivate() );
+        kodex.unseal( keyPair.getPublic(), keyPair.getPrivate() );
 
         kodex.setKeyWithClassAndJackson( PrivateKey.class, fhePrivateKey );
         kodex.setKeyWithClassAndJackson( PublicKey.class, fhePublicKey );

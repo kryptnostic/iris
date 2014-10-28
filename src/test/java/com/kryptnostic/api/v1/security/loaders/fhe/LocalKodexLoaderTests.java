@@ -98,7 +98,7 @@ public class LocalKodexLoaderTests {
             SealedKodexException, KodexException, CorruptKodexException, SingularMatrixException {
         Kodex<String> kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_PKCS5_128, pair.getPublic() );
 
-        kodex.unseal( pair.getPrivate() );
+        kodex.unseal( pair.getPublic(), pair.getPrivate() );
 
         kodex.setKeyWithClassAndJackson( PrivateKey.class, fhePrivateKey );
         kodex.setKeyWithClassAndJackson( PublicKey.class, fhePublicKey );

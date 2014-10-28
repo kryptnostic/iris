@@ -29,14 +29,21 @@ public final class LocalKodexLoader extends KodexLoader {
     public Kodex<String> tryLoading() throws KodexException {
         try {
 
-            byte[] kodexBytes = Preconditions.checkNotNull( dataStore.get( Kodex.class.getCanonicalName().getBytes() ) , "Unable to loaded kodex from data store." );
+            byte[] kodexBytes = Preconditions.checkNotNull(
+                    dataStore.get( Kodex.class.getCanonicalName().getBytes() ),
+                    "Unable to loaded kodex from data store." );
 
             Kodex<String> kodex = mapper.readValue( kodexBytes, new TypeReference<Kodex<String>>() {} );
 
-            kodex.unseal( keyPair.getPrivate() );
+            kodex.unseal( keyPair.getPublic(), keyPair.getPrivate() );
 
             return kodex;
-        } catch ( IOException | KodexException | SecurityConfigurationException | CorruptKodexException | NullPointerException e ) {
+        } catch (
+                IOException
+                | KodexException
+                | SecurityConfigurationException
+                | CorruptKodexException
+                | NullPointerException e ) {
             throw new KodexException( e );
         }
     }

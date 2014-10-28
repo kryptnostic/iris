@@ -51,7 +51,7 @@ public class FreshKodexLoader extends KodexLoader {
                     keyPair.getPublic() );
 
             kodex.verify( keyPair.getPublic() );
-            kodex.unseal( keyPair.getPrivate() );
+            kodex.unseal( keyPair.getPublic(), keyPair.getPrivate() );
 
             generateAllKeys( kodex );
 

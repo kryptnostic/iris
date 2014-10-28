@@ -36,7 +36,7 @@ public final class NetworkKodexLoader extends KodexLoader {
             }
 
             kodex.verify( keyPair.getPublic() );
-            kodex.unseal( keyPair.getPrivate() );
+            kodex.unseal( keyPair.getPublic(), keyPair.getPrivate() );
 
             return kodex;
         } catch (
