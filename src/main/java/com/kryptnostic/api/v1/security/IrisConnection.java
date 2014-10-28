@@ -139,7 +139,10 @@ public class IrisConnection implements KryptnosticConnection {
                     doFresh = true;
                 }
                 Preconditions.checkState( checksum.equals( qph.computeChecksum() ) );
-                Preconditions.checkState( searchFunctionService.validateQueryHasherPair( getValidators() ).getData() );
+                SimplePolynomialFunctionValidator[] validators = getValidators();
+                if ( validators != null ) {
+                    Preconditions.checkState( searchFunctionService.validateQueryHasherPair( validators ).getData() );
+                }
             }
         } catch ( KodexException | SecurityConfigurationException | SealedKodexException e ) {
             throw new IrisException( e );
@@ -296,9 +299,16 @@ public class IrisConnection implements KryptnosticConnection {
 
     private SimplePolynomialFunctionValidator[] getValidators() throws IrisException {
         try {
+            byte[] leftValidator = dataStore.get( KodexLoader.LEFT_VALIDATOR );
+            byte[] rightValidator = dataStore.get( KodexLoader.RIGHT_VALIDATOR );
+
+            if ( leftValidator == null || rightValidator == null ) {
+                return null;
+            }
+
             return new SimplePolynomialFunctionValidator[] {
-                    SimplePolynomialFunctionValidator.fromBytes( dataStore.get( KodexLoader.LEFT_VALIDATOR ) ),
-                    SimplePolynomialFunctionValidator.fromBytes( dataStore.get( KodexLoader.RIGHT_VALIDATOR ) ) };
+                    SimplePolynomialFunctionValidator.fromBytes( leftValidator ),
+                    SimplePolynomialFunctionValidator.fromBytes( rightValidator ) };
         } catch ( IOException e ) {
             throw new IrisException( e );
         }
