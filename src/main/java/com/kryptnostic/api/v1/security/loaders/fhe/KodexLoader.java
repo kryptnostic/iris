@@ -8,18 +8,11 @@ import com.kryptnostic.api.v1.security.loaders.Loader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.v1.keys.Kodex;
 import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
-import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
-/**
- * Provider of immutable {@link KeyPackage} to encapsulate logic of retrieving consistent keys.
- * 
- * @author sinaiman
- *
- */
 public abstract class KodexLoader extends Loader<Kodex<String>> {
 
     private static final Logger  logger       = LoggerFactory.getLogger( KodexLoader.class );
@@ -41,7 +34,7 @@ public abstract class KodexLoader extends Loader<Kodex<String>> {
      * 
      * @return The valid Kodex, returned UNSEALED. Dirty only if it was freshly created or any keys were modified in the
      *         loading process
-     * @throws IrisException If the Kodex candidate was determined to be invalid
+     * @throws KodexException If the Kodex candidate was determined to be invalid
      */
     @Override
     public final Kodex<String> load() throws KodexException {
@@ -63,10 +56,8 @@ public abstract class KodexLoader extends Loader<Kodex<String>> {
      * 
      * @param kodex
      * @return
-     * @throws IrisException
-     * @throws SealedKodexException
+     * @throws KodexException
      */
-
     @Override
     protected final boolean validate( Kodex<String> kodex ) throws KodexException {
         try {

@@ -52,8 +52,8 @@ import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.sharing.v1.DocumentId;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
-import com.kryptnostic.storage.v1.models.request.AesEncryptableBase;
 import com.kryptnostic.users.v1.UserKey;
+import com.kryptnostic.utils.AesEncryptableBase;
 
 public class DefaultKryptnosticClientTests extends AesEncryptableBase {
 
@@ -103,7 +103,7 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
         // verify we only request the global hasher once (getGlobalHashFunction was called twice though, because it's
         // called during client init)
         verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.CONTROLLER ) ) );
-        verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.CONTROLLER + "/hasher" ) ) );
+
     }
 
     @Test
@@ -168,7 +168,8 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
 
     private void generateQueryHasherPairStub() {
         String response = wrap( "true" );
-        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + "/hasher" ) ).willReturn(
+
+        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.HASHER ) ).willReturn(
                 aResponse().withBody( response ) ) );
     }
 

@@ -12,13 +12,13 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
+import org.apache.http.HttpStatus;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import org.springframework.http.HttpStatus;
 
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
@@ -35,10 +35,10 @@ import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.client.DocumentApi;
 import com.kryptnostic.storage.v1.client.MetadataApi;
 import com.kryptnostic.storage.v1.models.DocumentBlock;
-import com.kryptnostic.storage.v1.models.request.AesEncryptableBase;
 import com.kryptnostic.storage.v1.models.request.DocumentCreationRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.users.v1.UserKey;
+import com.kryptnostic.utils.AesEncryptableBase;
 
 public class DefaultStorageServiceTests extends AesEncryptableBase {
 
@@ -71,8 +71,10 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
 
                     @Override
                     public BasicResponse<DocumentId> answer( InvocationOnMock invocation ) throws Throwable {
-                        return new BasicResponse<DocumentId>( new DocumentId( "document1", userKey ), HttpStatus.OK
-                                .value(), true );
+                        return new BasicResponse<DocumentId>(
+                                new DocumentId( "document1", userKey ),
+                                HttpStatus.SC_OK,
+                                true );
                     }
 
                 } );
@@ -82,8 +84,10 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
 
                     @Override
                     public BasicResponse<DocumentId> answer( InvocationOnMock invocation ) throws Throwable {
-                        return new BasicResponse<DocumentId>( new DocumentId( "document1", userKey ), HttpStatus.OK
-                                .value(), true );
+                        return new BasicResponse<DocumentId>(
+                                new DocumentId( "document1", userKey ),
+                                HttpStatus.SC_OK,
+                                true );
                     }
 
                 } );
