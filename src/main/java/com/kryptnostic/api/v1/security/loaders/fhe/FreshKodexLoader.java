@@ -84,13 +84,6 @@ public class FreshKodexLoader extends KodexLoader {
         kodex.setKeyWithClassAndJackson( EncryptedSearchPrivateKey.class, encryptedSearchPrivateKey );
         kodex.setKeyWithClassAndJackson( QueryHasherPairRequest.class, queryHasher );
 
-        // queryHasher.getLeft(),
-        // SimplePolynomialFunction.class );
-        // kodex.setKeyWithJackson(
-        // SimplePolynomialFunction.class.getCanonicalName() + KodexLoader.LEFT_HASHER,
-        // queryHasher.getRight(),
-        // SimplePolynomialFunction.class );
-
     }
 
     private QueryHasherPairRequest getQueryHasher(
@@ -104,7 +97,7 @@ public class FreshKodexLoader extends KodexLoader {
 
         dataStore.put( KodexLoader.LEFT_VALIDATOR, leftValidtor.getBytes() );
         dataStore.put( KodexLoader.RIGHT_VALIDATOR, rightValidtor.getBytes() );
-        
+
         return new QueryHasherPairRequest( pair.getLeft(), pair.getRight() );
 
         // SimplePolynomialFunction expected = pair.getLeft();

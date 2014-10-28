@@ -31,6 +31,7 @@ import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
+import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 import com.kryptnostic.users.v1.UserKey;
 
 public class NetworkKodexLoaderTests {
@@ -70,10 +71,9 @@ public class NetworkKodexLoaderTests {
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( EncryptedSearchPrivateKey.class ) );
-        Assert.assertNotNull( kodex.getKeyWithJackson( SimplePolynomialFunction.class.getCanonicalName()
-                + KodexLoader.LEFT_HASHER, SimplePolynomialFunction.class ) );
-        Assert.assertNotNull( kodex.getKeyWithJackson( SimplePolynomialFunction.class.getCanonicalName()
-                + KodexLoader.RIGHT_HASHER, SimplePolynomialFunction.class ) );
+        Assert.assertNotNull( kodex.getKeyWithJackson(
+                QueryHasherPairRequest.class.getCanonicalName(),
+                QueryHasherPairRequest.class ) );
     }
 
     private Kodex<String> makeValidKodex() throws InvalidKeyException, NoSuchAlgorithmException,

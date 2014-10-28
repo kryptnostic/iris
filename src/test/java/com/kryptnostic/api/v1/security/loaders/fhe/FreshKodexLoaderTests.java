@@ -18,6 +18,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
+import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class FreshKodexLoaderTests {
 
@@ -33,22 +34,21 @@ public class FreshKodexLoaderTests {
     @Test
     public void initTest() throws IrisException, KodexException, SecurityConfigurationException, SealedKodexException,
             CorruptKodexException {
-        Kodex<String> kodex = new FreshKodexLoader( keyPair, globalHashFunction , new InMemoryStore() ).load();
+        Kodex<String> kodex = new FreshKodexLoader( keyPair, globalHashFunction, new InMemoryStore() ).load();
         Assert.assertFalse( kodex.isSealed() );
         Assert.assertTrue( kodex.isDirty() );
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( EncryptedSearchPrivateKey.class ) );
-        Assert.assertNotNull( kodex.getKeyWithJackson( SimplePolynomialFunction.class.getCanonicalName()
-                + KodexLoader.LEFT_HASHER, SimplePolynomialFunction.class ) );
-        Assert.assertNotNull( kodex.getKeyWithJackson( SimplePolynomialFunction.class.getCanonicalName()
-                + KodexLoader.RIGHT_HASHER, SimplePolynomialFunction.class ) );
+        Assert.assertNotNull( kodex.getKeyWithJackson(
+                QueryHasherPairRequest.class.getCanonicalName(),
+                QueryHasherPairRequest.class ) );
     }
 
     @Test(
         expected = NullPointerException.class )
     public void nullTest() throws KodexException {
-        new FreshKodexLoader( keyPair, null , new InMemoryStore() ).load();
+        new FreshKodexLoader( keyPair, null, new InMemoryStore() ).load();
     }
 
 }

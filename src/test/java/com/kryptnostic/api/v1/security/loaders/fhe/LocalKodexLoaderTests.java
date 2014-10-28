@@ -35,6 +35,7 @@ import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
+import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class LocalKodexLoaderTests {
     private static final Logger      logger = LoggerFactory.getLogger( LocalKodexLoaderTests.class );
@@ -74,10 +75,9 @@ public class LocalKodexLoaderTests {
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( EncryptedSearchPrivateKey.class ) );
-        Assert.assertNotNull( kodex.getKeyWithJackson( SimplePolynomialFunction.class.getCanonicalName()
-                + KodexLoader.LEFT_HASHER, SimplePolynomialFunction.class ) );
-        Assert.assertNotNull( kodex.getKeyWithJackson( SimplePolynomialFunction.class.getCanonicalName()
-                + KodexLoader.RIGHT_HASHER, SimplePolynomialFunction.class ) );
+        Assert.assertNotNull( kodex.getKeyWithJackson(
+                QueryHasherPairRequest.class.getCanonicalName(),
+                QueryHasherPairRequest.class ) );
     }
 
     private KeyPair makeValidRsa() throws NoSuchAlgorithmException, IOException, SecurityConfigurationException,
@@ -106,14 +106,9 @@ public class LocalKodexLoaderTests {
         EncryptedSearchPrivateKey esp = new EncryptedSearchPrivateKey( (int) Math.sqrt( globalHash.getOutputLength() ) );
         Pair<SimplePolynomialFunction, SimplePolynomialFunction> p = esp.getQueryHasherPair( globalHash, fhePrivateKey );
         kodex.setKeyWithClassAndJackson( EncryptedSearchPrivateKey.class, esp );
-        kodex.setKeyWithJackson(
-                SimplePolynomialFunction.class.getCanonicalName() + KodexLoader.LEFT_HASHER,
-                p.getLeft(),
-                SimplePolynomialFunction.class );
-        kodex.setKeyWithJackson(
-                SimplePolynomialFunction.class.getCanonicalName() + KodexLoader.RIGHT_HASHER,
-                p.getRight(),
-                SimplePolynomialFunction.class );
+        kodex.setKeyWithClassAndJackson(
+                QueryHasherPairRequest.class,
+                new QueryHasherPairRequest( p.getLeft(), p.getRight() ) );
 
         byte[] kodexBytes = mapper.writeValueAsBytes( kodex );
 

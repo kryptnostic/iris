@@ -32,9 +32,11 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.directory.v1.KeyApi;
@@ -47,6 +49,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
+import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.sharing.v1.DocumentId;
@@ -148,7 +151,7 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
         return aResponse().withHeader( "Content-Type", "application/json" ).withBody( s );
     }
 
-    private SimplePolynomialFunction generateGlobalHasherStub() throws IrisException {
+    private SimplePolynomialFunction generateGlobalHasherStub() throws IrisException, JsonProcessingException {
         SimplePolynomialFunction expectedGlobalHasher = SimplePolynomialFunctions.randomFunction( 128, 128 );
         String globalHasherResponse = null;
         try {
@@ -163,6 +166,14 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
 
         stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER ) ).willReturn(
                 aResponse().withBody( globalHasherResponse ) ) );
+
+        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.CHECKSUM ) ).willReturn(
+                aResponse().withBody(
+                        Hashing
+                                .murmur3_128()
+                                .hashBytes(
+                                        KodexObjectMapperFactory.getObjectMapper().writeValueAsBytes(
+                                                expectedGlobalHasher ) ).toString() ) ) );
         return expectedGlobalHasher;
     }
 

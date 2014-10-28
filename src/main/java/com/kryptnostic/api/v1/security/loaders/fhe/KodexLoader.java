@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.api.v1.security.loaders.Loader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.v1.keys.Kodex;
-import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
@@ -15,15 +14,15 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public abstract class KodexLoader extends Loader<Kodex<String>> {
 
-    private static final Logger  logger       = LoggerFactory.getLogger( KodexLoader.class );
+    private static final Logger  logger          = LoggerFactory.getLogger( KodexLoader.class );
 
-    public static final String   LEFT_HASHER  = "LEFT";
-    public static final String   RIGHT_HASHER = "RIGHT";
+    public static final String   LEFT_HASHER     = "LEFT";
+    public static final String   RIGHT_HASHER    = "RIGHT";
 
-    public static final byte[] LEFT_VALIDATOR = "LEFT_VALIDATOR".getBytes();
-    public static final byte[] RIGHT_VALIDATOR = "RIGHT_VALIDATOR".getBytes();
-    
-    protected final ObjectMapper mapper       = KodexObjectMapperFactory.getObjectMapper();
+    public static final byte[]   LEFT_VALIDATOR  = "LEFT_VALIDATOR".getBytes();
+    public static final byte[]   RIGHT_VALIDATOR = "RIGHT_VALIDATOR".getBytes();
+
+    protected final ObjectMapper mapper          = KodexObjectMapperFactory.getObjectMapper();
 
     public KodexLoader() {}
 
@@ -64,8 +63,8 @@ public abstract class KodexLoader extends Loader<Kodex<String>> {
             return kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class ) != null
                     && kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class ) != null
                     && kodex.getKeyWithJackson( EncryptedSearchPrivateKey.class ) != null
-                    && kodex.getKeyWithJackson( QueryHasherPairRequest.class.getCanonicalName(), QueryHasherPairRequest.class ) != null;
-        } catch ( SecurityConfigurationException | SealedKodexException e ) {
+                    && kodex.getKeyWithJackson( QueryHasherPairRequest.class ) != null;
+        } catch ( SecurityConfigurationException e ) {
             throw new KodexException( e );
         }
     }
