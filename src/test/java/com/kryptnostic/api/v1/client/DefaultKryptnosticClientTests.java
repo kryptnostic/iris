@@ -103,7 +103,6 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
         // verify we only request the global hasher once (getGlobalHashFunction was called twice though, because it's
         // called during client init)
         verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.CONTROLLER ) ) );
-        verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.CONTROLLER + SearchFunctionApi.HASHER ) ) );
     }
 
     @Test
