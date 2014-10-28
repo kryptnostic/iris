@@ -1,6 +1,10 @@
 package com.kryptnostic.api.v1.client;
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.codec.binary.StringUtils;
 import org.slf4j.Logger;
@@ -10,19 +14,27 @@ import cern.colt.bitvector.BitVector;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
+import com.kryptnostic.crypto.v1.ciphers.Cyphers;
+import com.kryptnostic.crypto.v1.ciphers.RsaCompressingCryptoService;
+import com.kryptnostic.crypto.v1.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.crypto.v1.keys.JacksonKodexMarshaller;
 import com.kryptnostic.directory.v1.KeyApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
@@ -34,27 +46,30 @@ import com.kryptnostic.sharing.v1.models.PairedEncryptedSearchDocumentKey;
 import com.kryptnostic.sharing.v1.requests.SharingApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
+import com.kryptnostic.users.v1.UserKey;
 
 public class DefaultKryptnosticContext implements KryptnosticContext {
-    private final ObjectMapper              mapper          = KodexObjectMapperFactory.getObjectMapper();
-    private final SharingApi                sharingClient;
-    private final KeyApi                    keyClient;
-    private final SearchFunctionApi         searchFunctionClient;
-    private final PrivateKey                fhePrivateKey;
-    private final PublicKey                 fhePublicKey;
-    private final EncryptedSearchPrivateKey encryptedSearchPrivateKey;
-    private final KryptnosticConnection     securityService;
-    private final DataStore                 dataStore;
-    private SimplePolynomialFunction        globalHashFunction;
+    private final ObjectMapper                mapper          = KodexObjectMapperFactory.getObjectMapper();
+    private static DeflatingJacksonMarshaller marshaller      = new DeflatingJacksonMarshaller();
+    private final SharingApi                  sharingClient;
+    private final KeyApi                      keyClient;
+    private final SearchFunctionApi           searchFunctionClient;
+    private final PrivateKey                  fhePrivateKey;
+    private final PublicKey                   fhePublicKey;
+    private final EncryptedSearchPrivateKey   encryptedSearchPrivateKey;
+    private final KryptnosticConnection       securityService;
+    private final DataStore                   dataStore;
+    private SimplePolynomialFunction          globalHashFunction;
 
-    public static final String              CHECKSUM_KEY    = "global-hash-checksum";
-    public static final String              FUNCTION_KEY    = "global-hash-function";
+    public static final String                CHECKSUM_KEY    = "global-hash-checksum";
+    public static final String                FUNCTION_KEY    = "global-hash-function";
 
-    private static final Logger             logger          = LoggerFactory.getLogger( DefaultKryptnosticContext.class );
+    private static final Logger               logger          = LoggerFactory
+                                                                      .getLogger( DefaultKryptnosticContext.class );
 
-    private static final int                TOKEN_LENGTH    = 256;
-    private static final int                LOCATION_LENGTH = 64;
-    private static final int                NONCE_LENGTH    = 64;
+    private static final int                  TOKEN_LENGTH    = 256;
+    private static final int                  LOCATION_LENGTH = 64;
+    private static final int                  NONCE_LENGTH    = 64;
 
     public DefaultKryptnosticContext(
             SearchFunctionApi searchFunctionClient,
@@ -138,13 +153,34 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
+    public EncryptedSearchBridgeKey fromSharingKey( EncryptedSearchSharingKey sharingKey ) throws IrisException {
+        try {
+            return new EncryptedSearchBridgeKey( encryptedSearchPrivateKey, sharingKey );
+        } catch ( SingularMatrixException e ) {
+            throw new IrisException( e );
+        }
+    }
+
+    @Override
     public void submitBridgeKeyWithSearchNonce(
             DocumentId documentId,
             EncryptedSearchSharingKey sharingKey,
             BitVector searchNonce ) throws IrisException {
+
+        try {
+            dataStore.put(
+                    ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() ).getBytes(),
+                    marshaller.toBytes( searchNonce ) );
+            dataStore.put(
+                    ( documentId.getDocumentId() + BitVector.class.getCanonicalName() ).getBytes(),
+                    marshaller.toBytes( sharingKey ) );
+        } catch ( IOException e1 ) {
+            e1.printStackTrace();
+        }
+
         BitVector encryptedSearchNonce = encryptNonce( searchNonce );
         try {
-            EncryptedSearchBridgeKey bridgeKey = new EncryptedSearchBridgeKey( encryptedSearchPrivateKey, sharingKey );
+            EncryptedSearchBridgeKey bridgeKey = fromSharingKey( sharingKey );
 
             EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( encryptedSearchNonce, bridgeKey );
 
@@ -155,8 +191,6 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                     notEncryptedDocumentId_CHANGE_ME,
                     docKey );
             sharingClient.registerKeys( Lists.newArrayList( pairedKey ) );
-        } catch ( SingularMatrixException e ) {
-            throw new IrisException( e );
         } catch ( JsonProcessingException e ) {
             throw new IrisException( e );
         }
@@ -183,5 +217,40 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     @Override
     public BitVector prepareSearchToken( String token ) {
         return encryptedSearchPrivateKey.prepareSearchToken( fhePublicKey, token );
+    }
+
+    @Override
+    public byte[] rsaDecrypt( byte[] ciphertext ) throws SecurityConfigurationException {
+        return Cyphers.decrypt( RsaKeyLoader.CIPHER, securityService.getRsaPrivateKey(), ciphertext );
+    }
+
+    @Override
+    public byte[] rsaEncrypt( byte[] plaintext ) throws SecurityConfigurationException {
+        return Cyphers.encrypt( RsaKeyLoader.CIPHER, securityService.getRsaPublicKey(), plaintext );
+    }
+
+    @Override
+    public Map<UserKey, RsaCompressingEncryptionService> getEncryptionServiceForUsers( Set<UserKey> users ) {
+        return Maps.asMap( users, new Function<UserKey, RsaCompressingEncryptionService>() {
+
+            @Override
+            public RsaCompressingEncryptionService apply( UserKey input ) {
+                try {
+                    return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, keyClient.getPublicKey(
+                            input.getRealm(),
+                            input.getName() ).asRsaPublicKey() );
+                } catch ( InvalidKeySpecException | NoSuchAlgorithmException | SecurityConfigurationException e ) {
+                    return null;
+                }
+            }
+        } );
+    }
+
+    @Override
+    public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
+        return new RsaCompressingCryptoService(
+                RsaKeyLoader.CIPHER,
+                securityService.getRsaPrivateKey(),
+                securityService.getRsaPublicKey() );
     }
 }

@@ -7,12 +7,12 @@ import com.kryptnostic.crypto.v1.keys.Keys;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 
 public final class FreshRsaKeyLoader extends RsaKeyLoader {
-
+    
     @Override
     protected KeyPair tryLoading() throws KodexException {
         KeyPair keyPair;
         try {
-            keyPair = Keys.generateRsaKeyPair( 1024 );
+            keyPair = Keys.generateRsaKeyPair( KEY_SIZE );
 
             return keyPair;
         } catch ( NoSuchAlgorithmException e ) {

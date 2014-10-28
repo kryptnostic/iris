@@ -68,6 +68,8 @@ public class IrisConnection implements KryptnosticConnection {
     private final com.kryptnostic.crypto.PublicKey  fhePublicKey;
     private final EncryptedSearchPrivateKey         encryptedSearchPrivateKey;
     private final PublicKey                         rsaPublicKey;
+    private final PrivateKey                        rsaPrivateKey;
+    boolean                                         doFresh = false;
 
     public IrisConnection(
             KeyPair keyPair,
@@ -83,6 +85,7 @@ public class IrisConnection implements KryptnosticConnection {
         this.url = url;
         this.keyService = null;
         this.dataStore = new InMemoryStore();
+        this.rsaPrivateKey = keyPair.getPrivate();
         try {
 
             // loadRsaKeys( cryptoService, userKey, dataStore, keyService );
@@ -134,7 +137,7 @@ public class IrisConnection implements KryptnosticConnection {
 
         logger.debug( "Loading RSA keys" );
         KeyPair keyPair = loadRsaKeys( cryptoService, userKey, dataStore, keyService );
-
+        this.rsaPrivateKey = keyPair.getPrivate();
         this.rsaPublicKey = keyPair.getPublic();
 
         SimplePolynomialFunction globalHashFunction;
@@ -405,6 +408,14 @@ public class IrisConnection implements KryptnosticConnection {
     @Override
     public DataStore getDataStore() {
         return dataStore;
+    }
+    
+    public PrivateKey getRsaPrivateKey() {
+        return rsaPrivateKey;
+    }
+    
+    public PublicKey getRsaPublicKey() {
+        return rsaPublicKey;
     }
 
     private SimplePolynomialFunctionValidator[] getValidators() throws IrisException {
