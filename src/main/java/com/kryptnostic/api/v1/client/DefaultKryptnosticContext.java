@@ -95,7 +95,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                 if ( gbh == null ) {
                     globalHashFunction = searchFunctionClient.getFunction();
                     gbh = new JacksonKodexMarshaller<SimplePolynomialFunction>( SimplePolynomialFunction.class ).toBytes( globalHashFunction );
-                    checksum = Hashing.murmur3_128().hashBytes( gbh ).toString();
+                    checksum = searchFunctionClient.getGlobalHasherChecksum().getData();//Hashing.murmur3_128().hashBytes( gbh ).toString();
                     dataStore.put( checksumKey.getBytes(), StringUtils.getBytesUtf8( checksum ) );
                     dataStore.put( functionKey.getBytes(), gbh );
                 } else {

@@ -132,9 +132,10 @@ public class IrisConnection implements KryptnosticConnection {
                 String checksum = searchFunctionService.getQueryHasherChecksum().getData();
                 if ( StringUtils.isBlank( checksum ) ) {
                     doFresh = true;
+                } else{
+                    Preconditions.checkState( checksum.equals( qph.computeChecksum() ) );
+                    Preconditions.checkState( searchFunctionService.validateQueryHasherPair( getValidators() ).getData() );
                 }
-                Preconditions.checkState( checksum.equals( qph.computeChecksum() ) );
-                Preconditions.checkState( searchFunctionService.validateQueryHasherPair( getValidators() ).getData() );
             }
         } catch ( KodexException | SecurityConfigurationException | SealedKodexException e ) {
             throw new IrisException( e );
