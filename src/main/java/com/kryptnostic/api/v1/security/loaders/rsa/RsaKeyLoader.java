@@ -8,8 +8,8 @@ import com.kryptnostic.crypto.v1.keys.PublicKeyAlgorithm;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 
 public abstract class RsaKeyLoader extends Loader<KeyPair> {
-    public static final int KEY_SIZE = 1024;
-    public static final Cypher CIPHER = Cypher.RSA_OAEP_SHA256_1024;
+    public static final int KEY_SIZE = 4096;
+    public static final Cypher CIPHER = Cypher.RSA_OAEP_SHA256_4096;
     public static final PublicKeyAlgorithm ALGORITHM = PublicKeyAlgorithm.RSA;
     
     @Override
