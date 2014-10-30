@@ -102,7 +102,7 @@ dependencies {
       compile "com.kryptnostic:kryptnostic-api:${fhe_core_version}"
       compile "com.kryptnostic:kryptnostic-core:${fhe_core_version}"
       compile "com.kryptnostic:kodex:${kodex_version}"
-      testCompile "com.kryptnostic:test-kodex:${kodex_version}"
+      testCompile "com.kryptnostic:kodex:${kodex_version}:tests"
     }
     
     compile "com.squareup.retrofit:retrofit:${retrofit_version}"
