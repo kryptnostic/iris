@@ -92,14 +92,9 @@ public class NetworkKodexLoaderTests {
         EncryptedSearchPrivateKey esp = new EncryptedSearchPrivateKey( (int) Math.sqrt( globalHash.getOutputLength() ) );
         Pair<SimplePolynomialFunction, SimplePolynomialFunction> p = esp.getQueryHasherPair( globalHash, fhePrivateKey );
         kodex.setKeyWithClassAndJackson( EncryptedSearchPrivateKey.class, esp );
-        kodex.setKeyWithJackson(
-                SimplePolynomialFunction.class.getCanonicalName() + KodexLoader.LEFT_HASHER,
-                p.getLeft(),
-                SimplePolynomialFunction.class );
-        kodex.setKeyWithJackson(
-                SimplePolynomialFunction.class.getCanonicalName() + KodexLoader.RIGHT_HASHER,
-                p.getRight(),
-                SimplePolynomialFunction.class );
+        kodex.setKeyWithClassAndJackson(
+                QueryHasherPairRequest.class,
+                new QueryHasherPairRequest( p.getLeft(), p.getRight() ) );
 
         kodex.seal();
 
