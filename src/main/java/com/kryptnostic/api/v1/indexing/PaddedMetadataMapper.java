@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
@@ -82,7 +81,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
         return MappedMetadata.from( metadataMap );
     }
 
-    private Iterable<Integer> subListAndPad( List<Integer> locations, int fromIndex, int toIndex ) {
+    private List<Integer> subListAndPad( List<Integer> locations, int fromIndex, int toIndex ) {
         int paddingLength = BUCKET_SIZE - toIndex + fromIndex;
         List<Integer> padding = Lists.newArrayListWithCapacity( paddingLength );
         for ( int i = 0; i < paddingLength; ++i ) {
@@ -90,6 +89,10 @@ public class PaddedMetadataMapper implements MetadataMapper {
             padding.add( invalidLocation < 0 ? invalidLocation : -invalidLocation );
         }
 
-        return Iterables.concat( locations.subList( fromIndex, toIndex ), padding );
+        List<Integer> res = Lists.newArrayList();
+        res.addAll( locations.subList( fromIndex, toIndex ) );
+        res.addAll( padding );
+
+        return res;
     }
 }

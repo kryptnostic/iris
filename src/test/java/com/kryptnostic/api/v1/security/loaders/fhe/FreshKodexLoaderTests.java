@@ -6,6 +6,7 @@ import java.security.NoSuchAlgorithmException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import com.kryptnostic.api.v1.client.InMemoryStore;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
@@ -16,8 +17,10 @@ import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
+import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class FreshKodexLoaderTests {
@@ -34,21 +37,27 @@ public class FreshKodexLoaderTests {
     @Test
     public void initTest() throws IrisException, KodexException, SecurityConfigurationException, SealedKodexException,
             CorruptKodexException {
-        Kodex<String> kodex = new FreshKodexLoader( keyPair, globalHashFunction, new InMemoryStore() ).load();
+        SearchFunctionApi searchFunctionService = Mockito.mock( SearchFunctionApi.class );
+        Mockito.when( searchFunctionService.setQueryHasherPair( Mockito.any( QueryHasherPairRequest.class ) ) )
+                .thenReturn( new BasicResponse<String>( "", 200, true ) );
+
+        Kodex<String> kodex = new FreshKodexLoader(
+                keyPair,
+                globalHashFunction,
+                searchFunctionService,
+                new InMemoryStore() ).load();
         Assert.assertFalse( kodex.isSealed() );
         Assert.assertTrue( kodex.isDirty() );
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( EncryptedSearchPrivateKey.class ) );
-        Assert.assertNotNull( kodex.getKeyWithJackson(
-                QueryHasherPairRequest.class.getCanonicalName(),
-                QueryHasherPairRequest.class ) );
+        Assert.assertNotNull( kodex.getKeyWithJackson( QueryHasherPairRequest.class.getCanonicalName(), String.class ) );
     }
 
     @Test(
         expected = NullPointerException.class )
     public void nullTest() throws KodexException {
-        new FreshKodexLoader( keyPair, null, new InMemoryStore() ).load();
+        new FreshKodexLoader( keyPair, null, Mockito.mock( SearchFunctionApi.class ), new InMemoryStore() ).load();
     }
 
 }

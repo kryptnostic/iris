@@ -8,8 +8,12 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +56,7 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 import com.kryptnostic.users.v1.UserKey;
 
 public class IrisConnection implements KryptnosticConnection {
-    private static final Logger                     logger  = LoggerFactory.getLogger( IrisConnection.class );
+    private static final Logger                     logger = LoggerFactory.getLogger( IrisConnection.class );
     private final Kodex<String>                     kodex;
     private transient CryptoService                 cryptoService;
     private final UserKey                           userKey;
@@ -64,7 +68,6 @@ public class IrisConnection implements KryptnosticConnection {
     private final com.kryptnostic.crypto.PublicKey  fhePublicKey;
     private final EncryptedSearchPrivateKey         encryptedSearchPrivateKey;
     private final PublicKey                         rsaPublicKey;
-    boolean                                         doFresh = false;
 
     public IrisConnection(
             KeyPair keyPair,
@@ -103,77 +106,106 @@ public class IrisConnection implements KryptnosticConnection {
                 userCredential,
                 client );
         this.keyService = adapter.create( KeyApi.class );
-        SearchFunctionApi searchFunctionService = adapter.create( SearchFunctionApi.class );
-        SimplePolynomialFunction globalHashFunction;
-        try {
-            globalHashFunction = searchFunctionService.getFunction();
-        } catch ( ResourceNotFoundException e ) {
-            throw new IrisException( e );
-        }
+        final SearchFunctionApi searchFunctionService = adapter.create( SearchFunctionApi.class );
+
+        ExecutorService exec = Executors.newCachedThreadPool();
+
+        logger.debug( "Submitting async call for global hasher" );
+        Future<SimplePolynomialFunction> hashGetter = exec.submit( new Callable<SimplePolynomialFunction>() {
+            @Override
+            public SimplePolynomialFunction call() {
+                try {
+                    SimplePolynomialFunction gh = searchFunctionService.getFunction();
+                    logger.debug( "Done with async call for global hasher" );
+                    return gh;
+                } catch ( ResourceNotFoundException e ) {
+                    logger.error( "Global hasher request failed {}", e );
+                    e.printStackTrace();
+                }
+                return null;
+            }
+
+        } );
 
         this.userCredential = userCredential;
         this.userKey = userKey;
         this.url = url;
         this.dataStore = dataStore;
 
+        logger.debug( "Loading RSA keys" );
         KeyPair keyPair = loadRsaKeys( cryptoService, userKey, dataStore, keyService );
 
         this.rsaPublicKey = keyPair.getPublic();
 
-        Kodex<String> searchKodex = loadSearchKodex( dataStore, keyPair, keyService, globalHashFunction );
+        SimplePolynomialFunction globalHashFunction;
+        try {
+            globalHashFunction = hashGetter.get();
+        } catch ( InterruptedException | ExecutionException e ) {
+            throw new IrisException( e );
+        }
+
+        Kodex<String> searchKodex = loadSearchKodex(
+                dataStore,
+                keyPair,
+                keyService,
+                searchFunctionService,
+                globalHashFunction );
 
         // TODO: insert document keyring/kodex here!
         this.kodex = searchKodex;
 
-        QueryHasherPairRequest qph = null;
-
         try {
-            this.fhePrivateKey = searchKodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class );
-            this.fhePublicKey = searchKodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class );
-            this.encryptedSearchPrivateKey = searchKodex.getKeyWithJackson( EncryptedSearchPrivateKey.class );
+            Future<com.kryptnostic.crypto.PrivateKey> fhePrivateKeyGetter = asynchronousKodexLoad(
+                    searchKodex,
+                    com.kryptnostic.crypto.PrivateKey.class,
+                    exec );
+            Future<com.kryptnostic.crypto.PublicKey> fhePublicKeyGetter = asynchronousKodexLoad(
+                    searchKodex,
+                    com.kryptnostic.crypto.PublicKey.class,
+                    exec );
+            Future<com.kryptnostic.crypto.EncryptedSearchPrivateKey> encryptedSearchPrivateKeyGetter = asynchronousKodexLoad(
+                    searchKodex,
+                    com.kryptnostic.crypto.EncryptedSearchPrivateKey.class,
+                    exec );
+
             this.kodex.setKeyWithClassAndJackson( CryptoService.class, cryptoService );
-            qph = searchKodex.getKeyWithJackson( QueryHasherPairRequest.class );
-            if ( !doFresh ) {
-                String checksum = searchFunctionService.getQueryHasherChecksum().getData();
-                if ( StringUtils.isBlank( checksum ) ) {
-                    doFresh = true;
-                } else {
-                    Preconditions.checkState( checksum.equals( qph.computeChecksum() ) );
-                    SimplePolynomialFunctionValidator[] validators = getValidators();
-                    if ( validators != null ) {
-                        Preconditions
-                                .checkState( searchFunctionService.validateQueryHasherPair( validators ).getData() );
-                    }
-                }
-            }
-        } catch ( KodexException | SecurityConfigurationException | SealedKodexException e ) {
+            String qhpChecksum = searchKodex.getKeyWithJackson(
+                    QueryHasherPairRequest.class.getCanonicalName(),
+                    String.class );
+
+            logger.debug( "Getting QHP checksum..." );
+            String checksum = searchFunctionService.getQueryHasherChecksum().getData();
+            logger.debug( "Done getting QHP checksum." );
+
+            Preconditions.checkState( qhpChecksum.equals( checksum ) );
+
+            this.fhePrivateKey = fhePrivateKeyGetter.get();
+            this.fhePublicKey = fhePublicKeyGetter.get();
+            this.encryptedSearchPrivateKey = encryptedSearchPrivateKeyGetter.get();
+
+        } catch (
+                KodexException
+                | SecurityConfigurationException
+                | SealedKodexException
+                | InterruptedException
+                | ExecutionException e ) {
             throw new IrisException( e );
         }
+    }
 
-        if ( doFresh ) {
-            try {
-                BlockCiphertext encPrivKey = cryptoService.encrypt( keyPair.getPrivate().getEncoded() );
-                byte[] pubKey = keyPair.getPublic().getEncoded();
-                ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
-
-                // Flush to disk
-                dataStore.put( PrivateKey.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( encPrivKey ) );
-                dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pubKey );
-                dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( searchKodex ) );
-
-                // Flush to service.
-                keyService.setPrivateKey( encPrivKey );
-                keyService.setPublicKey( new PublicKeyEnvelope( pubKey ) );
-                keyService.setKodex( searchKodex );
-
-                // Update the query hasher pair request
-                String checksum = searchFunctionService.setQueryHasherPair( qph ).getData();
-                Preconditions.checkState( checksum.equals( qph.computeChecksum() ) );
-                Preconditions.checkState( searchFunctionService.validateQueryHasherPair( getValidators() ).getData() );
-            } catch ( SecurityConfigurationException | IOException e ) {
-                throw new IrisException( e );
+    private <T> Future<T> asynchronousKodexLoad( final Kodex<String> kodex, final Class<T> key, ExecutorService exec ) {
+        return exec.submit( new Callable<T>() {
+            @Override
+            public T call() {
+                try {
+                    return kodex.getKeyWithJackson( key );
+                } catch ( KodexException | SecurityConfigurationException e ) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+                return null;
             }
-        }
+        } );
     }
 
     private KeyPair loadRsaKeys( CryptoService crypto, UserKey userKey, DataStore dataStore, KeyApi keyClient )
@@ -181,23 +213,37 @@ public class IrisConnection implements KryptnosticConnection {
         KeyPair keyPair = null;
 
         try {
+            logger.debug( "Loading RSA keys from disk" );
             keyPair = new LocalRsaKeyLoader( crypto, dataStore ).load();
         } catch ( KodexException e ) {
-            logger.info( "Could not load RSA keys from disk, trying network... {}", e );
+            logger.debug( "Could not load RSA keys from disk, trying network... {}", e );
         }
         if ( keyPair == null ) {
             try {
+                logger.debug( "Loading RSA keys from network" );
                 keyPair = new NetworkRsaKeyLoader( crypto, keyClient, userKey ).load();
+                try {
+                    flushRsaKeysToDisk( keyPair, createEncryptedPrivateKey( keyPair ) );
+                } catch ( IOException | SecurityConfigurationException e ) {
+                    e.printStackTrace();
+                }
             } catch ( KodexException e ) {
-                logger.info( "Could not load RSA keys from network, trying to generate... {}", e );
+                logger.debug( "Could not load RSA keys from network, trying to generate... {}", e );
             }
         }
         if ( keyPair == null ) {
             try {
-                doFresh = true;
+                logger.debug( "Generating RSA keys" );
                 keyPair = new FreshRsaKeyLoader().load();
+                try {
+                    BlockCiphertext encPrivKey = createEncryptedPrivateKey( keyPair );
+                    flushRsaKeysToDisk( keyPair, encPrivKey );
+                    flushRsaKeysToWeb( keyPair, encPrivKey );
+                } catch ( IOException | SecurityConfigurationException e ) {
+                    e.printStackTrace();
+                }
             } catch ( KodexException e ) {
-                logger.info( "Could not generate RSA Keys! {}", e );
+                logger.debug( "Could not generate RSA Keys! {}", e );
             }
         }
         if ( keyPair == null ) {
@@ -206,37 +252,99 @@ public class IrisConnection implements KryptnosticConnection {
         return keyPair;
     }
 
+    private BlockCiphertext createEncryptedPrivateKey( KeyPair keyPair ) throws SecurityConfigurationException {
+        logger.debug( "Encrypting private key..." );
+        BlockCiphertext encPrivKey = cryptoService.encrypt( keyPair.getPrivate().getEncoded() );
+        logger.debug( "Done encrypting private key." );
+
+        return encPrivKey;
+    }
+
+    private void flushRsaKeysToWeb( KeyPair keyPair, BlockCiphertext encPrivKey ) {
+        byte[] pubKey = keyPair.getPublic().getEncoded();
+
+        logger.debug( "Flushing RSA privkey to web..." );
+        keyService.setPrivateKey( encPrivKey );
+        logger.debug( "Done flushing RSA privkey to web." );
+
+        logger.debug( "Flushing RSA pubkey to web..." );
+        keyService.setPublicKey( new PublicKeyEnvelope( pubKey ) );
+        logger.debug( "Done flushing RSA pubkey to web." );
+    }
+
+    private void flushRsaKeysToDisk( KeyPair keyPair, BlockCiphertext encPrivKey ) throws IOException {
+        ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
+        byte[] pubKey = keyPair.getPublic().getEncoded();
+
+        // Flush to disk
+        logger.debug( "Flushing RSA Private Key to disk..." );
+        dataStore.put( PrivateKey.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( encPrivKey ) );
+        logger.debug( "Done flushing RSA Private Key to disk." );
+
+        logger.debug( "Flushing RSA pubkey to disk..." );
+        dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pubKey );
+        logger.debug( "Done flushing RSA pubkey to disk..." );
+    }
+
     private Kodex<String> loadSearchKodex(
             DataStore dataStore,
             KeyPair keyPair,
             KeyApi keyService,
+            SearchFunctionApi searchFunctionService,
             SimplePolynomialFunction globalHashFunction ) throws IrisException {
 
         Kodex<String> searchKodex = null;
         try {
+            logger.debug( "Loading kodex from disk" );
             searchKodex = new LocalKodexLoader( keyPair, dataStore ).load();
         } catch ( KodexException e ) {
-            logger.info( "Could not load Kodex from disk, trying network... {}", e );
+            logger.debug( "Could not load Kodex from disk, trying network... {}", e );
         }
         if ( searchKodex == null ) {
             try {
+                logger.debug( "Loading kodex from network" );
                 searchKodex = new NetworkKodexLoader( keyPair, keyService ).load();
+                try {
+                    flushKodexToDisk( searchKodex );
+                } catch ( IOException e ) {
+                    e.printStackTrace();
+                }
             } catch ( KodexException e ) {
-                logger.info( "Could not load Kodex from network, trying to generate... {}", e );
+                logger.debug( "Could not load Kodex from network, trying to generate... {}", e );
             }
         }
-        if ( searchKodex == null && ( doFresh == true ) ) {
+        if ( searchKodex == null ) {
             try {
-                doFresh = true;
-                searchKodex = new FreshKodexLoader( keyPair, globalHashFunction, dataStore ).load();
+                logger.debug( "Generating Kodex" );
+                searchKodex = new FreshKodexLoader( keyPair, globalHashFunction, searchFunctionService, dataStore )
+                        .load();
+                try {
+                    flushKodexToDisk( searchKodex );
+                } catch ( IOException e ) {
+                    e.printStackTrace();
+                }
+                flushKodexToWeb( searchKodex );
             } catch ( KodexException e ) {
-                logger.info( "Could not generate Kodex! {}", e );
+                logger.debug( "Could not generate Kodex! {}", e );
             }
         }
         if ( searchKodex == null ) {
             throw new IrisException( "Could not load Kodex" );
         }
         return searchKodex;
+    }
+
+    private void flushKodexToWeb( Kodex<String> searchKodex ) {
+        logger.debug( "Flushing kodex to web..." );
+        keyService.setKodex( searchKodex );
+        logger.debug( "Done flushing kodex to web." );
+    }
+
+    private void flushKodexToDisk( Kodex<String> searchKodex ) throws JsonProcessingException, IOException {
+        ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
+        logger.debug( "Flushing Kodex to disk..." );
+        dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( searchKodex ) );
+        logger.debug( "Done flushing Kodex to disk." );
     }
 
     @Override

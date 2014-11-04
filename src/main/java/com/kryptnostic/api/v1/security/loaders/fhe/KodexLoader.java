@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.api.v1.security.loaders.Loader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.v1.keys.Kodex;
+import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
@@ -63,8 +64,8 @@ public abstract class KodexLoader extends Loader<Kodex<String>> {
             return kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class ) != null
                     && kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class ) != null
                     && kodex.getKeyWithJackson( EncryptedSearchPrivateKey.class ) != null
-                    && kodex.getKeyWithJackson( QueryHasherPairRequest.class ) != null;
-        } catch ( SecurityConfigurationException e ) {
+                    && kodex.getKeyWithJackson( QueryHasherPairRequest.class.getCanonicalName(), String.class ) != null;
+        } catch ( SecurityConfigurationException | SealedKodexException e ) {
             throw new KodexException( e );
         }
     }

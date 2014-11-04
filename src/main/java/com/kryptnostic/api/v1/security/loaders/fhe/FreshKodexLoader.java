@@ -8,6 +8,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
@@ -17,24 +19,31 @@ import com.kryptnostic.crypto.v1.keys.Kodex.CorruptKodexException;
 import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.models.utils.SimplePolynomialFunctionValidator;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
+import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class FreshKodexLoader extends KodexLoader {
 
+    private static final Logger            logger = LoggerFactory.getLogger( FreshKodexLoader.class );
     private final KeyPair                  keyPair;
     private final SimplePolynomialFunction globalHashFunction;
     private final DataStore                dataStore;
+    private final SearchFunctionApi        searchFunctionApi;
 
-    public FreshKodexLoader( KeyPair keyPair, SimplePolynomialFunction globalHashFunction, DataStore dataStore ) {
+    public FreshKodexLoader(
+            KeyPair keyPair,
+            SimplePolynomialFunction globalHashFunction,
+            SearchFunctionApi searchFunctionApi,
+            DataStore dataStore ) {
         Preconditions.checkNotNull( globalHashFunction );
         Preconditions.checkNotNull( keyPair );
         this.keyPair = keyPair;
         this.globalHashFunction = globalHashFunction;
         this.dataStore = dataStore;
+        this.searchFunctionApi = searchFunctionApi;
     }
 
     /**
@@ -81,8 +90,16 @@ public class FreshKodexLoader extends KodexLoader {
         EncryptedSearchPrivateKey encryptedSearchPrivateKey = getEncryptedSearchPrivateKey();
         QueryHasherPairRequest queryHasher = getQueryHasher( encryptedSearchPrivateKey, fhePrivateKey );
 
+        // Update the query hasher pair request
+        logger.debug( "Flushing QHP to web..." );
+        searchFunctionApi.setQueryHasherPair( queryHasher ).getData();
+        logger.debug( "Done flushing QHP to web." );
+
         kodex.setKeyWithClassAndJackson( EncryptedSearchPrivateKey.class, encryptedSearchPrivateKey );
-        kodex.setKeyWithClassAndJackson( QueryHasherPairRequest.class, queryHasher );
+        kodex.setKeyWithJackson(
+                QueryHasherPairRequest.class.getCanonicalName(),
+                queryHasher.computeChecksum(),
+                String.class );
 
     }
 
@@ -92,11 +109,13 @@ public class FreshKodexLoader extends KodexLoader {
         Pair<SimplePolynomialFunction, SimplePolynomialFunction> pair = encryptedSearchPrivateKey.getQueryHasherPair(
                 globalHashFunction,
                 fhePrivateKey );
-        SimplePolynomialFunctionValidator leftValidtor = new SimplePolynomialFunctionValidator( pair.getLeft(), 10000 );
-        SimplePolynomialFunctionValidator rightValidtor = new SimplePolynomialFunctionValidator( pair.getRight(), 10000 );
+        // SimplePolynomialFunctionValidator leftValidtor = new SimplePolynomialFunctionValidator( pair.getLeft(), 10000
+        // );
+        // SimplePolynomialFunctionValidator rightValidtor = new SimplePolynomialFunctionValidator( pair.getRight(),
+        // 10000 );
 
-        dataStore.put( KodexLoader.LEFT_VALIDATOR, leftValidtor.getBytes() );
-        dataStore.put( KodexLoader.RIGHT_VALIDATOR, rightValidtor.getBytes() );
+        // dataStore.put( KodexLoader.LEFT_VALIDATOR, leftValidtor.getBytes() );
+        // dataStore.put( KodexLoader.RIGHT_VALIDATOR, rightValidtor.getBytes() );
 
         return new QueryHasherPairRequest( pair.getLeft(), pair.getRight() );
 
