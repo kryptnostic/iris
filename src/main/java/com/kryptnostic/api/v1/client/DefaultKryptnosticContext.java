@@ -48,6 +48,15 @@ import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
 import com.kryptnostic.users.v1.UserKey;
 
+/**
+ * 
+ * The default kryptnostic context is instantiated from an
+ * 
+ * @author Sina Iman &lt;sina@kryptnostic.com&gt;
+ * @author   Nick Hewitt &lt;nick@kryptnostic.com&gt;
+ * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
+ *
+ */
 public class DefaultKryptnosticContext implements KryptnosticContext {
     private final ObjectMapper                mapper          = KodexObjectMapperFactory.getObjectMapper();
     private static DeflatingJacksonMarshaller marshaller      = new DeflatingJacksonMarshaller();
