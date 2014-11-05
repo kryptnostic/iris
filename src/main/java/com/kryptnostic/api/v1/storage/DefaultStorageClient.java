@@ -250,7 +250,7 @@ public class DefaultStorageClient implements StorageClient {
             // encrypt the metadata
             for ( Metadata metadatumToEncrypt : metadataForKey ) {
                 Encryptable<Metadata> encryptedMetadatum = new AesEncryptable<Metadata>( metadatumToEncrypt );
-                metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum ) );
+                metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum, metadatumToEncrypt.getDocumentId() ) );
             }
         }
         return new MetadataRequest( metadataIndex );
