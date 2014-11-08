@@ -48,6 +48,7 @@ import com.kryptnostic.storage.v1.models.DocumentBlock;
 import com.kryptnostic.storage.v1.models.request.DocumentCreationRequest;
 import com.kryptnostic.storage.v1.models.request.DocumentFragmentRequest;
 import com.kryptnostic.storage.v1.models.request.IndexedMetadata;
+import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 
 public class DefaultStorageClient implements StorageClient {
@@ -119,7 +120,7 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public Document getDocument( DocumentId id ) throws ResourceNotFoundException {
-        return documentApi.getDocument( id.toString() ).getData();
+        return documentApi.getDocument( id.getUser().getRealm(), id.getUser().getName(), id.getDocumentId() ).getData();
     }
 
     @Override
@@ -139,8 +140,11 @@ public class DefaultStorageClient implements StorageClient {
 
         DocumentFragmentRequest fragmentRequest = new DocumentFragmentRequest( offsets, characterWindow );
 
-        Map<Integer, List<DocumentBlock>> encrypted = documentApi.getDocumentFragments( id.toString(), fragmentRequest )
-                .getData();
+        Map<Integer, List<DocumentBlock>> encrypted = documentApi.getDocumentFragments(
+                id.getUser().getRealm(),
+                id.getUser().getName(),
+                id.getDocumentId(),
+                fragmentRequest ).getData();
 
         for ( Entry<Integer, List<DocumentBlock>> e : encrypted.entrySet() ) {
             String preview = "";
@@ -324,7 +328,11 @@ public class DefaultStorageClient implements StorageClient {
                 @Override
                 public Void call() throws Exception {
                     // push the block to the server
-                    documentApi.updateDocument( documentId.toString(), block );
+                    documentApi.updateDocument(
+                            documentId.getUser().getRealm(),
+                            documentId.getUser().getName(),
+                            documentId.getDocumentId(),
+                            block );
                     return null;
                 }
             } ) );
@@ -339,5 +347,15 @@ public class DefaultStorageClient implements StorageClient {
                 throw new IrisException( e );
             }
         }
+    }
+
+    @Override
+    public void deleteMetadata( DocumentId id ) {
+        metadataApi.deleteAll( new MetadataDeleteRequest( Lists.newArrayList( id ) ) );
+    }
+
+    @Override
+    public void deleteDocument( DocumentId id ) {
+        documentApi.delete( id.getUser().getRealm(), id.getUser().getName(), id.getDocumentId() );
     }
 }

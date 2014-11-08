@@ -79,18 +79,19 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
 
                 } );
 
-        Mockito.when( documentApi.updateDocument( Mockito.anyString(), Mockito.any( DocumentBlock.class ) ) ).then(
-                new Answer<BasicResponse<DocumentId>>() {
+        Mockito.when(
+                documentApi.updateDocument(
+                        Mockito.anyString(),
+                        Mockito.anyString(),
+                        Mockito.anyString(),
+                        Mockito.any( DocumentBlock.class ) ) ).then( new Answer<BasicResponse<DocumentId>>() {
 
-                    @Override
-                    public BasicResponse<DocumentId> answer( InvocationOnMock invocation ) throws Throwable {
-                        return new BasicResponse<DocumentId>(
-                                new DocumentId( "document1", userKey ),
-                                HttpStatus.SC_OK,
-                                true );
-                    }
+            @Override
+            public BasicResponse<DocumentId> answer( InvocationOnMock invocation ) throws Throwable {
+                return new BasicResponse<DocumentId>( new DocumentId( "document1", userKey ), HttpStatus.SC_OK, true );
+            }
 
-                } );
+        } );
 
         Mockito.when( metadataApi.uploadMetadata( Mockito.any( MetadataRequest.class ) ) ).then( new Answer<String>() {
 

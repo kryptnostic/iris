@@ -29,7 +29,8 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     private final SearchClient       searchClient;
     private final StorageClient      storageClient;
     private final KryptnosticContext context;
-    private final UsersApi usersClient;
+    private final UsersApi           usersClient;
+
     public DefaultKryptnosticClient( KryptnosticServicesFactory factory, KryptnosticConnection securityService ) throws IrisException,
             ResourceNotFoundException {
         this.context = new DefaultKryptnosticContext(
@@ -104,6 +105,16 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     @Override
     public Set<UserKey> listUserInRealm( String realm ) {
         return usersClient.listUserInRealm( realm );
+    }
+
+    @Override
+    public void deleteMetadata( DocumentId id ) {
+        storageClient.deleteMetadata( id );
+    }
+
+    @Override
+    public void deleteDocument( DocumentId id ) {
+        storageClient.deleteDocument( id );
     }
 
 }
