@@ -75,9 +75,7 @@ public class LocalKodexLoaderTests {
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( EncryptedSearchPrivateKey.class ) );
-        Assert.assertNotNull( kodex.getKeyWithJackson(
-                QueryHasherPairRequest.class.getCanonicalName(),
-                QueryHasherPairRequest.class ) );
+        Assert.assertNotNull( kodex.getKeyWithJackson( QueryHasherPairRequest.class.getCanonicalName(), String.class ) );
     }
 
     private KeyPair makeValidRsa() throws NoSuchAlgorithmException, IOException, SecurityConfigurationException,
@@ -106,9 +104,10 @@ public class LocalKodexLoaderTests {
         EncryptedSearchPrivateKey esp = new EncryptedSearchPrivateKey( (int) Math.sqrt( globalHash.getOutputLength() ) );
         Pair<SimplePolynomialFunction, SimplePolynomialFunction> p = esp.getQueryHasherPair( globalHash, fhePrivateKey );
         kodex.setKeyWithClassAndJackson( EncryptedSearchPrivateKey.class, esp );
-        kodex.setKeyWithClassAndJackson(
-                QueryHasherPairRequest.class,
-                new QueryHasherPairRequest( p.getLeft(), p.getRight() ) );
+        kodex.setKeyWithJackson(
+                QueryHasherPairRequest.class.getCanonicalName(),
+                new QueryHasherPairRequest( p.getLeft(), p.getRight() ).computeChecksum(),
+                String.class );
 
         byte[] kodexBytes = mapper.writeValueAsBytes( kodex );
 

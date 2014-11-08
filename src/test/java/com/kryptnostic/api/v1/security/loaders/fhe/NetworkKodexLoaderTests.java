@@ -71,9 +71,7 @@ public class NetworkKodexLoaderTests {
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( EncryptedSearchPrivateKey.class ) );
-        Assert.assertNotNull( kodex.getKeyWithJackson(
-                QueryHasherPairRequest.class.getCanonicalName(),
-                QueryHasherPairRequest.class ) );
+        Assert.assertNotNull( kodex.getKeyWithJackson( QueryHasherPairRequest.class.getCanonicalName(), String.class ) );
     }
 
     private Kodex<String> makeValidKodex() throws InvalidKeyException, NoSuchAlgorithmException,

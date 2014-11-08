@@ -14,7 +14,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.net.URLEncoder;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -113,8 +112,9 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
     public void updateDocumentWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException {
-        DocumentId docId = DocumentId.fromUserAndId( "DOCUMENT_0", userKey );
-        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + URLEncoder.encode( docId.toString() );
+        DocumentId docId = DocumentId.fromIdAndUser( "DOCUMENT_0", userKey );
+        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + userKey.getRealm() + "/" + userKey.getName() + "/"
+                + docId.getDocumentId();
 
         String docIdResponse = serialize( new BasicResponse<DocumentId>( docId, 200, true ) );
 
@@ -131,9 +131,10 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
     public void uploadDocumentWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException {
-        DocumentId docId = DocumentId.fromUserAndId( "DOCUMENT_0", userKey );
+        DocumentId docId = DocumentId.fromIdAndUser( "DOCUMENT_0", userKey );
         String documentCreateUrl = DocumentApi.DOCUMENT;
-        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + URLEncoder.encode( docId.toString() );
+        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + userKey.getRealm() + "/" + userKey.getName() + "/"
+                + docId.getDocumentId();
 
         String docIdResponse = serialize( new BasicResponse<DocumentId>( docId, 200, true ) );
 
