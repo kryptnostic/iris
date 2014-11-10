@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
@@ -53,7 +52,7 @@ import com.kryptnostic.users.v1.UserKey;
  * The default kryptnostic context is instantiated from an
  * 
  * @author Sina Iman &lt;sina@kryptnostic.com&gt;
- * @author   Nick Hewitt &lt;nick@kryptnostic.com&gt;
+ * @author Nick Hewitt &lt;nick@kryptnostic.com&gt;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
@@ -188,21 +187,12 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         }
 
         BitVector encryptedSearchNonce = encryptNonce( searchNonce );
-        try {
-            EncryptedSearchBridgeKey bridgeKey = fromSharingKey( sharingKey );
+        EncryptedSearchBridgeKey bridgeKey = fromSharingKey( sharingKey );
 
-            EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( encryptedSearchNonce, bridgeKey );
+        EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( encryptedSearchNonce, bridgeKey );
 
-            // TODO: IMPORTANT: encrypt this with user's public rsa key
-            byte[] notEncryptedDocumentId_CHANGE_ME = mapper.writeValueAsBytes( documentId );
-
-            PairedEncryptedSearchDocumentKey pairedKey = new PairedEncryptedSearchDocumentKey(
-                    notEncryptedDocumentId_CHANGE_ME,
-                    docKey );
-            sharingClient.registerKeys( Lists.newArrayList( pairedKey ) );
-        } catch ( JsonProcessingException e ) {
-            throw new IrisException( e );
-        }
+        PairedEncryptedSearchDocumentKey pairedKey = new PairedEncryptedSearchDocumentKey( documentId, docKey );
+        sharingClient.registerKeys( Lists.newArrayList( pairedKey ) );
     }
 
     @Override

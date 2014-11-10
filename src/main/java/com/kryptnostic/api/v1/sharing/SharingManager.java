@@ -43,32 +43,32 @@ public class SharingManager implements SharingClient {
     private final KryptnosticConnection       connection;
     private final KryptnosticContext          context;
     private final SharingApi                  sharingClient;
-    public SharingManager(
-            KryptnosticConnection connection,
-            KryptnosticContext context,
-            SharingApi sharingClient ) {
+
+    public SharingManager( KryptnosticConnection connection, KryptnosticContext context, SharingApi sharingClient ) {
         this.dataStore = connection.getDataStore();
         this.connection = connection;
         this.context = context;
         this.sharingClient = sharingClient;
     }
 
-    @Override 
-    public void shareDocumentWithUsers(
-            DocumentId documentId,
-            Set<UserKey> users
-            ) {
-        
+    @Override
+    public void shareDocumentWithUsers( DocumentId documentId, Set<UserKey> users ) {
+
         DataStore dataStore = context.getSecurityService().getDataStore();
         EncryptedSearchSharingKey sharingKey = null;
         BitVector searchNonce = null;
         try {
-             sharingKey = marshaller.fromBytes( dataStore.get( (documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName()).getBytes() ) , EncryptedSearchSharingKey.class );
-             searchNonce = marshaller.fromBytes( dataStore.get( (documentId.getDocumentId() + BitVector.class.getCanonicalName()).getBytes() ) , BitVector.class );
+            sharingKey = marshaller.fromBytes(
+                    dataStore.get( ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() )
+                            .getBytes() ),
+                    EncryptedSearchSharingKey.class );
+            searchNonce = marshaller.fromBytes(
+                    dataStore.get( ( documentId.getDocumentId() + BitVector.class.getCanonicalName() ).getBytes() ),
+                    BitVector.class );
         } catch ( IOException e1 ) {
             e1.printStackTrace();
         }
-        
+
         AesCryptoService service;
         try {
             service = new AesCryptoService( Cypher.AES_CTR_PKCS5_128 );
@@ -78,16 +78,11 @@ public class SharingManager implements SharingClient {
                 seals.put( serviceEntry.getKey(), serviceEntry.getValue().encrypt( service ) );
             }
 
-            byte[] encryptedDocumentId = mapper.writeValueAsBytes( service.encrypt( marshaller.toBytes( documentId ) ) );
             byte[] encryptedSharingKey = mapper.writeValueAsBytes( service.encrypt( marshaller.toBytes( sharingKey ) ) );
             byte[] encryptedDocumentKey = mapper
                     .writeValueAsBytes( service.encrypt( marshaller.toBytes( searchNonce ) ) );
 
-            SharingRequest request = new SharingRequest(
-                    encryptedDocumentId,
-                    seals,
-                    encryptedSharingKey,
-                    encryptedDocumentKey );
+            SharingRequest request = new SharingRequest( documentId, seals, encryptedSharingKey, encryptedDocumentKey );
             sharingClient.shareDocument( request );
 
         } catch (
@@ -98,7 +93,7 @@ public class SharingManager implements SharingClient {
             e.printStackTrace();
         }
     }
-    
+
     public void processIncomingShares() throws IOException, SecurityConfigurationException {
         IncomingShares incoming = sharingClient.getIncomingShares();
         Map<UUID, Share> shares = incoming.getShares();
@@ -110,10 +105,7 @@ public class SharingManager implements SharingClient {
 
             AesCryptoService decryptor = service.decrypt( share.getSeal(), AesCryptoService.class );
 
-            DocumentId id = marshaller
-                    .fromBytes( decryptor.decryptBytes( mapper.readValue(
-                            share.getEncryptedDocumentId(),
-                            BlockCiphertext.class ) ), DocumentId.class );
+            DocumentId id = share.getDocumentId();
 
             BitVector searchNonce = marshaller
                     .fromBytes( decryptor.decryptBytes( mapper.readValue(
@@ -134,7 +126,7 @@ public class SharingManager implements SharingClient {
             }
 
             PairedEncryptedSearchDocumentKey pairedKey = new PairedEncryptedSearchDocumentKey(
-                    share.getEncryptedDocumentId(),
+                    share.getDocumentId(),
                     documentKey );
 
             keys.put( shareEntry.getKey(), pairedKey );
@@ -145,6 +137,6 @@ public class SharingManager implements SharingClient {
 
     @Override
     public void unsharedDocumentWithUsers( DocumentId documentId, Set<UserKey> users ) {
-        
+
     }
 }
