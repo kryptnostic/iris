@@ -42,13 +42,13 @@ public class SharingManager implements SharingClient {
     private final DataStore                   dataStore;
     private final KryptnosticConnection       connection;
     private final KryptnosticContext          context;
-    private final SharingApi                  sharingClient;
+    private final SharingApi                  sharingApi;
 
     public SharingManager( KryptnosticConnection connection, KryptnosticContext context, SharingApi sharingClient ) {
         this.dataStore = connection.getDataStore();
         this.connection = connection;
         this.context = context;
-        this.sharingClient = sharingClient;
+        this.sharingApi = sharingClient;
     }
 
     @Override
@@ -83,7 +83,7 @@ public class SharingManager implements SharingClient {
                     .writeValueAsBytes( service.encrypt( marshaller.toBytes( searchNonce ) ) );
 
             SharingRequest request = new SharingRequest( documentId, seals, encryptedSharingKey, encryptedDocumentKey );
-            sharingClient.shareDocument( request );
+            sharingApi.shareDocument( request );
 
         } catch (
                 NoSuchAlgorithmException
@@ -94,8 +94,8 @@ public class SharingManager implements SharingClient {
         }
     }
 
-    public void processIncomingShares() throws IOException, SecurityConfigurationException {
-        IncomingShares incoming = sharingClient.getIncomingShares();
+    public int processIncomingShares() throws IOException, SecurityConfigurationException {
+        IncomingShares incoming = sharingApi.getIncomingShares();
         Map<UUID, Share> shares = incoming.getShares();
         RsaCompressingCryptoService service = context.getRsaCryptoService();
         Map<UUID, PairedEncryptedSearchDocumentKey> keys = Maps.newHashMap();
@@ -120,7 +120,10 @@ public class SharingManager implements SharingClient {
             EncryptedSearchDocumentKey documentKey = null;
 
             try {
-                documentKey = new EncryptedSearchDocumentKey( searchNonce, context.fromSharingKey( sharingKey ) );
+                documentKey = new EncryptedSearchDocumentKey(
+                        searchNonce,
+                        context.fromSharingKey( sharingKey ),
+                        id.getUser() );
             } catch ( IrisException e ) {
                 e.printStackTrace();
             }
@@ -132,7 +135,8 @@ public class SharingManager implements SharingClient {
             keys.put( shareEntry.getKey(), pairedKey );
         }
         KeyRegistrationRequest request = new KeyRegistrationRequest( keys );
-        sharingClient.registerKeys( request );
+        sharingApi.registerKeys( request );
+        return shares.size();
     }
 
     @Override
