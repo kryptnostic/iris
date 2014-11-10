@@ -48,7 +48,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
 
         log.info( "Generating metadatum." );
         for ( Metadata metadatum : metadata ) {
-            String token = metadatum.getToken();
+            String token = metadatum.getToken().toLowerCase();
             List<Integer> locations = metadatum.getLocations();
             int fromIndex = 0, toIndex = Math.min( locations.size(), BUCKET_SIZE );
             do {
