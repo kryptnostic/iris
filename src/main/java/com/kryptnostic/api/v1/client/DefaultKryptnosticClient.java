@@ -117,4 +117,9 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
         storageClient.deleteDocument( id );
     }
 
+    @Override
+    public List<Document> getDocuments( List<DocumentId> ids ) throws ResourceNotFoundException {
+        return storageClient.getDocuments( ids );
+    }
+
 }
