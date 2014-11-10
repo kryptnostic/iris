@@ -178,10 +178,10 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         try {
             dataStore.put(
                     ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() ).getBytes(),
-                    marshaller.toBytes( searchNonce ) );
+                    marshaller.toBytes( sharingKey ) );
             dataStore.put(
                     ( documentId.getDocumentId() + BitVector.class.getCanonicalName() ).getBytes(),
-                    marshaller.toBytes( sharingKey ) );
+                    marshaller.toBytes( searchNonce ) );
         } catch ( IOException e1 ) {
             e1.printStackTrace();
         }
@@ -189,7 +189,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         BitVector encryptedSearchNonce = encryptNonce( searchNonce );
         EncryptedSearchBridgeKey bridgeKey = fromSharingKey( sharingKey );
 
-        EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( encryptedSearchNonce, bridgeKey );
+        EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( encryptedSearchNonce, bridgeKey , documentId.getUser() );
 
         PairedEncryptedSearchDocumentKey pairedKey = new PairedEncryptedSearchDocumentKey( documentId, docKey );
         sharingClient.registerKeys( Lists.newArrayList( pairedKey ) );
