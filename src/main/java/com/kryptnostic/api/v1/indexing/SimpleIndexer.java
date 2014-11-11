@@ -12,15 +12,12 @@ import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.sharing.v1.DocumentId;
-import com.kryptnostic.users.v1.UserKey;
 
 public class SimpleIndexer implements Indexer {
     private final Set<Analyzer> analyzers;
-    private final UserKey       user;
 
-    public SimpleIndexer( UserKey user ) {
+    public SimpleIndexer() {
         analyzers = Sets.<Analyzer> newHashSet( new TokenizingWhitespaceAnalyzer() );
-        this.user = user;
     }
 
     @Override
@@ -31,7 +28,7 @@ public class SimpleIndexer implements Indexer {
             for ( Entry<String, List<Integer>> entry : invertedIndex.entrySet() ) {
                 String token = entry.getKey();
                 List<Integer> locations = entry.getValue();
-                metadata.add( new Metadata( new DocumentId( documentId, user ), token, locations ) );
+                metadata.add( new Metadata( new DocumentId( documentId ), token, locations ) );
             }
         }
         return metadata;

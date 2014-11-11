@@ -189,7 +189,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         BitVector encryptedSearchNonce = encryptNonce( searchNonce );
         EncryptedSearchBridgeKey bridgeKey = fromSharingKey( sharingKey );
 
-        EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( encryptedSearchNonce, bridgeKey , documentId.getUser() );
+        EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( encryptedSearchNonce, bridgeKey, documentId );
 
         PairedEncryptedSearchDocumentKey pairedKey = new PairedEncryptedSearchDocumentKey( documentId, docKey );
         sharingClient.registerKeys( Lists.newArrayList( pairedKey ) );

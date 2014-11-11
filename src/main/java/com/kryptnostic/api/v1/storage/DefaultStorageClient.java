@@ -77,7 +77,7 @@ public class DefaultStorageClient implements StorageClient {
         this.metadataApi = metadataApi;
         this.securityService = context.getSecurityService();
         this.metadataMapper = new PaddedMetadataMapper( context );
-        this.indexer = new SimpleIndexer( securityService.getUserKey() );
+        this.indexer = new SimpleIndexer();
         this.kodex = context.getSecurityService().getKodex();
     }
 
@@ -108,7 +108,7 @@ public class DefaultStorageClient implements StorageClient {
     @Override
     public String updateDocumentWithMetadata( String documentId, String documentBody )
             throws ResourceNotFoundException, BadRequestException, SecurityConfigurationException, IrisException {
-        return updateDocumentWithMetadata( forCurrentUser( documentId ), documentBody );
+        return updateDocumentWithMetadata( new DocumentId( documentId ), documentBody );
     }
 
     @Override
@@ -120,7 +120,7 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public Document getDocument( DocumentId id ) throws ResourceNotFoundException {
-        return documentApi.getDocument( id.getUser().getRealm(), id.getUser().getName(), id.getDocumentId() ).getData();
+        return documentApi.getDocument( id.getDocumentId() ).getData();
     }
 
     @Override
@@ -141,8 +141,6 @@ public class DefaultStorageClient implements StorageClient {
         DocumentFragmentRequest fragmentRequest = new DocumentFragmentRequest( offsets, characterWindow );
 
         Map<Integer, List<DocumentBlock>> encrypted = documentApi.getDocumentFragments(
-                id.getUser().getRealm(),
-                id.getUser().getName(),
                 id.getDocumentId(),
                 fragmentRequest ).getData();
 
@@ -185,16 +183,6 @@ public class DefaultStorageClient implements StorageClient {
             throw new IrisException( e );
         }
         return verified;
-    }
-
-    /**
-     * Utility method to create a DocumentId scoped to the current user
-     * 
-     * @param documentId
-     * @return DocumentId scoped to current user
-     */
-    private DocumentId forCurrentUser( String documentId ) {
-        return new DocumentId( documentId, this.securityService.getUserKey() );
     }
 
     /**
@@ -277,7 +265,7 @@ public class DefaultStorageClient implements StorageClient {
             final String stringDocumentId,
             String documentBody,
             List<VerifiedString> verifiedStringBlocks ) throws SecurityConfigurationException, IrisException {
-        DocumentId documentId = forCurrentUser( stringDocumentId );
+        DocumentId documentId = new DocumentId( stringDocumentId );
         Document doc = generateDocument( documentId, documentBody, verifiedStringBlocks );
 
         submitBlocksToServer( documentId, doc.getBlocks() );
@@ -328,11 +316,7 @@ public class DefaultStorageClient implements StorageClient {
                 @Override
                 public Void call() throws Exception {
                     // push the block to the server
-                    documentApi.updateDocument(
-                            documentId.getUser().getRealm(),
-                            documentId.getUser().getName(),
-                            documentId.getDocumentId(),
-                            block );
+                    documentApi.updateDocument( documentId.getDocumentId(), block );
                     return null;
                 }
             } ) );
@@ -356,6 +340,6 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public void deleteDocument( DocumentId id ) {
-        documentApi.delete( id.getUser().getRealm(), id.getUser().getName(), id.getDocumentId() );
+        documentApi.delete( id.getDocumentId() );
     }
 }

@@ -123,7 +123,7 @@ public class SharingManager implements SharingClient {
                 documentKey = new EncryptedSearchDocumentKey(
                         searchNonce,
                         context.fromSharingKey( sharingKey ),
-                        id.getUser() );
+                        share.getDocumentId() );
             } catch ( IrisException e ) {
                 e.printStackTrace();
             }
