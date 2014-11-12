@@ -121,7 +121,7 @@ public class SharingManager implements SharingClient {
 
             try {
                 documentKey = new EncryptedSearchDocumentKey(
-                        searchNonce,
+                        context.encryptNonce( searchNonce ),
                         context.fromSharingKey( sharingKey ),
                         share.getDocumentId() );
             } catch ( IrisException e ) {
