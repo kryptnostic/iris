@@ -6,12 +6,15 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.crypto.v1.ciphers.AesCryptoService;
 import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
@@ -29,7 +32,6 @@ import com.kryptnostic.sharing.v1.DocumentId;
 import com.kryptnostic.sharing.v1.IncomingShares;
 import com.kryptnostic.sharing.v1.SharingClient;
 import com.kryptnostic.sharing.v1.SharingRequest;
-import com.kryptnostic.sharing.v1.models.PairedEncryptedSearchDocumentKey;
 import com.kryptnostic.sharing.v1.models.Share;
 import com.kryptnostic.sharing.v1.requests.KeyRegistrationRequest;
 import com.kryptnostic.sharing.v1.requests.SharingApi;
@@ -37,6 +39,7 @@ import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
 import com.kryptnostic.users.v1.UserKey;
 
 public class SharingManager implements SharingClient {
+    private static final Logger               logger     = LoggerFactory.getLogger( SharingManager.class );
     private static ObjectMapper               mapper     = KodexObjectMapperFactory.getObjectMapper();
     private static DeflatingJacksonMarshaller marshaller = new DeflatingJacksonMarshaller();
     private final DataStore                   dataStore;
@@ -95,14 +98,11 @@ public class SharingManager implements SharingClient {
     }
 
     public int processIncomingShares() throws IOException, SecurityConfigurationException {
-        IncomingShares incoming = sharingApi.getIncomingShares();
-        Map<UUID, Share> shares = incoming.getShares();
+        IncomingShares incomingShares = sharingApi.getIncomingShares();
         RsaCompressingCryptoService service = context.getRsaCryptoService();
-        Map<UUID, PairedEncryptedSearchDocumentKey> keys = Maps.newHashMap();
+        Set<EncryptedSearchDocumentKey> keys = Sets.newHashSet();
         ;
-        for ( Entry<UUID, Share> shareEntry : shares.entrySet() ) {
-            Share share = shareEntry.getValue();
-
+        for ( Share share : incomingShares ) {
             AesCryptoService decryptor = service.decrypt( share.getSeal(), AesCryptoService.class );
 
             DocumentId id = share.getDocumentId();
@@ -125,18 +125,17 @@ public class SharingManager implements SharingClient {
                         context.fromSharingKey( sharingKey ),
                         share.getDocumentId() );
             } catch ( IrisException e ) {
-                e.printStackTrace();
+                logger.error(
+                        "Unable to create encrypted search document key for document: {}",
+                        share.getDocumentId(),
+                        e );
             }
 
-            PairedEncryptedSearchDocumentKey pairedKey = new PairedEncryptedSearchDocumentKey(
-                    share.getDocumentId(),
-                    documentKey );
-
-            keys.put( shareEntry.getKey(), pairedKey );
+            keys.add( documentKey );
         }
         KeyRegistrationRequest request = new KeyRegistrationRequest( keys );
         sharingApi.registerKeys( request );
-        return shares.size();
+        return incomingShares.size();
     }
 
     @Override

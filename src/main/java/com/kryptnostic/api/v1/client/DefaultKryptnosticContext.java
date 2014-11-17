@@ -15,7 +15,7 @@ import cern.colt.bitvector.BitVector;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.bitwise.BitVectors;
@@ -41,7 +41,6 @@ import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.sharing.v1.DocumentId;
-import com.kryptnostic.sharing.v1.models.PairedEncryptedSearchDocumentKey;
 import com.kryptnostic.sharing.v1.requests.SharingApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
@@ -191,8 +190,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
         EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( encryptedSearchNonce, bridgeKey, documentId );
 
-        PairedEncryptedSearchDocumentKey pairedKey = new PairedEncryptedSearchDocumentKey( documentId, docKey );
-        sharingClient.registerKeys( Lists.newArrayList( pairedKey ) );
+        sharingClient.registerKeys( ImmutableSet.of( docKey ) );
     }
 
     @Override
