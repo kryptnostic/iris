@@ -342,4 +342,9 @@ public class DefaultStorageClient implements StorageClient {
     public void deleteDocument( DocumentId id ) {
         documentApi.delete( id.getDocumentId() );
     }
+
+    @Override
+    public List<Document> getDocuments( List<DocumentId> ids ) throws ResourceNotFoundException {
+        return documentApi.getDocuments( ids ).getData();
+    }
 }

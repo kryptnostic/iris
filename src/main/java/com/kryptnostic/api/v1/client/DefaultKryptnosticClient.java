@@ -130,4 +130,10 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     public SharingClient getSharingClient() {
         return sharingClient;
     }
+
+    @Override
+    public List<Document> getDocuments( List<DocumentId> ids ) throws ResourceNotFoundException {
+        return storageClient.getDocuments( ids );
+    }
+
 }
