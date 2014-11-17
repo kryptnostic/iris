@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.api.v1.search.DefaultSearchClient;
+import com.kryptnostic.api.v1.sharing.SharingManager;
 import com.kryptnostic.api.v1.storage.DefaultStorageClient;
 import com.kryptnostic.directory.v1.UsersApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
@@ -16,20 +18,27 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
+import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.sharing.v1.DocumentId;
+import com.kryptnostic.sharing.v1.SharingClient;
 import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.models.Document;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.users.v1.UserKey;
 
 public class DefaultKryptnosticClient implements KryptnosticClient {
-    private final SearchClient       searchClient;
-    private final StorageClient      storageClient;
-    private final KryptnosticContext context;
-    private final UsersApi           usersClient;
+    private static DeflatingJacksonMarshaller marshaller = new DeflatingJacksonMarshaller();
+    private static ObjectMapper               mapper     = KodexObjectMapperFactory.getObjectMapper();
+
+    private final SearchClient                searchClient;
+    private final KryptnosticContext          context;
+    private final UsersApi                    usersClient;
+    private final StorageClient               storageClient;
+    private final SharingClient               sharingClient;
 
     public DefaultKryptnosticClient( KryptnosticServicesFactory factory, KryptnosticConnection securityService ) throws IrisException,
             ResourceNotFoundException {
@@ -45,6 +54,7 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
                 factory.createMetadataApi() );
         this.searchClient = new DefaultSearchClient( context, factory.createSearchApi() );
         this.usersClient = factory.createUsersApi();
+        this.sharingClient = new SharingManager( securityService, context, factory.createSharingApi() );
     }
 
     @Override
@@ -115,6 +125,10 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     @Override
     public void deleteDocument( DocumentId id ) {
         storageClient.deleteDocument( id );
+    }
+
+    public SharingClient getSharingClient() {
+        return sharingClient;
     }
 
     @Override

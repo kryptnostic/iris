@@ -112,7 +112,7 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
     public void updateDocumentWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException {
-        DocumentId docId = DocumentId.fromIdAndUser( "DOCUMENT_0", userKey );
+        DocumentId docId = DocumentId.fromId( "DOCUMENT_0" );
         String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + userKey.getRealm() + "/" + userKey.getName() + "/"
                 + docId.getDocumentId();
 
@@ -131,7 +131,7 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
     public void uploadDocumentWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException {
-        DocumentId docId = DocumentId.fromIdAndUser( "DOCUMENT_0", userKey );
+        DocumentId docId = DocumentId.fromId( "DOCUMENT_0");
         String documentCreateUrl = DocumentApi.DOCUMENT;
         String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + userKey.getRealm() + "/" + userKey.getName() + "/"
                 + docId.getDocumentId();

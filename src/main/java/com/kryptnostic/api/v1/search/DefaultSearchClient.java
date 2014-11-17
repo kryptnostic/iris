@@ -34,7 +34,7 @@ public class DefaultSearchClient implements SearchClient {
     public DefaultSearchClient( KryptnosticContext context, SearchApi searchService ) {
         this.context = context;
         this.searchService = searchService;
-        this.indexer = new SimpleIndexer( context.getSecurityService().getUserKey() );
+        this.indexer = new SimpleIndexer();
     }
 
     /**

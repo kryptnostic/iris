@@ -1,6 +1,10 @@
 package com.kryptnostic.api.v1.client;
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.codec.binary.StringUtils;
 import org.slf4j.Logger;
@@ -8,21 +12,28 @@ import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
+import com.kryptnostic.crypto.v1.ciphers.Cyphers;
+import com.kryptnostic.crypto.v1.ciphers.RsaCompressingCryptoService;
+import com.kryptnostic.crypto.v1.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.crypto.v1.keys.JacksonKodexMarshaller;
 import com.kryptnostic.directory.v1.KeyApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
@@ -30,31 +41,42 @@ import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.sharing.v1.DocumentId;
-import com.kryptnostic.sharing.v1.models.PairedEncryptedSearchDocumentKey;
 import com.kryptnostic.sharing.v1.requests.SharingApi;
 import com.kryptnostic.storage.v1.client.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
+import com.kryptnostic.users.v1.UserKey;
 
+/**
+ * 
+ * The default kryptnostic context is instantiated from an
+ * 
+ * @author Sina Iman &lt;sina@kryptnostic.com&gt;
+ * @author Nick Hewitt &lt;nick@kryptnostic.com&gt;
+ * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
+ *
+ */
 public class DefaultKryptnosticContext implements KryptnosticContext {
-    private final ObjectMapper              mapper          = KodexObjectMapperFactory.getObjectMapper();
-    private final SharingApi                sharingClient;
-    private final KeyApi                    keyClient;
-    private final SearchFunctionApi         searchFunctionClient;
-    private final PrivateKey                fhePrivateKey;
-    private final PublicKey                 fhePublicKey;
-    private final EncryptedSearchPrivateKey encryptedSearchPrivateKey;
-    private final KryptnosticConnection     securityService;
-    private final DataStore                 dataStore;
-    private SimplePolynomialFunction        globalHashFunction;
+    private final ObjectMapper                mapper          = KodexObjectMapperFactory.getObjectMapper();
+    private static DeflatingJacksonMarshaller marshaller      = new DeflatingJacksonMarshaller();
+    private final SharingApi                  sharingClient;
+    private final KeyApi                      keyClient;
+    private final SearchFunctionApi           searchFunctionClient;
+    private final PrivateKey                  fhePrivateKey;
+    private final PublicKey                   fhePublicKey;
+    private final EncryptedSearchPrivateKey   encryptedSearchPrivateKey;
+    private final KryptnosticConnection       securityService;
+    private final DataStore                   dataStore;
+    private SimplePolynomialFunction          globalHashFunction;
 
-    public static final String              CHECKSUM_KEY    = "global-hash-checksum";
-    public static final String              FUNCTION_KEY    = "global-hash-function";
+    public static final String                CHECKSUM_KEY    = "global-hash-checksum";
+    public static final String                FUNCTION_KEY    = "global-hash-function";
 
-    private static final Logger             logger          = LoggerFactory.getLogger( DefaultKryptnosticContext.class );
+    private static final Logger               logger          = LoggerFactory
+                                                                      .getLogger( DefaultKryptnosticContext.class );
 
-    private static final int                TOKEN_LENGTH    = 256;
-    private static final int                LOCATION_LENGTH = 64;
-    private static final int                NONCE_LENGTH    = 64;
+    private static final int                  TOKEN_LENGTH    = 256;
+    private static final int                  LOCATION_LENGTH = 64;
+    private static final int                  NONCE_LENGTH    = 64;
 
     public DefaultKryptnosticContext(
             SearchFunctionApi searchFunctionClient,
@@ -113,10 +135,6 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                 }
             } else {
                 // Verify integrity of glabal hash function
-                // Preconditions.checkState( Preconditions.checkNotNull( checksum, "Checksum should not be null!" )
-                // .equals( Hashing.murmur3_128().hashBytes( gbh ).toString() ) );
-
-                // Make sure it matches server hash
                 Preconditions.checkState( searchFunctionClient.getGlobalHasherChecksum().getData().equals( checksum ) );
                 try {
                     globalHashFunction = new JacksonKodexMarshaller<SimplePolynomialFunction>(
@@ -142,28 +160,37 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
+    public EncryptedSearchBridgeKey fromSharingKey( EncryptedSearchSharingKey sharingKey ) throws IrisException {
+        try {
+            return new EncryptedSearchBridgeKey( encryptedSearchPrivateKey, sharingKey );
+        } catch ( SingularMatrixException e ) {
+            throw new IrisException( e );
+        }
+    }
+
+    @Override
     public void submitBridgeKeyWithSearchNonce(
             DocumentId documentId,
             EncryptedSearchSharingKey sharingKey,
             BitVector searchNonce ) throws IrisException {
-        BitVector encryptedSearchNonce = encryptNonce( searchNonce );
+
         try {
-            EncryptedSearchBridgeKey bridgeKey = new EncryptedSearchBridgeKey( encryptedSearchPrivateKey, sharingKey );
-
-            EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( encryptedSearchNonce, bridgeKey );
-
-            // TODO: IMPORTANT: encrypt this with user's public rsa key
-            byte[] notEncryptedDocumentId_CHANGE_ME = mapper.writeValueAsBytes( documentId );
-
-            PairedEncryptedSearchDocumentKey pairedKey = new PairedEncryptedSearchDocumentKey(
-                    notEncryptedDocumentId_CHANGE_ME,
-                    docKey );
-            sharingClient.registerKeys( Lists.newArrayList( pairedKey ) );
-        } catch ( SingularMatrixException e ) {
-            throw new IrisException( e );
-        } catch ( JsonProcessingException e ) {
-            throw new IrisException( e );
+            dataStore.put(
+                    ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() ).getBytes(),
+                    marshaller.toBytes( sharingKey ) );
+            dataStore.put(
+                    ( documentId.getDocumentId() + BitVector.class.getCanonicalName() ).getBytes(),
+                    marshaller.toBytes( searchNonce ) );
+        } catch ( IOException e1 ) {
+            e1.printStackTrace();
         }
+
+        BitVector encryptedSearchNonce = encryptNonce( searchNonce );
+        EncryptedSearchBridgeKey bridgeKey = fromSharingKey( sharingKey );
+
+        EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( encryptedSearchNonce, bridgeKey, documentId );
+
+        sharingClient.registerKeys( ImmutableSet.of( docKey ) );
     }
 
     @Override
@@ -181,84 +208,46 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                 searchToken ) );
         BitVector indexForTerm = BitVectors.fromSquareMatrix( expectedMatrix.multiply( sharingKey.getMiddle() )
                 .multiply( expectedMatrix ) );
-
-        // QueryHasherPairRequest req = null;
-        // SimplePolynomialFunction lh = null;
-        // SimplePolynomialFunction rh = null;
-        // Pair<SimplePolynomialFunction, SimplePolynomialFunction> p = null;
-        // try {
-        // p = encryptedSearchPrivateKey.getQueryHasherPair(
-        // globalHashFunction,
-        // fhePrivateKey );
-        // req = securityService.getKodex().getKeyWithJackson( QueryHasherPairRequest.class );
-        // lh = req.getLeft();
-        // rh = req.getRight();
-        // Preconditions.checkState( p.getLeft().equals( lh ) );
-        // Preconditions.checkState( p.getRight().equals( rh ) );
-        // } catch ( SecurityConfigurationException | KodexException e ) {
-        // // TODO Auto-generated catch block
-        // e.printStackTrace();
-        // } catch ( IOException e ) {
-        // // TODO Auto-generated catch block
-        // e.printStackTrace();
-        // } catch ( SingularMatrixException e ) {
-        // // TODO Auto-generated catch block
-        // e.printStackTrace();
-        // }
-        //
-        // BitVector t = prepareSearchToken( token );
-        // BitVector simulatedSearchToken = BitVectors.concatenate(
-        // t,
-        // fhePublicKey.getEncrypter().apply( searchNonce, BitVectors.randomVector( searchNonce.size() ) ) );
-        // EnhancedBitMatrix lv = EnhancedBitMatrix.squareMatrixfromBitVector( lh.apply( simulatedSearchToken ) );
-        // EnhancedBitMatrix rv = EnhancedBitMatrix.squareMatrixfromBitVector( rh.apply( simulatedSearchToken ) );
-        //
-        // EnhancedBitMatrix bridge = null;
-        // try {
-        // Preconditions.checkState( lv.multiply( encryptedSearchPrivateKey.getLeftSquaringMatrix().inverse() )
-        // .equals( expectedMatrix ) );
-        // Preconditions.checkState( encryptedSearchPrivateKey.getRightSquaringMatrix().inverse().multiply( rv )
-        // .equals( expectedMatrix ) );
-        // bridge = new EncryptedSearchBridgeKey( encryptedSearchPrivateKey, sharingKey ).getBridge();
-        // } catch ( SingularMatrixException e1 ) {
-        // e1.printStackTrace();
-        // }
-        //
-        // lh = p.getLeft();
-        // rh = p.getRight();
-        // lv = EnhancedBitMatrix.squareMatrixfromBitVector( lh.apply( simulatedSearchToken ) );
-        // rv = EnhancedBitMatrix.squareMatrixfromBitVector( rh.apply( simulatedSearchToken ) );
-        // try {
-        // Preconditions.checkState( lv.multiply( encryptedSearchPrivateKey.getLeftSquaringMatrix().inverse() )
-        // .equals( expectedMatrix ) );
-        // Preconditions.checkState( encryptedSearchPrivateKey.getRightSquaringMatrix().inverse().multiply( rv )
-        // .equals( expectedMatrix ) );
-        // bridge = new EncryptedSearchBridgeKey( encryptedSearchPrivateKey, sharingKey ).getBridge();
-        // } catch ( SingularMatrixException e1 ) {
-        // e1.printStackTrace();
-        // }
-        //
-        // Preconditions.checkState( encryptedSearchPrivateKey.getLeftSquaringMatrix()
-        // .multiply( bridge.multiply( encryptedSearchPrivateKey.getRightSquaringMatrix() ) )
-        // .equals( sharingKey.getMiddle() ) );
-        //
-        // BitVector actual = BitVectors.fromSquareMatrix( lv.multiply( bridge ).multiply( rv ) );
-        // try {
-        // Preconditions.checkState( indexForTerm.equals( actual ) );
-        // Preconditions.checkState( lv.multiply( encryptedSearchPrivateKey.getLeftSquaringMatrix().inverse() )
-        // .equals( expectedMatrix ) );
-        // Preconditions.checkState( encryptedSearchPrivateKey.getRightSquaringMatrix().inverse().multiply( rv )
-        // .equals( expectedMatrix ) );
-        // } catch ( SingularMatrixException e ) {
-        // // TODO Auto-generated catch block
-        // e.printStackTrace();
-        // }
-
         return indexForTerm;
     }
 
     @Override
     public BitVector prepareSearchToken( String token ) {
         return encryptedSearchPrivateKey.prepareSearchToken( fhePublicKey, token );
+    }
+
+    @Override
+    public byte[] rsaDecrypt( byte[] ciphertext ) throws SecurityConfigurationException {
+        return Cyphers.decrypt( RsaKeyLoader.CIPHER, securityService.getRsaPrivateKey(), ciphertext );
+    }
+
+    @Override
+    public byte[] rsaEncrypt( byte[] plaintext ) throws SecurityConfigurationException {
+        return Cyphers.encrypt( RsaKeyLoader.CIPHER, securityService.getRsaPublicKey(), plaintext );
+    }
+
+    @Override
+    public Map<UserKey, RsaCompressingEncryptionService> getEncryptionServiceForUsers( Set<UserKey> users ) {
+        return Maps.asMap( users, new Function<UserKey, RsaCompressingEncryptionService>() {
+
+            @Override
+            public RsaCompressingEncryptionService apply( UserKey input ) {
+                try {
+                    return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, keyClient.getPublicKey(
+                            input.getRealm(),
+                            input.getName() ).asRsaPublicKey() );
+                } catch ( InvalidKeySpecException | NoSuchAlgorithmException | SecurityConfigurationException e ) {
+                    return null;
+                }
+            }
+        } );
+    }
+
+    @Override
+    public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
+        return new RsaCompressingCryptoService(
+                RsaKeyLoader.CIPHER,
+                securityService.getRsaPrivateKey(),
+                securityService.getRsaPublicKey() );
     }
 }
