@@ -6,22 +6,22 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
-import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
-import com.kryptnostic.crypto.v1.ciphers.CryptoService;
-import com.kryptnostic.crypto.v1.keys.Keys;
-import com.kryptnostic.crypto.v1.keys.PublicKeyAlgorithm;
-import com.kryptnostic.directory.v1.KeyApi;
-import com.kryptnostic.directory.v1.response.PublicKeyEnvelope;
+import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.models.UserKey;
+import com.kryptnostic.directory.v1.models.response.PublicKeyEnvelope;
+import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
+import com.kryptnostic.kodex.v1.crypto.keys.Keys;
+import com.kryptnostic.kodex.v1.crypto.keys.PublicKeyAlgorithm;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.users.v1.UserKey;
 
 public final class NetworkRsaKeyLoader extends RsaKeyLoader {
     private final CryptoService crypto;
-    private final KeyApi        keyClient;
+    private final DirectoryApi        keyClient;
     private final UserKey       userKey;
 
-    public NetworkRsaKeyLoader( CryptoService crypto, KeyApi keyClient, UserKey userKey ) throws KodexException {
+    public NetworkRsaKeyLoader( CryptoService crypto, DirectoryApi keyClient, UserKey userKey ) throws KodexException {
         if ( crypto == null || keyClient == null || userKey == null ) {
             throw new KodexException( "null values" );
         }

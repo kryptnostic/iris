@@ -11,7 +11,7 @@ import com.kryptnostic.api.v1.indexing.analysis.TokenizingWhitespaceAnalyzer;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
-import com.kryptnostic.sharing.v1.DocumentId;
+import com.kryptnostic.sharing.v1.models.DocumentId;
 
 public class SimpleIndexer implements Indexer {
     private final Set<Analyzer> analyzers;

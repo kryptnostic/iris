@@ -33,15 +33,16 @@ import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.LocalRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.NetworkRsaKeyLoader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
-import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
-import com.kryptnostic.crypto.v1.ciphers.CryptoService;
-import com.kryptnostic.crypto.v1.ciphers.Cypher;
-import com.kryptnostic.crypto.v1.keys.JacksonKodexMarshaller;
-import com.kryptnostic.crypto.v1.keys.Kodex;
-import com.kryptnostic.crypto.v1.keys.Kodex.CorruptKodexException;
-import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
-import com.kryptnostic.directory.v1.KeyApi;
-import com.kryptnostic.directory.v1.response.PublicKeyEnvelope;
+import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.models.UserKey;
+import com.kryptnostic.directory.v1.models.response.PublicKeyEnvelope;
+import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
+import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
+import com.kryptnostic.kodex.v1.crypto.keys.JacksonKodexMarshaller;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex.CorruptKodexException;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
@@ -51,9 +52,8 @@ import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
-import com.kryptnostic.storage.v1.client.SearchFunctionApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
-import com.kryptnostic.users.v1.UserKey;
 
 public class IrisConnection implements KryptnosticConnection {
     private static final Logger                     logger = LoggerFactory.getLogger( IrisConnection.class );
@@ -62,7 +62,7 @@ public class IrisConnection implements KryptnosticConnection {
     private final UserKey                           userKey;
     private final String                            userCredential;
     private final String                            url;
-    private final KeyApi                            keyService;
+    private final DirectoryApi                            keyService;
     private final DataStore                         dataStore;
     private final com.kryptnostic.crypto.PrivateKey fhePrivateKey;
     private final com.kryptnostic.crypto.PublicKey  fhePublicKey;
@@ -108,7 +108,7 @@ public class IrisConnection implements KryptnosticConnection {
                 userKey,
                 userCredential,
                 client );
-        this.keyService = adapter.create( KeyApi.class );
+        this.keyService = adapter.create( DirectoryApi.class );
         final SearchFunctionApi searchFunctionService = adapter.create( SearchFunctionApi.class );
 
         ExecutorService exec = Executors.newCachedThreadPool();
@@ -211,7 +211,7 @@ public class IrisConnection implements KryptnosticConnection {
         } );
     }
 
-    private KeyPair loadRsaKeys( CryptoService crypto, UserKey userKey, DataStore dataStore, KeyApi keyClient )
+    private KeyPair loadRsaKeys( CryptoService crypto, UserKey userKey, DataStore dataStore, DirectoryApi keyClient )
             throws IrisException {
         KeyPair keyPair = null;
 
@@ -292,7 +292,7 @@ public class IrisConnection implements KryptnosticConnection {
     private Kodex<String> loadSearchKodex(
             DataStore dataStore,
             KeyPair keyPair,
-            KeyApi keyService,
+            DirectoryApi keyService,
             SearchFunctionApi searchFunctionService,
             SimplePolynomialFunction globalHashFunction ) throws IrisException {
 

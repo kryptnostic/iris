@@ -24,12 +24,13 @@ import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
-import com.kryptnostic.crypto.v1.ciphers.Cyphers;
-import com.kryptnostic.crypto.v1.ciphers.RsaCompressingCryptoService;
-import com.kryptnostic.crypto.v1.ciphers.RsaCompressingEncryptionService;
-import com.kryptnostic.crypto.v1.keys.JacksonKodexMarshaller;
-import com.kryptnostic.directory.v1.KeyApi;
+import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
+import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
+import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
+import com.kryptnostic.kodex.v1.crypto.keys.JacksonKodexMarshaller;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
@@ -40,11 +41,10 @@ import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
-import com.kryptnostic.sharing.v1.DocumentId;
-import com.kryptnostic.sharing.v1.requests.SharingApi;
-import com.kryptnostic.storage.v1.client.SearchFunctionApi;
+import com.kryptnostic.sharing.v1.http.SharingApi;
+import com.kryptnostic.sharing.v1.models.DocumentId;
+import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
-import com.kryptnostic.users.v1.UserKey;
 
 /**
  * 
@@ -59,7 +59,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private final ObjectMapper                mapper          = KodexObjectMapperFactory.getObjectMapper();
     private static DeflatingJacksonMarshaller marshaller      = new DeflatingJacksonMarshaller();
     private final SharingApi                  sharingClient;
-    private final KeyApi                      keyClient;
+    private final DirectoryApi                directoryClient;
     private final SearchFunctionApi           searchFunctionClient;
     private final PrivateKey                  fhePrivateKey;
     private final PublicKey                   fhePublicKey;
@@ -81,11 +81,11 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     public DefaultKryptnosticContext(
             SearchFunctionApi searchFunctionClient,
             SharingApi sharingClient,
-            KeyApi keyClient,
+            DirectoryApi directoryClient,
             KryptnosticConnection securityService ) throws IrisException {
         this.searchFunctionClient = searchFunctionClient;
         this.sharingClient = sharingClient;
-        this.keyClient = keyClient;
+        this.directoryClient = directoryClient;
         this.securityService = securityService;
         this.fhePublicKey = securityService.getFhePublicKey();
         this.fhePrivateKey = securityService.getFhePrivateKey();
@@ -94,7 +94,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public KryptnosticConnection getSecurityService() {
+    public KryptnosticConnection getConnection() {
         return this.securityService;
     }
 
@@ -233,7 +233,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             @Override
             public RsaCompressingEncryptionService apply( UserKey input ) {
                 try {
-                    return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, keyClient.getPublicKey(
+                    return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, directoryClient.getPublicKey(
                             input.getRealm(),
                             input.getName() ).asRsaPublicKey() );
                 } catch ( InvalidKeySpecException | NoSuchAlgorithmException | SecurityConfigurationException e ) {

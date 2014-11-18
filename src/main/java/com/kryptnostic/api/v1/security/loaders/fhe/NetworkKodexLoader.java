@@ -6,17 +6,17 @@ import java.security.SignatureException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Preconditions;
-import com.kryptnostic.crypto.v1.keys.Kodex;
-import com.kryptnostic.crypto.v1.keys.Kodex.CorruptKodexException;
-import com.kryptnostic.directory.v1.KeyApi;
+import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex.CorruptKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 
 public final class NetworkKodexLoader extends KodexLoader {
     private final KeyPair keyPair;
-    private final KeyApi  keyClient;
+    private final DirectoryApi  keyClient;
 
-    public NetworkKodexLoader( KeyPair keyPair, KeyApi keyClient ) {
+    public NetworkKodexLoader( KeyPair keyPair, DirectoryApi keyClient ) {
         Preconditions.checkNotNull( keyPair );
         Preconditions.checkNotNull( keyClient );
         this.keyClient = keyClient;

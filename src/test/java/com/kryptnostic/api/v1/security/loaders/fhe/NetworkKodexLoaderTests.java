@@ -17,13 +17,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
-import com.kryptnostic.crypto.v1.ciphers.CryptoService;
-import com.kryptnostic.crypto.v1.ciphers.Cypher;
-import com.kryptnostic.crypto.v1.keys.Keys;
-import com.kryptnostic.crypto.v1.keys.Kodex;
-import com.kryptnostic.crypto.v1.keys.Kodex.CorruptKodexException;
-import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
-import com.kryptnostic.directory.v1.KeyApi;
+import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.models.UserKey;
+import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
+import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
+import com.kryptnostic.kodex.v1.crypto.keys.Keys;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex.CorruptKodexException;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
@@ -32,10 +33,9 @@ import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
-import com.kryptnostic.users.v1.UserKey;
 
 public class NetworkKodexLoaderTests {
-    private KeyApi                   keyClient;
+    private DirectoryApi                   keyClient;
     private UserKey                  userKey;
     private CryptoService            cryptoService;
     private KeyPair                  keyPair;
@@ -48,7 +48,7 @@ public class NetworkKodexLoaderTests {
     public void init() throws NoSuchAlgorithmException {
         cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, "test".toCharArray() );
         userKey = new UserKey( "krypt", "sina" );
-        keyClient = Mockito.mock( KeyApi.class );
+        keyClient = Mockito.mock( DirectoryApi.class );
 
         keyPair = Keys.generateRsaKeyPair( 1024 );
 

@@ -24,8 +24,8 @@ import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
-import com.kryptnostic.crypto.v1.keys.Kodex;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
@@ -39,15 +39,15 @@ import com.kryptnostic.kodex.v1.models.Encryptable;
 import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils;
 import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils.VerifiedString;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
-import com.kryptnostic.sharing.v1.DocumentId;
+import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.StorageClient;
-import com.kryptnostic.storage.v1.client.DocumentApi;
-import com.kryptnostic.storage.v1.client.MetadataApi;
+import com.kryptnostic.storage.v1.http.DocumentApi;
+import com.kryptnostic.storage.v1.http.MetadataApi;
 import com.kryptnostic.storage.v1.models.Document;
 import com.kryptnostic.storage.v1.models.DocumentBlock;
+import com.kryptnostic.storage.v1.models.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.request.DocumentCreationRequest;
 import com.kryptnostic.storage.v1.models.request.DocumentFragmentRequest;
-import com.kryptnostic.storage.v1.models.request.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 
@@ -75,10 +75,10 @@ public class DefaultStorageClient implements StorageClient {
         this.context = context;
         this.documentApi = documentApi;
         this.metadataApi = metadataApi;
-        this.securityService = context.getSecurityService();
+        this.securityService = context.getConnection();
         this.metadataMapper = new PaddedMetadataMapper( context );
         this.indexer = new SimpleIndexer();
-        this.kodex = context.getSecurityService().getKodex();
+        this.kodex = context.getConnection().getKodex();
     }
 
     @Override

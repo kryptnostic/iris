@@ -3,8 +3,8 @@ package com.kryptnostic.api.v1.security.loaders.rsa;
 import java.security.KeyPair;
 
 import com.kryptnostic.api.v1.security.loaders.Loader;
-import com.kryptnostic.crypto.v1.ciphers.Cypher;
-import com.kryptnostic.crypto.v1.keys.PublicKeyAlgorithm;
+import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
+import com.kryptnostic.kodex.v1.crypto.keys.PublicKeyAlgorithm;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 
 public abstract class RsaKeyLoader extends Loader<KeyPair> {

@@ -10,11 +10,11 @@ import retrofit.converter.Converter;
 
 import com.google.common.base.Preconditions;
 import com.kryptnostic.api.v1.utils.JacksonConverter;
-import com.kryptnostic.crypto.v1.keys.Kodex;
+import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.kodex.v1.authentication.PreauthenticationRequestInterceptor;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
 import com.kryptnostic.kodex.v1.exceptions.DefaultErrorHandler;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
-import com.kryptnostic.users.v1.UserKey;
 
 public final class KryptnosticRestAdapter {
     private KryptnosticRestAdapter() {}

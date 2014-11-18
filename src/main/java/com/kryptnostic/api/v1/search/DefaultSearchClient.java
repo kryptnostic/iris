@@ -15,7 +15,7 @@ import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.search.v1.SearchClient;
-import com.kryptnostic.search.v1.client.SearchApi;
+import com.kryptnostic.search.v1.http.SearchApi;
 import com.kryptnostic.search.v1.models.SearchResult;
 import com.kryptnostic.search.v1.models.request.SearchRequest;
 import com.kryptnostic.search.v1.models.response.SearchResultResponse;

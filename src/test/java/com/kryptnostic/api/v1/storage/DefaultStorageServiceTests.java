@@ -21,8 +21,9 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import com.kryptnostic.api.v1.security.IrisConnection;
-import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
+import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
@@ -30,15 +31,14 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
-import com.kryptnostic.sharing.v1.DocumentId;
+import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.StorageClient;
-import com.kryptnostic.storage.v1.client.DocumentApi;
-import com.kryptnostic.storage.v1.client.MetadataApi;
+import com.kryptnostic.storage.v1.http.DocumentApi;
+import com.kryptnostic.storage.v1.http.MetadataApi;
 import com.kryptnostic.storage.v1.models.DocumentBlock;
 import com.kryptnostic.storage.v1.models.request.AesEncryptableBase;
 import com.kryptnostic.storage.v1.models.request.DocumentCreationRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
-import com.kryptnostic.users.v1.UserKey;
 
 public class DefaultStorageServiceTests extends AesEncryptableBase {
 
@@ -61,7 +61,7 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
 
-        Mockito.when( context.getSecurityService() ).thenReturn(
+        Mockito.when( context.getConnection() ).thenReturn(
                 new IrisConnection( pair, kodex, crypto, userKey, null, null ) );
 
         storageService = new DefaultStorageClient( context, documentApi, metadataApi );

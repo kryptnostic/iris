@@ -37,10 +37,11 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
-import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
-import com.kryptnostic.directory.v1.KeyApi;
+import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
@@ -51,11 +52,10 @@ import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
-import com.kryptnostic.sharing.v1.DocumentId;
-import com.kryptnostic.storage.v1.client.DocumentApi;
-import com.kryptnostic.storage.v1.client.SearchFunctionApi;
+import com.kryptnostic.sharing.v1.models.DocumentId;
+import com.kryptnostic.storage.v1.http.DocumentApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.request.AesEncryptableBase;
-import com.kryptnostic.users.v1.UserKey;
 
 public class DefaultKryptnosticClientTests extends AesEncryptableBase {
 
@@ -93,7 +93,7 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
     }
 
     private void generateKodexStubs() throws JsonGenerationException, JsonMappingException, IOException {
-        stubFor( put( urlMatching( KeyApi.CONTROLLER + KeyApi.KODEX ) ).willReturn(
+        stubFor( put( urlMatching( DirectoryApi.CONTROLLER + DirectoryApi.KODEX ) ).willReturn(
                 jsonResponse( serialize( new BasicResponse<String>( "", 200, true ) ) ) ) );
     }
 
@@ -113,14 +113,13 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException {
         DocumentId docId = DocumentId.fromId( "DOCUMENT_0" );
-        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + userKey.getRealm() + "/" + userKey.getName() + "/"
-                + docId.getDocumentId();
+        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + docId.getDocumentId();
 
         String docIdResponse = serialize( new BasicResponse<DocumentId>( docId, 200, true ) );
 
         stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
 
-        String receivedDocId = client.updateDocumentWithoutMetadata( docId.getDocumentId(), "test" );
+        String receivedDocId = client.getStorageClient().updateDocumentWithoutMetadata( docId.getDocumentId(), "test" );
 
         Assert.assertEquals( docId.getDocumentId(), receivedDocId );
 
@@ -131,17 +130,16 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
     public void uploadDocumentWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException {
-        DocumentId docId = DocumentId.fromId( "DOCUMENT_0");
+        DocumentId docId = DocumentId.fromId( "DOCUMENT_0" );
         String documentCreateUrl = DocumentApi.DOCUMENT;
-        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + userKey.getRealm() + "/" + userKey.getName() + "/"
-                + docId.getDocumentId();
+        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + docId.getDocumentId();
 
         String docIdResponse = serialize( new BasicResponse<DocumentId>( docId, 200, true ) );
 
         stubFor( put( urlMatching( documentCreateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
         stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
 
-        String receivedDocId = client.uploadDocumentWithoutMetadata( "test" );
+        String receivedDocId = client.getStorageClient().uploadDocumentWithoutMetadata( "test" );
         Assert.assertEquals( docId.getDocumentId(), receivedDocId );
 
         verify( 1, putRequestedFor( urlMatching( documentCreateUrl ) ) );

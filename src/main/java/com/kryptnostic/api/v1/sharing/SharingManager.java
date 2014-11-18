@@ -16,27 +16,27 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
-import com.kryptnostic.crypto.v1.ciphers.AesCryptoService;
-import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
-import com.kryptnostic.crypto.v1.ciphers.Cypher;
-import com.kryptnostic.crypto.v1.ciphers.RsaCompressingCryptoService;
-import com.kryptnostic.crypto.v1.ciphers.RsaCompressingEncryptionService;
+import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
+import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
+import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
+import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
-import com.kryptnostic.sharing.v1.DocumentId;
-import com.kryptnostic.sharing.v1.IncomingShares;
 import com.kryptnostic.sharing.v1.SharingClient;
-import com.kryptnostic.sharing.v1.SharingRequest;
+import com.kryptnostic.sharing.v1.http.SharingApi;
+import com.kryptnostic.sharing.v1.models.DocumentId;
+import com.kryptnostic.sharing.v1.models.IncomingShares;
 import com.kryptnostic.sharing.v1.models.Share;
-import com.kryptnostic.sharing.v1.requests.KeyRegistrationRequest;
-import com.kryptnostic.sharing.v1.requests.SharingApi;
+import com.kryptnostic.sharing.v1.models.request.KeyRegistrationRequest;
+import com.kryptnostic.sharing.v1.models.request.SharingRequest;
 import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
-import com.kryptnostic.users.v1.UserKey;
 
 public class SharingManager implements SharingClient {
     private static final Logger               logger     = LoggerFactory.getLogger( SharingManager.class );
@@ -47,9 +47,9 @@ public class SharingManager implements SharingClient {
     private final KryptnosticContext          context;
     private final SharingApi                  sharingApi;
 
-    public SharingManager( KryptnosticConnection connection, KryptnosticContext context, SharingApi sharingClient ) {
+    public SharingManager( KryptnosticContext context, SharingApi sharingClient ) {
+        this.connection = context.getConnection();
         this.dataStore = connection.getDataStore();
-        this.connection = connection;
         this.context = context;
         this.sharingApi = sharingClient;
     }
@@ -57,7 +57,7 @@ public class SharingManager implements SharingClient {
     @Override
     public void shareDocumentWithUsers( DocumentId documentId, Set<UserKey> users ) {
 
-        DataStore dataStore = context.getSecurityService().getDataStore();
+        DataStore dataStore = context.getConnection().getDataStore();
         EncryptedSearchSharingKey sharingKey = null;
         BitVector searchNonce = null;
         try {
@@ -97,6 +97,7 @@ public class SharingManager implements SharingClient {
         }
     }
 
+    @Override
     public int processIncomingShares() throws IOException, SecurityConfigurationException {
         IncomingShares incomingShares = sharingApi.getIncomingShares();
         RsaCompressingCryptoService service = context.getRsaCryptoService();
