@@ -100,9 +100,12 @@ public class SharingManager implements SharingClient {
     @Override
     public int processIncomingShares() throws IOException, SecurityConfigurationException {
         IncomingShares incomingShares = sharingApi.getIncomingShares();
+        if ( incomingShares == null || incomingShares.isEmpty() ) {
+            return 0;
+        }
         RsaCompressingCryptoService service = context.getRsaCryptoService();
         Set<EncryptedSearchDocumentKey> keys = Sets.newHashSet();
-        ;
+
         for ( Share share : incomingShares ) {
             AesCryptoService decryptor = service.decrypt( share.getSeal(), AesCryptoService.class );
 
