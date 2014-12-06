@@ -109,24 +109,8 @@ public class FreshKodexLoader extends KodexLoader {
         Pair<SimplePolynomialFunction, SimplePolynomialFunction> pair = encryptedSearchPrivateKey.getQueryHasherPair(
                 globalHashFunction,
                 fhePrivateKey );
-        // SimplePolynomialFunctionValidator leftValidtor = new SimplePolynomialFunctionValidator( pair.getLeft(), 10000
-        // );
-        // SimplePolynomialFunctionValidator rightValidtor = new SimplePolynomialFunctionValidator( pair.getRight(),
-        // 10000 );
-
-        // dataStore.put( KodexLoader.LEFT_VALIDATOR, leftValidtor.getBytes() );
-        // dataStore.put( KodexLoader.RIGHT_VALIDATOR, rightValidtor.getBytes() );
 
         return new QueryHasherPairRequest( pair.getLeft(), pair.getRight() );
-
-        // SimplePolynomialFunction expected = pair.getLeft();
-        // SimplePolynomialFunction actual = requestPair.getLeft();
-        //
-        // Preconditions.checkState( expected.equals( actual ) , "Kodex just got fucked on the left." );
-        // expected = pair.getRight();
-        // actual = requestPair.getRight();
-        // Preconditions.checkState( expected.equals( actual ) , "Kodex just got fucked on the right." );
-        // return requestPair;
     }
 
     private EncryptedSearchPrivateKey getEncryptedSearchPrivateKey() throws SingularMatrixException {
