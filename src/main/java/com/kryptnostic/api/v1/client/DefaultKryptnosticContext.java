@@ -5,6 +5,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.codec.binary.StringUtils;
 import org.slf4j.Logger;
@@ -15,7 +16,9 @@ import cern.colt.bitvector.BitVector;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
@@ -96,13 +99,18 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         this.dataStore = securityService.getDataStore();
         this.keyCache = CacheBuilder.newBuilder()
                 .maximumSize(1000)
-                .expireAfterWrite(10, TimeUnit.MINUTES)
-                .removalListener(MY_LISTENER)
+                .expireAfterWrite(12, TimeUnit.HOURS)
                 .build(
                     new CacheLoader<DocumentId, AesCryptoService>() {
                       public Graph load(Key key) throws AnyException {
                         return createExpensiveGraph(key);
                       }
+
+                    @Override
+                    public AesCryptoService load( DocumentId key ) throws Exception {
+                        // TODO Auto-generated method stub
+                        return null;
+                    }
                     });
     }
 
