@@ -37,7 +37,7 @@ import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.directory.v1.models.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
-import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
+import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.kodex.v1.crypto.keys.JacksonKodexMarshaller;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
@@ -58,7 +58,7 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 public class IrisConnection implements KryptnosticConnection {
     private static final Logger                     logger  = LoggerFactory.getLogger( IrisConnection.class );
     private final Kodex<String>                     kodex;
-    private transient CryptoService                 cryptoService;
+    private transient PasswordCryptoService                 cryptoService;
     private final UserKey                           userKey;
     private final String                            userCredential;
     private final String                            url;
@@ -74,7 +74,7 @@ public class IrisConnection implements KryptnosticConnection {
     public IrisConnection(
             KeyPair keyPair,
             Kodex<String> kodex,
-            CryptoService cryptoService,
+            PasswordCryptoService cryptoService,
             UserKey userKey,
             String userCredential,
             String url ) throws IrisException {
@@ -102,7 +102,7 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore, Client client ) throws IrisException {
-        this.cryptoService = new CryptoService( Cypher.AES_CTR_128, userCredential.toCharArray() );
+        this.cryptoService = new PasswordCryptoService( Cypher.AES_CTR_128, userCredential.toCharArray() );
         RestAdapter adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
                 url,
                 userKey,
@@ -171,7 +171,7 @@ public class IrisConnection implements KryptnosticConnection {
                     com.kryptnostic.crypto.EncryptedSearchPrivateKey.class,
                     exec );
 
-            this.kodex.setKeyWithClassAndJackson( CryptoService.class, cryptoService );
+            this.kodex.setKeyWithClassAndJackson( PasswordCryptoService.class, cryptoService );
             String qhpChecksum = searchKodex.getKeyWithJackson(
                     QueryHasherPairRequest.class.getCanonicalName(),
                     String.class );
@@ -211,7 +211,7 @@ public class IrisConnection implements KryptnosticConnection {
         } );
     }
 
-    private KeyPair loadRsaKeys( CryptoService crypto, UserKey userKey, DataStore dataStore, DirectoryApi keyClient )
+    private KeyPair loadRsaKeys( PasswordCryptoService crypto, UserKey userKey, DataStore dataStore, DirectoryApi keyClient )
             throws IrisException {
         KeyPair keyPair = null;
 
@@ -374,8 +374,8 @@ public class IrisConnection implements KryptnosticConnection {
         Kodex<String> kodex;
         try {
             kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_128, this.rsaPublicKey );
-            kodex.setKey( CryptoService.class.getCanonicalName(), new JacksonKodexMarshaller<CryptoService>(
-                    CryptoService.class ), this.cryptoService );
+            kodex.setKey( PasswordCryptoService.class.getCanonicalName(), new JacksonKodexMarshaller<PasswordCryptoService>(
+                    PasswordCryptoService.class ), this.cryptoService );
             return kodex;
         } catch (
                 InvalidKeyException

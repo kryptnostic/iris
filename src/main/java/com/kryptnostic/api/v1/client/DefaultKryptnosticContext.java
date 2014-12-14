@@ -71,7 +71,6 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private final EncryptedSearchPrivateKey   encryptedSearchPrivateKey;
     private final KryptnosticConnection       securityService;
     private final DataStore                   dataStore;
-    private final LoadingCache<DocumentId,AesCryptoService> keyCache;
     private SimplePolynomialFunction          globalHashFunction;
 
     public static final String                CHECKSUM_KEY    = "global-hash-checksum";
@@ -97,21 +96,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         this.fhePrivateKey = securityService.getFhePrivateKey();
         this.encryptedSearchPrivateKey = securityService.getEncryptedSearchPrivateKey();
         this.dataStore = securityService.getDataStore();
-        this.keyCache = CacheBuilder.newBuilder()
-                .maximumSize(1000)
-                .expireAfterWrite(12, TimeUnit.HOURS)
-                .build(
-                    new CacheLoader<DocumentId, AesCryptoService>() {
-                      public Graph load(Key key) throws AnyException {
-                        return createExpensiveGraph(key);
-                      }
 
-                    @Override
-                    public AesCryptoService load( DocumentId key ) throws Exception {
-                        // TODO Auto-generated method stub
-                        return null;
-                    }
-                    });
     }
 
     @Override

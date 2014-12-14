@@ -21,8 +21,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
-import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
+import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex.CorruptKodexException;
@@ -39,7 +39,7 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class LocalKodexLoaderTests {
     private static final Logger      logger = LoggerFactory.getLogger( LocalKodexLoaderTests.class );
-    private CryptoService            cryptoService;
+    private PasswordCryptoService            cryptoService;
     private DataStore                dataStore;
     private ObjectMapper             mapper = KodexObjectMapperFactory.getObjectMapper();
 
@@ -52,7 +52,7 @@ public class LocalKodexLoaderTests {
 
         String password = "test";
         dataStore = Mockito.mock( DataStore.class );
-        cryptoService = new CryptoService( Cypher.AES_CTR_128, password.toCharArray() );
+        cryptoService = new PasswordCryptoService( Cypher.AES_CTR_128, password.toCharArray() );
 
         fhePrivateKey = new PrivateKey( 128, 64 );
         fhePublicKey = new PublicKey( fhePrivateKey );

@@ -19,8 +19,8 @@ import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.models.UserKey;
-import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
+import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex.CorruptKodexException;
@@ -37,7 +37,7 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 public class NetworkKodexLoaderTests {
     private DirectoryApi                   keyClient;
     private UserKey                  userKey;
-    private CryptoService            cryptoService;
+    private PasswordCryptoService            cryptoService;
     private KeyPair                  keyPair;
     private PrivateKey               fhePrivateKey;
     private PublicKey                fhePublicKey;
@@ -46,7 +46,7 @@ public class NetworkKodexLoaderTests {
 
     @Before
     public void init() throws NoSuchAlgorithmException {
-        cryptoService = new CryptoService( Cypher.AES_CTR_128, "test".toCharArray() );
+        cryptoService = new PasswordCryptoService( Cypher.AES_CTR_128, "test".toCharArray() );
         userKey = new UserKey( "krypt", "sina" );
         keyClient = Mockito.mock( DirectoryApi.class );
 

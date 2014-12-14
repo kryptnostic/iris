@@ -10,18 +10,18 @@ import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.directory.v1.models.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
-import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
+import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
 import com.kryptnostic.kodex.v1.crypto.keys.PublicKeyAlgorithm;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 
 public final class NetworkRsaKeyLoader extends RsaKeyLoader {
-    private final CryptoService crypto;
+    private final PasswordCryptoService crypto;
     private final DirectoryApi        keyClient;
     private final UserKey       userKey;
 
-    public NetworkRsaKeyLoader( CryptoService crypto, DirectoryApi keyClient, UserKey userKey ) throws KodexException {
+    public NetworkRsaKeyLoader( PasswordCryptoService crypto, DirectoryApi keyClient, UserKey userKey ) throws KodexException {
         if ( crypto == null || keyClient == null || userKey == null ) {
             throw new KodexException( "null values" );
         }
