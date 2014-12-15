@@ -56,13 +56,13 @@ import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class IrisConnection implements KryptnosticConnection {
-    private static final Logger                     logger = LoggerFactory.getLogger( IrisConnection.class );
+    private static final Logger                     logger  = LoggerFactory.getLogger( IrisConnection.class );
     private final Kodex<String>                     kodex;
     private transient CryptoService                 cryptoService;
     private final UserKey                           userKey;
     private final String                            userCredential;
     private final String                            url;
-    private final DirectoryApi                            keyService;
+    private final DirectoryApi                      keyService;
     private final DataStore                         dataStore;
     private final com.kryptnostic.crypto.PrivateKey fhePrivateKey;
     private final com.kryptnostic.crypto.PublicKey  fhePublicKey;
@@ -217,7 +217,7 @@ public class IrisConnection implements KryptnosticConnection {
 
         try {
             logger.debug( "Loading RSA keys from disk" );
-            keyPair = new LocalRsaKeyLoader( crypto, dataStore ).load();
+            keyPair = new LocalRsaKeyLoader( crypto, keyClient, dataStore ).load();
         } catch ( KodexException e ) {
             logger.debug( "Could not load RSA keys from disk, trying network... {}", e );
         }
@@ -409,11 +409,13 @@ public class IrisConnection implements KryptnosticConnection {
     public DataStore getDataStore() {
         return dataStore;
     }
-    
+
+    @Override
     public PrivateKey getRsaPrivateKey() {
         return rsaPrivateKey;
     }
-    
+
+    @Override
     public PublicKey getRsaPublicKey() {
         return rsaPublicKey;
     }
