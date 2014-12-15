@@ -18,7 +18,7 @@ import retrofit.mime.TypedOutput;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
+import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 
 /**
@@ -35,7 +35,7 @@ public class JacksonConverter implements Converter {
         this.objectMapper = KodexObjectMapperFactory.getObjectMapper();
     }
     
-    public JacksonConverter( Kodex<String> securityConfig ) {
+    public JacksonConverter( CryptoServiceLoader securityConfig ) {
         this.objectMapper = KodexObjectMapperFactory.getObjectMapper( securityConfig );
     }
 

@@ -32,13 +32,17 @@ import com.kryptnostic.api.v1.security.loaders.fhe.NetworkKodexLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.LocalRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.NetworkRsaKeyLoader;
+import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.directory.v1.models.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
-import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
+import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
+import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
+import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
+import com.kryptnostic.kodex.v1.crypto.keys.DefaultCryptoServiceLoader;
 import com.kryptnostic.kodex.v1.crypto.keys.JacksonKodexMarshaller;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex.CorruptKodexException;
@@ -58,7 +62,7 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 public class IrisConnection implements KryptnosticConnection {
     private static final Logger                     logger  = LoggerFactory.getLogger( IrisConnection.class );
     private final Kodex<String>                     kodex;
-    private transient PasswordCryptoService                 cryptoService;
+    private transient PasswordCryptoService         cryptoService;
     private final UserKey                           userKey;
     private final String                            userCredential;
     private final String                            url;
@@ -69,6 +73,7 @@ public class IrisConnection implements KryptnosticConnection {
     private final EncryptedSearchPrivateKey         encryptedSearchPrivateKey;
     private final PublicKey                         rsaPublicKey;
     private final PrivateKey                        rsaPrivateKey;
+    private final CryptoServiceLoader               loader;
     boolean                                         doFresh = false;
 
     public IrisConnection(
@@ -96,6 +101,7 @@ public class IrisConnection implements KryptnosticConnection {
             this.fhePrivateKey = kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class );
             this.fhePublicKey = kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class );
             this.encryptedSearchPrivateKey = kodex.getKeyWithJackson( EncryptedSearchPrivateKey.class );
+            this.loader = new DefaultCryptoServiceLoader( this , keyService );
         } catch ( KodexException | SecurityConfigurationException | CorruptKodexException e ) {
             throw new IrisException( e );
         }
@@ -194,6 +200,7 @@ public class IrisConnection implements KryptnosticConnection {
                 | ExecutionException e ) {
             throw new IrisException( e );
         }
+        this.loader = new DefaultCryptoServiceLoader( this , keyService );
     }
 
     private <T> Future<T> asynchronousKodexLoad( final Kodex<String> kodex, final Class<T> key, ExecutorService exec ) {
@@ -211,8 +218,11 @@ public class IrisConnection implements KryptnosticConnection {
         } );
     }
 
-    private KeyPair loadRsaKeys( PasswordCryptoService crypto, UserKey userKey, DataStore dataStore, DirectoryApi keyClient )
-            throws IrisException {
+    private KeyPair loadRsaKeys(
+            PasswordCryptoService crypto,
+            UserKey userKey,
+            DataStore dataStore,
+            DirectoryApi keyClient ) throws IrisException {
         KeyPair keyPair = null;
 
         try {
@@ -374,8 +384,10 @@ public class IrisConnection implements KryptnosticConnection {
         Kodex<String> kodex;
         try {
             kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_128, this.rsaPublicKey );
-            kodex.setKey( PasswordCryptoService.class.getCanonicalName(), new JacksonKodexMarshaller<PasswordCryptoService>(
-                    PasswordCryptoService.class ), this.cryptoService );
+            kodex.setKey(
+                    PasswordCryptoService.class.getCanonicalName(),
+                    new JacksonKodexMarshaller<PasswordCryptoService>( PasswordCryptoService.class ),
+                    this.cryptoService );
             return kodex;
         } catch (
                 InvalidKeyException
@@ -435,5 +447,15 @@ public class IrisConnection implements KryptnosticConnection {
         } catch ( IOException e ) {
             throw new IrisException( e );
         }
+    }
+
+    @Override
+    public CryptoServiceLoader getCryptoServiceLoader() {
+        return loader;
+    }
+
+    @Override
+    public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
+        return new RsaCompressingCryptoService( RsaKeyLoader.CIPHER, getRsaPrivateKey(), getRsaPublicKey() );
     }
 }

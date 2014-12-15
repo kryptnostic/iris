@@ -48,6 +48,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.kodex.v1.models.AesEncryptable;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
@@ -121,7 +122,9 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
 
         stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
 
-        String receivedDocId = client.getStorageClient().updateDocumentWithoutMetadata( docId.getDocumentId(), "test" );
+        String receivedDocId = client.getStorageClient().updateDocumentWithoutMetadata(
+                docId.getDocumentId(),
+                new AesEncryptable<String>( "test" ) );
 
         Assert.assertEquals( docId.getDocumentId(), receivedDocId );
 

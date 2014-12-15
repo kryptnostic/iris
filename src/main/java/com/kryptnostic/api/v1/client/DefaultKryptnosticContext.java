@@ -251,9 +251,6 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
-        return new RsaCompressingCryptoService(
-                RsaKeyLoader.CIPHER,
-                securityService.getRsaPrivateKey(),
-                securityService.getRsaPublicKey() );
+        return securityService.getRsaCryptoService();
     }
 }

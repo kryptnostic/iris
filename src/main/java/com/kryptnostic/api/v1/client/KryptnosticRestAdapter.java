@@ -8,11 +8,9 @@ import retrofit.RestAdapter.LogLevel;
 import retrofit.client.Client;
 import retrofit.converter.Converter;
 
-import com.google.common.base.Preconditions;
 import com.kryptnostic.api.v1.utils.JacksonConverter;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.kodex.v1.authentication.PreauthenticationRequestInterceptor;
-import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
 import com.kryptnostic.kodex.v1.exceptions.DefaultErrorHandler;
 import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 
@@ -22,7 +20,7 @@ public final class KryptnosticRestAdapter {
     private static final Logger logger = LoggerFactory.getLogger( KryptnosticRestAdapter.class );
 
     public static RestAdapter create( Client client, KryptnosticConnection credentialService ) {
-        return builder( credentialService, new JacksonConverter( credentialService.getKodex() ) ).setClient( client )
+        return builder( credentialService, new JacksonConverter( credentialService.getCryptoServiceLoader() ) ).setClient( client )
                 .build();
     }
 
@@ -31,9 +29,7 @@ public final class KryptnosticRestAdapter {
     }
 
     public static RestAdapter createWithDefaultClient( KryptnosticConnection credentialService ) {
-        Kodex<String> kodex = credentialService.getKodex();
-        Preconditions.checkArgument( !kodex.isSealed(), "Kodex must be unsealed for use in rest adapter." );
-        return builder( credentialService, new JacksonConverter( kodex ) ).build();
+        return builder( credentialService, new JacksonConverter( credentialService.getCryptoServiceLoader() ) ).build();
     }
 
     public static RestAdapter createWithDefaultJacksonConverter( KryptnosticConnection credentialService ) {

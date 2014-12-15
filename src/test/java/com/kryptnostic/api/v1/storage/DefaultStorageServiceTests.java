@@ -20,6 +20,7 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
@@ -30,6 +31,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.kodex.v1.models.AesEncryptable;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.StorageClient;
@@ -56,7 +58,7 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
     @Test
     public void uploadingWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
-            NoSuchAlgorithmException {
+            NoSuchAlgorithmException, JsonProcessingException {
         DocumentApi documentApi = Mockito.mock( DocumentApi.class );
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
@@ -98,6 +100,6 @@ public class DefaultStorageServiceTests extends AesEncryptableBase {
 
         storageService.uploadDocumentWithoutMetadata( "test" );
 
-        storageService.updateDocumentWithoutMetadata( "test", "test" );
+        storageService.updateDocumentWithoutMetadata( "test", new AesEncryptable<String>( "test" ) );
     }
 }
