@@ -61,6 +61,13 @@ public class DocumentFragmentFormatterTests {
                 DocumentFragmentFormatter.format( makeEntry( 20, "this word is really cool" ), 5 ) );
     }
 
+    @Test
+    public void testSymbols() {
+        Assert.assertEquals(
+                "cool_word",
+                DocumentFragmentFormatter.format( makeEntry( 22, "this word is really a_cool_word" ), 0 ) );
+    }
+
     @Test(
         expected = IllegalArgumentException.class )
     public void testNegativeOffset() {

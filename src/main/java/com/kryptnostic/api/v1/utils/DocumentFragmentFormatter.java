@@ -37,7 +37,8 @@ public class DocumentFragmentFormatter {
 
         String token = block.substring( offset, endOfWord );
 
-        String pattern = token;
+        String pattern = clean( token );
+        block = clean( block );
 
         boolean hasBeginning = false;
         boolean hasEnd = false;
@@ -79,5 +80,9 @@ public class DocumentFragmentFormatter {
         }
 
         return result;
+    }
+
+    private static String clean( String token ) {
+        return token.replaceAll( "[\\\\_]", " " );
     }
 }
