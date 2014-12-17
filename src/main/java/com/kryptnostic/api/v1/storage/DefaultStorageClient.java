@@ -1,15 +1,14 @@
 package com.kryptnostic.api.v1.storage;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.Semaphore;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,8 +17,14 @@ import cern.colt.bitvector.BitVector;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.google.common.base.Function;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
@@ -54,8 +59,10 @@ import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 public class DefaultStorageClient implements StorageClient {
     private static final Logger         log                      = LoggerFactory.getLogger( StorageClient.class );
     private static final int            PARALLEL_NETWORK_THREADS = 4;
-    ExecutorService exec = Executors.newFixedThreadPool( PARALLEL_NETWORK_THREADS );
-    
+    ListeningExecutorService            exec                     = MoreExecutors
+                                                                         .listeningDecorator( Executors
+                                                                                 .newFixedThreadPool( PARALLEL_NETWORK_THREADS ) );
+
     /**
      * Server-side
      */
@@ -307,30 +314,30 @@ public class DefaultStorageClient implements StorageClient {
      * @throws IrisException
      */
     private void submitBlocksToServer( final DocumentId documentId, final DocumentBlock[] blocks ) throws IrisException {
-        List<Future<Void>> jobs = Lists.newArrayList();
-
-        for ( final DocumentBlock block : blocks ) {
-            THREAD_MAX.acquireUninterruptibly();
-            exec.submit( new Runnable() {
-                @Override
-                public void run()  {
-                    // push the block to the server
-                    try {
-                        documentApi.updateDocument( documentId.getDocumentId(), block );
-                    } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
-                        log.error( "Failed to uploaded block. Should probably add a retry here!" );
-                    } finally {
-                        THREAD_MAX.release();
-                        log.info( "Document blocked uploaded completed for document {} and block {}" , documentId.getDocumentId(), block.getIndex() );
-                    }
-                }
-            } );
-        }
-        
         try {
-            THREAD_MAX.acquireUninterruptibly( THREAD_MAX_COUNT );
-        } finally {
-            THREAD_MAX.release( THREAD_MAX_COUNT );
+            Futures.allAsList( Iterables.transform( Arrays.asList( blocks ), new Function<DocumentBlock, ListenableFuture<?>>() {
+                @Override
+                public ListenableFuture<?> apply( final DocumentBlock input ) {
+                    return exec.submit( new Runnable() {
+                        @Override
+                        public void run() {
+                            // push the block to the server
+                            try {
+                                documentApi.updateDocument( documentId.getDocumentId(), input );
+                            } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
+                                log.error( "Failed to uploaded block. Should probably add a retry here!" );
+                            } finally {
+                                log.info(
+                                        "Document blocked uploaded completed for document {} and block {}",
+                                        documentId.getDocumentId(),
+                                        input.getIndex() );
+                            }
+                        }
+                    } );
+                }
+            } ) ).get();
+        } catch ( InterruptedException | ExecutionException e ) {
+            throw new IrisException( e );
         }
     }
 
