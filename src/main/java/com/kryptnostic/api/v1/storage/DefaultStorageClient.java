@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +56,7 @@ public class DefaultStorageClient implements StorageClient {
     private static final Logger         log                      = LoggerFactory.getLogger( StorageClient.class );
 
     private static final int            PARALLEL_NETWORK_THREADS = 4;
-
+    private static final Semaphore      THREAD_MAX               = new Semaphore( 100 );
     /**
      * Server-side
      */
@@ -311,17 +312,22 @@ public class DefaultStorageClient implements StorageClient {
         List<Future<Void>> jobs = Lists.newArrayList();
 
         for ( final DocumentBlock block : blocks ) {
+            THREAD_MAX.acquireUninterruptibly();
+
             jobs.add( exec.submit( new Callable<Void>() {
 
                 @Override
                 public Void call() throws Exception {
                     // push the block to the server
-                    documentApi.updateDocument( documentId.getDocumentId(), block );
+                    try {
+                        documentApi.updateDocument( documentId.getDocumentId(), block );
+                    } finally {
+                        THREAD_MAX.release();
+                    }
                     return null;
                 }
             } ) );
         }
-
         for ( Future<Void> f : jobs ) {
             try {
                 log.info( "Document Block Upload completed: " + f.get() );
