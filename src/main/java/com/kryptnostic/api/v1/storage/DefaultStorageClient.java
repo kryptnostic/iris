@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -30,6 +28,7 @@ import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
@@ -54,9 +53,9 @@ import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 
 public class DefaultStorageClient implements StorageClient {
     private static final Logger         log                      = LoggerFactory.getLogger( StorageClient.class );
-
     private static final int            PARALLEL_NETWORK_THREADS = 4;
-    private static final Semaphore      THREAD_MAX               = new Semaphore( 100 );
+    ExecutorService exec = Executors.newFixedThreadPool( PARALLEL_NETWORK_THREADS );
+    
     /**
      * Server-side
      */
@@ -308,34 +307,30 @@ public class DefaultStorageClient implements StorageClient {
      * @throws IrisException
      */
     private void submitBlocksToServer( final DocumentId documentId, final DocumentBlock[] blocks ) throws IrisException {
-        ExecutorService exec = Executors.newFixedThreadPool( PARALLEL_NETWORK_THREADS );
         List<Future<Void>> jobs = Lists.newArrayList();
 
         for ( final DocumentBlock block : blocks ) {
             THREAD_MAX.acquireUninterruptibly();
-
-            jobs.add( exec.submit( new Callable<Void>() {
-
+            exec.submit( new Runnable() {
                 @Override
-                public Void call() throws Exception {
+                public void run()  {
                     // push the block to the server
                     try {
                         documentApi.updateDocument( documentId.getDocumentId(), block );
+                    } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
+                        log.error( "Failed to uploaded block. Should probably add a retry here!" );
                     } finally {
                         THREAD_MAX.release();
+                        log.info( "Document blocked uploaded completed for document {} and block {}" , documentId.getDocumentId(), block.getIndex() );
                     }
-                    return null;
                 }
-            } ) );
+            } );
         }
-        for ( Future<Void> f : jobs ) {
-            try {
-                log.info( "Document Block Upload completed: " + f.get() );
-            } catch ( InterruptedException e ) {
-                throw new IrisException( e );
-            } catch ( ExecutionException e ) {
-                throw new IrisException( e );
-            }
+        
+        try {
+            THREAD_MAX.acquireUninterruptibly( THREAD_MAX_COUNT );
+        } finally {
+            THREAD_MAX.release( THREAD_MAX_COUNT );
         }
     }
 
