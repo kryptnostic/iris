@@ -56,7 +56,7 @@ public class FreshKodexLoader extends KodexLoader {
         try {
             Kodex<String> kodex = new Kodex<String>(
                     Cypher.RSA_OAEP_SHA1_1024,
-                    Cypher.AES_CTR_PKCS5_128,
+                    Cypher.AES_CTR_128,
                     keyPair.getPublic() );
 
             kodex.verify( keyPair.getPublic() );

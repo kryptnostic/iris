@@ -46,7 +46,7 @@ public class NetworkKodexLoaderTests {
 
     @Before
     public void init() throws NoSuchAlgorithmException {
-        cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, "test".toCharArray() );
+        cryptoService = new CryptoService( Cypher.AES_CTR_128, "test".toCharArray() );
         userKey = new UserKey( "krypt", "sina" );
         keyClient = Mockito.mock( DirectoryApi.class );
 
@@ -79,7 +79,7 @@ public class NetworkKodexLoaderTests {
             SealedKodexException, KodexException, CorruptKodexException, SingularMatrixException {
         Kodex<String> kodex = new Kodex<String>(
                 Cypher.RSA_OAEP_SHA1_1024,
-                Cypher.AES_CTR_PKCS5_128,
+                Cypher.AES_CTR_128,
                 keyPair.getPublic() );
 
         kodex.unseal( keyPair.getPublic(), keyPair.getPrivate() );

@@ -102,7 +102,7 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore, Client client ) throws IrisException {
-        this.cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, userCredential.toCharArray() );
+        this.cryptoService = new CryptoService( Cypher.AES_CTR_128, userCredential.toCharArray() );
         RestAdapter adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
                 url,
                 userKey,
@@ -373,7 +373,7 @@ public class IrisConnection implements KryptnosticConnection {
     public Kodex<String> getCryptoKodex() throws IrisException {
         Kodex<String> kodex;
         try {
-            kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_PKCS5_128, this.rsaPublicKey );
+            kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_128, this.rsaPublicKey );
             kodex.setKey( CryptoService.class.getCanonicalName(), new JacksonKodexMarshaller<CryptoService>(
                     CryptoService.class ), this.cryptoService );
             return kodex;

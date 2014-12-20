@@ -74,7 +74,7 @@ public class SharingManager implements SharingClient {
 
         AesCryptoService service;
         try {
-            service = new AesCryptoService( Cypher.AES_CTR_PKCS5_128 );
+            service = new AesCryptoService( Cypher.AES_CTR_128 );
             Map<UserKey, RsaCompressingEncryptionService> services = context.getEncryptionServiceForUsers( users );
             Map<UserKey, byte[]> seals = Maps.newHashMap();
             for ( Entry<UserKey, RsaCompressingEncryptionService> serviceEntry : services.entrySet() ) {

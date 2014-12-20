@@ -52,7 +52,7 @@ public class LocalKodexLoaderTests {
 
         String password = "test";
         dataStore = Mockito.mock( DataStore.class );
-        cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, password.toCharArray() );
+        cryptoService = new CryptoService( Cypher.AES_CTR_128, password.toCharArray() );
 
         fhePrivateKey = new PrivateKey( 128, 64 );
         fhePublicKey = new PublicKey( fhePrivateKey );
@@ -94,7 +94,7 @@ public class LocalKodexLoaderTests {
     private void makeValidKodex( KeyPair pair ) throws InvalidKeyException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, SignatureException, SecurityConfigurationException, IOException,
             SealedKodexException, KodexException, CorruptKodexException, SingularMatrixException {
-        Kodex<String> kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_PKCS5_128, pair.getPublic() );
+        Kodex<String> kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_128, pair.getPublic() );
 
         kodex.unseal( pair.getPublic(), pair.getPrivate() );
 
