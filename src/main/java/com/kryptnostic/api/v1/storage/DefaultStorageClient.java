@@ -315,27 +315,30 @@ public class DefaultStorageClient implements StorageClient {
      */
     private void submitBlocksToServer( final DocumentId documentId, final DocumentBlock[] blocks ) throws IrisException {
         try {
-            Futures.allAsList( Iterables.transform( Arrays.asList( blocks ), new Function<DocumentBlock, ListenableFuture<?>>() {
-                @Override
-                public ListenableFuture<?> apply( final DocumentBlock input ) {
-                    return exec.submit( new Runnable() {
+            Futures.allAsList(
+                    Iterables.transform( Arrays.asList( blocks ), new Function<DocumentBlock, ListenableFuture<?>>() {
                         @Override
-                        public void run() {
-                            // push the block to the server
-                            try {
-                                documentApi.updateDocument( documentId.getDocumentId(), input );
-                            } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
-                                log.error( "Failed to uploaded block. Should probably add a retry here!" );
-                            } finally {
-                                log.info(
-                                        "Document blocked uploaded completed for document {} and block {}",
-                                        documentId.getDocumentId(),
-                                        input.getIndex() );
-                            }
+                        public ListenableFuture<?> apply( final DocumentBlock input ) {
+                            return exec.submit( new Runnable() {
+                                @Override
+                                public void run() {
+                                    // push the block to the server
+                                    try {
+                                        documentApi.updateDocument( documentId.getDocumentId(), input );
+                                    } catch (
+                                            ResourceNotFoundException
+                                            | ResourceNotLockedException
+                                            | BadRequestException e ) {
+                                        log.error( "Failed to uploaded block. Should probably add a retry here!" );
+                                    }
+                                    log.info(
+                                            "Document blocked uploaded completed for document {} and block {}",
+                                            documentId.getDocumentId(),
+                                            input.getIndex() );
+                                }
+                            } );
                         }
-                    } );
-                }
-            } ) ).get();
+                    } ) ).get();
         } catch ( InterruptedException | ExecutionException e ) {
             throw new IrisException( e );
         }
