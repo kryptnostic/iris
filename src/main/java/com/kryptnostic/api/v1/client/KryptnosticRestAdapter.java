@@ -11,8 +11,8 @@ import retrofit.converter.Converter;
 import com.kryptnostic.api.v1.utils.JacksonConverter;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.kodex.v1.authentication.PreauthenticationRequestInterceptor;
+import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.exceptions.DefaultErrorHandler;
-import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 
 public final class KryptnosticRestAdapter {
     private KryptnosticRestAdapter() {}
