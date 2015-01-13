@@ -38,6 +38,7 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
+import com.kryptnostic.api.v1.storage.DefaultStorageClient.StorageRequestBuilder;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.directory.v1.models.response.PublicKeyEnvelope;
@@ -59,8 +60,6 @@ import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.http.DocumentApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
-import com.kryptnostic.storage.v1.models.Document;
-import com.kryptnostic.storage.v1.models.DocumentMetadata;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 import com.kryptnostic.utils.SecurityConfigurationTestUtils;
 
@@ -170,8 +169,8 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
 
         stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
 
-        String receivedDocId = client.getStorageClient().updateDocumentWithoutMetadata(
-                new Document( new DocumentMetadata( docId ), "test" ) );
+        String receivedDocId = client.getStorageClient().uploadDocument(
+                new StorageRequestBuilder().withBody( "test" ).withId( docId ).build() );
 
         Assert.assertEquals( docId, receivedDocId );
 
@@ -191,7 +190,8 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
         stubFor( put( urlMatching( documentCreateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
         stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
 
-        String receivedDocId = client.getStorageClient().uploadDocumentWithoutMetadata( "test" );
+        String receivedDocId = client.getStorageClient().uploadDocument(
+                new StorageRequestBuilder().withBody( "test" ).notSearchable().build() );
         Assert.assertEquals( docId.getDocumentId(), receivedDocId );
 
         verify( 1, putRequestedFor( urlMatching( documentCreateUrl ) ) );

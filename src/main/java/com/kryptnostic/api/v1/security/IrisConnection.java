@@ -169,7 +169,7 @@ public class IrisConnection implements KryptnosticConnection {
             throw new IrisException( e );
         }
 
-        this.loader = new DefaultCryptoServiceLoader( this, keyService );
+        this.loader = new DefaultCryptoServiceLoader( this, keyService, Cypher.AES_CTR_128 );
     }
 
     private KeyPair loadRsaKeys(

@@ -34,6 +34,7 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
+import com.kryptnostic.api.v1.storage.DefaultStorageClient.StorageRequestBuilder;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.directory.v1.models.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
@@ -52,8 +53,6 @@ import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.http.DocumentApi;
 import com.kryptnostic.storage.v1.http.MetadataApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
-import com.kryptnostic.storage.v1.models.Document;
-import com.kryptnostic.storage.v1.models.DocumentMetadata;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.utils.SecurityConfigurationTestUtils;
@@ -137,9 +136,10 @@ public class DefaultStorageServiceTests extends SecurityConfigurationTestUtils {
         loader.put( "document1", crypto );
         loader.put( "test", crypto );
 
-        storageService.uploadDocumentWithoutMetadata( "test" );
+        storageService.uploadDocument( new StorageRequestBuilder().withBody( "test" ).notSearchable().build() );
 
-        storageService.updateDocumentWithoutMetadata( new Document( new DocumentMetadata( "test" ), "test" ) );
+        storageService.uploadDocument( new StorageRequestBuilder().withBody( "test" ).withId( "test" ).notSearchable()
+                .build() );
     }
 
     // FIXME duped from DefaultKryptnosticClientTests
