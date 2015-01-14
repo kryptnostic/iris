@@ -39,7 +39,8 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
         this.storageClient = new DefaultStorageClient(
                 context,
                 factory.createDocumentApi(),
-                factory.createMetadataApi() );
+                factory.createMetadataApi(),
+                factory.createSharingApi() );
         this.searchClient = new DefaultSearchClient( context, factory.createSearchApi() );
         this.directoryClient = new DefaultDirectoryClient( context, factory.createDirectoryApi() );
         this.sharingClient = new SharingManager( context, factory.createSharingApi() );

@@ -48,6 +48,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
+import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.http.DocumentApi;
@@ -97,12 +98,16 @@ public class DefaultStorageServiceTests extends SecurityConfigurationTestUtils {
             NoSuchAlgorithmException, JsonProcessingException {
         DocumentApi documentApi = Mockito.mock( DocumentApi.class );
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
+        SharingApi sharingApi = Mockito.mock( SharingApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
+
+        Mockito.when( sharingApi.removeIncomingShares( Mockito.anyString() ) ).thenReturn(
+                new BasicResponse<String>( "done", 200, true ) );
 
         Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
         Mockito.when( context.getConnection().getCryptoServiceLoader() ).thenReturn( loader );
 
-        storageService = new DefaultStorageClient( context, documentApi, metadataApi );
+        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
 
         Mockito.when( documentApi.createPendingDocument() ).then( new Answer<BasicResponse<DocumentId>>() {
 

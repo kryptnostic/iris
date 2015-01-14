@@ -1,12 +1,10 @@
 package com.kryptnostic.api.v1.storage;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
@@ -14,12 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
-import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
@@ -38,6 +32,7 @@ import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
 import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
+import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.http.DocumentApi;
@@ -64,6 +59,7 @@ public class DefaultStorageClient implements StorageClient {
      */
     private final DocumentApi         documentApi;
     private final MetadataApi         metadataApi;
+    private final SharingApi          sharingApi;
 
     /**
      * Client-side
@@ -78,10 +74,15 @@ public class DefaultStorageClient implements StorageClient {
      * @param documentApi
      * @param metadataApi
      */
-    public DefaultStorageClient( KryptnosticContext context, DocumentApi documentApi, MetadataApi metadataApi ) {
+    public DefaultStorageClient(
+            KryptnosticContext context,
+            DocumentApi documentApi,
+            MetadataApi metadataApi,
+            SharingApi sharingApi ) {
         this.context = context;
         this.documentApi = documentApi;
         this.metadataApi = metadataApi;
+        this.sharingApi = sharingApi;
         this.metadataMapper = new PaddedMetadataMapper( context );
         this.indexer = new SimpleIndexer();
         this.loader = context.getConnection().getCryptoServiceLoader();
@@ -275,7 +276,9 @@ public class DefaultStorageClient implements StorageClient {
 
             // encrypt the metadata
             for ( Metadata metadatumToEncrypt : metadataForKey ) {
-                Encryptable<Metadata> encryptedMetadatum = new Encryptable<Metadata>( metadatumToEncrypt );
+                Encryptable<Metadata> encryptedMetadatum = new Encryptable<Metadata>(
+                        metadatumToEncrypt,
+                        metadatumToEncrypt.getDocumentId().getDocumentId() );
                 metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum, metadatumToEncrypt.getDocumentId() ) );
             }
         }
@@ -292,35 +295,13 @@ public class DefaultStorageClient implements StorageClient {
     private void submitBlocksToServer( final Document document ) throws IrisException {
         Preconditions.checkNotNull( document.getBody().getEncryptedData() );
         final String documentId = document.getMetadata().getId();
-        try {
-            Futures.allAsList(
-                    Iterables.transform(
-                            Arrays.asList( document.getBody().getEncryptedData() ),
-                            new Function<EncryptableBlock, ListenableFuture<?>>() {
-                                @Override
-                                public ListenableFuture<?> apply( final EncryptableBlock input ) {
-                                    return exec.submit( new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            // push the block to the server
-                                            try {
-                                                documentApi.updateDocument( documentId, input );
-                                            } catch (
-                                                    ResourceNotFoundException
-                                                    | ResourceNotLockedException
-                                                    | BadRequestException e ) {
-                                                log.error( "Failed to uploaded block. Should probably add a retry here!" );
-                                            }
-                                            log.info(
-                                                    "Document blocked uploaded completed for document {} and block {}",
-                                                    documentId,
-                                                    input.getIndex() );
-                                        }
-                                    } );
-                                }
-                            } ) ).get();
-        } catch ( InterruptedException | ExecutionException e ) {
-            throw new IrisException( e );
+        for ( EncryptableBlock input : document.getBody().getEncryptedData() ) {
+            try {
+                documentApi.updateDocument( documentId, input );
+            } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
+                log.error( "Failed to uploaded block. Should probably add a retry here!" );
+            }
+            log.info( "Document block uploaded completed for document {} and block {}", documentId, input.getIndex() );
         }
     }
 
@@ -332,6 +313,7 @@ public class DefaultStorageClient implements StorageClient {
     @Override
     public void deleteDocument( DocumentId id ) {
         documentApi.delete( id.getDocumentId() );
+        sharingApi.removeIncomingShares( id.getDocumentId() );
     }
 
     @Override
