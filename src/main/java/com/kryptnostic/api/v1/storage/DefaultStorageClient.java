@@ -1,37 +1,34 @@
 package com.kryptnostic.api.v1.storage;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
+import org.apache.commons.codec.binary.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.google.common.base.Function;
-import com.google.common.collect.Iterables;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
+import com.kryptnostic.api.v1.utils.DocumentFragmentFormatter;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
-import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
+import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
@@ -39,90 +36,185 @@ import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
 import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
-import com.kryptnostic.kodex.v1.models.AesEncryptable;
-import com.kryptnostic.kodex.v1.models.Encryptable;
-import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils;
-import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils.VerifiedString;
-import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
+import com.kryptnostic.kodex.v1.serialization.crypto.DefaultChunkingStrategy;
+import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
+import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.http.DocumentApi;
 import com.kryptnostic.storage.v1.http.MetadataApi;
 import com.kryptnostic.storage.v1.models.Document;
-import com.kryptnostic.storage.v1.models.DocumentBlock;
+import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.IndexedMetadata;
-import com.kryptnostic.storage.v1.models.request.DocumentCreationRequest;
-import com.kryptnostic.storage.v1.models.request.DocumentFragmentRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
+import com.kryptnostic.storage.v1.models.request.StorageRequest;
 
+/**
+ * @author sinaiman
+ *
+ */
 public class DefaultStorageClient implements StorageClient {
-    private static final Logger         log                      = LoggerFactory.getLogger( StorageClient.class );
-    private static final int            PARALLEL_NETWORK_THREADS = 4;
-    ListeningExecutorService            exec                     = MoreExecutors
-                                                                         .listeningDecorator( Executors
-                                                                                 .newFixedThreadPool( PARALLEL_NETWORK_THREADS ) );
+    private static final Logger       log                      = LoggerFactory.getLogger( StorageClient.class );
+    private static final int          PARALLEL_NETWORK_THREADS = 4;
+    ListeningExecutorService          exec                     = MoreExecutors.listeningDecorator( Executors
+                                                                       .newFixedThreadPool( PARALLEL_NETWORK_THREADS ) );
 
     /**
      * Server-side
      */
-    private final DocumentApi           documentApi;
-    private final MetadataApi           metadataApi;
+    private final DocumentApi         documentApi;
+    private final MetadataApi         metadataApi;
+    private final SharingApi          sharingApi;
 
     /**
      * Client-side
      */
-    private final KryptnosticContext    context;
-    private final MetadataMapper        metadataMapper;
-    private final Indexer               indexer;
-    private final KryptnosticConnection securityService;
-    private final Kodex<String>         kodex;
+    private final KryptnosticContext  context;
+    private final MetadataMapper      metadataMapper;
+    private final Indexer             indexer;
+    private final CryptoServiceLoader loader;
 
-    public DefaultStorageClient( KryptnosticContext context, DocumentApi documentApi, MetadataApi metadataApi ) {
+    /**
+     * @param context
+     * @param documentApi
+     * @param metadataApi
+     */
+    public DefaultStorageClient(
+            KryptnosticContext context,
+            DocumentApi documentApi,
+            MetadataApi metadataApi,
+            SharingApi sharingApi ) {
         this.context = context;
         this.documentApi = documentApi;
         this.metadataApi = metadataApi;
-        this.securityService = context.getConnection();
+        this.sharingApi = sharingApi;
         this.metadataMapper = new PaddedMetadataMapper( context );
         this.indexer = new SimpleIndexer();
-        this.kodex = context.getConnection().getKodex();
+        this.loader = context.getConnection().getCryptoServiceLoader();
+    }
+
+    public static class StorageRequestBuilder {
+        private String  documentId;
+        private String  documentBody;
+        private boolean isSearchable;
+        private boolean isStoreable;
+
+        public StorageRequestBuilder() {
+            documentBody = null;
+            documentId = null;
+            isSearchable = true;
+            isStoreable = true;
+        }
+
+        private StorageRequestBuilder clone( StorageRequestBuilder o ) {
+            StorageRequestBuilder b = new StorageRequestBuilder();
+            b.documentBody = o.documentBody;
+            b.documentId = o.documentId;
+            b.isSearchable = o.isSearchable;
+            b.isStoreable = o.isStoreable;
+            return b;
+        }
+
+        public StorageRequestBuilder withBody( String documentBody ) {
+            StorageRequestBuilder b = clone( this );
+            b.documentBody = documentBody;
+            return b;
+        }
+
+        public StorageRequestBuilder withId( String documentId ) {
+            StorageRequestBuilder b = clone( this );
+            b.documentId = documentId;
+            return b;
+        }
+
+        public StorageRequestBuilder searchable() {
+            StorageRequestBuilder b = clone( this );
+            b.isSearchable = true;
+            return b;
+        }
+
+        public StorageRequestBuilder storeable() {
+            StorageRequestBuilder b = clone( this );
+            b.isStoreable = true;
+            return b;
+        }
+
+        public StorageRequestBuilder notSearchable() {
+            StorageRequestBuilder b = clone( this );
+            b.isSearchable = false;
+            return b;
+        }
+
+        public StorageRequestBuilder notStoreable() {
+            StorageRequestBuilder b = clone( this );
+            b.isStoreable = false;
+            return b;
+        }
+
+        public StorageRequest build() {
+            if ( documentBody == null ) {
+                throw new IllegalStateException( "Document body must not be null" );
+            }
+            if ( !isSearchable && !isStoreable ) {
+                throw new IllegalStateException( "Not searchable or storeable, so no-op" );
+            }
+            return new StorageRequest( documentId, documentBody, isSearchable, isStoreable );
+        }
     }
 
     @Override
-    public String uploadDocumentWithMetadata( String documentBody ) throws SecurityConfigurationException,
-            IrisException, BadRequestException {
-        // Figure out the number of blocks we're sending
-        List<VerifiedString> verified = createVerifiedBlocks( documentBody );
+    public String uploadDocument( StorageRequest req ) throws BadRequestException, SecurityConfigurationException,
+            IrisException, ResourceLockedException, ResourceNotFoundException {
+        String documentId = req.getDocumentId();
 
-        // Create a new pending document on the server
-        DocumentCreationRequest documentRequest = new DocumentCreationRequest( verified.size() );
-        DocumentId documentId = documentApi.createPendingDocument( documentRequest ).getData();
+        if ( documentId == null ) {
+            documentId = documentApi.createPendingDocument().getData().getDocumentId();
+        } else {
+            documentApi.createPendingDocument( documentId );
+        }
 
-        // Update this pending document with the necessary blocks to complete the upload
-        // Also make sure metadata is uploaded
-        return updateDocumentWithMetadata( documentId, documentBody );
+        Document document = Document.fromIdAndBody( documentId, req.getDocumentBody() );
+
+        Preconditions.checkArgument( !document.getBody().isEncrypted() );
+        String docId = document.getMetadata().getId();
+        // upload the document blocks
+        if ( req.isStoreable() ) {
+            storeDocument( document );
+        }
+
+        if ( req.isSearchable() ) {
+            makeDocumentSearchable( document );
+        }
+
+        return docId;
     }
 
-    @Override
-    public String uploadDocumentWithoutMetadata( String documentBody ) throws BadRequestException,
-            SecurityConfigurationException, IrisException {
-        List<VerifiedString> verified = createVerifiedBlocks( documentBody );
-        DocumentCreationRequest documentRequest = new DocumentCreationRequest( verified.size() );
-        String documentId = documentApi.createPendingDocument( documentRequest ).getData().getDocumentId();
-        return updateDocumentWithoutMetadata( documentId, documentBody, verified );
+    private void makeDocumentSearchable( Document document ) throws IrisException, BadRequestException {
+        // index + map tokens for metadata
+        Set<Metadata> metadata = indexer.index( document.getMetadata().getId(), document.getBody().getData() );
+
+        // generate nonce
+        BitVector searchNonce = context.generateSearchNonce();
+        EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
+
+        context.submitBridgeKeyWithSearchNonce(
+                new DocumentId( document.getMetadata().getId() ),
+                sharingKey,
+                searchNonce );
+
+        MetadataRequest metadataRequest = prepareMetadata( metadata, searchNonce, sharingKey );
+        uploadMetadata( metadataRequest );
+
     }
 
-    @Override
-    public String updateDocumentWithMetadata( String documentId, String documentBody )
-            throws ResourceNotFoundException, BadRequestException, SecurityConfigurationException, IrisException {
-        return updateDocumentWithMetadata( new DocumentId( documentId ), documentBody );
-    }
-
-    @Override
-    public String updateDocumentWithoutMetadata( String documentId, String documentBody ) throws BadRequestException,
-            SecurityConfigurationException, IrisException {
-        List<VerifiedString> verified = createVerifiedBlocks( documentBody );
-        return updateDocumentWithoutMetadata( documentId, documentBody, verified );
+    private void storeDocument( Document document ) throws SecurityConfigurationException, IrisException {
+        try {
+            document = document.encrypt( loader );
+        } catch ( ClassNotFoundException | IOException e ) {
+            throw new SecurityConfigurationException( e );
+        }
+        submitBlocksToServer( document );
     }
 
     @Override
@@ -140,89 +232,31 @@ public class DefaultStorageClient implements StorageClient {
         return documentApi.getDocumentIds().getData();
     }
 
-    @Override
-    public Map<Integer, String> getDocumentFragments( DocumentId id, List<Integer> offsets, int characterWindow )
-            throws ResourceNotFoundException, SecurityConfigurationException, IrisException {
-        Map<Integer, String> plain = Maps.newHashMap();
-
-        DocumentFragmentRequest fragmentRequest = new DocumentFragmentRequest( offsets, characterWindow );
-
-        Map<Integer, List<DocumentBlock>> encrypted = documentApi.getDocumentFragments(
-                id.getDocumentId(),
-                fragmentRequest ).getData();
-
-        for ( Entry<Integer, List<DocumentBlock>> e : encrypted.entrySet() ) {
-            String preview = "";
-            for ( DocumentBlock block : e.getValue() ) {
-                try {
-                    preview += block.getBlock().decrypt( kodex ).getData();
-                } catch ( JsonParseException e1 ) {
-                    throw new IrisException( e1 );
-                } catch ( JsonMappingException e1 ) {
-                    throw new IrisException( e1 );
-                } catch ( IOException e1 ) {
-                    throw new IrisException( e1 );
-                } catch ( ClassNotFoundException e1 ) {
-                    throw new IrisException( e1 );
-                }
-            }
-            plain.put( e.getKey(), preview );
-        }
-        return plain;
-    }
-
-    /**
-     * Utility method to chunk up a document into AES-encryptable blocks and provide some metadata
-     * 
-     * @param documentBody
-     * @return
-     * @throws SecurityConfigurationException
-     * @throws IrisException
-     */
-    private List<VerifiedString> createVerifiedBlocks( String documentBody ) throws SecurityConfigurationException,
-            IrisException {
-        List<VerifiedString> verified = null;
-        try {
-            verified = AesEncryptableUtils.chunkStringWithVerification( documentBody, kodex );
-        } catch ( IOException e ) {
-            throw new IrisException( e );
-        } catch ( ClassNotFoundException e ) {
-            throw new IrisException( e );
-        }
-        return verified;
-    }
-
-    /**
-     * Updates the document and also uploads the metadata. All other methods are syntactic sugar that lead to this
-     * method
-     * 
-     * @param documentId
-     * @param documentBody
-     * @param verified
-     * @return
-     * @throws BadRequestException
-     * @throws SecurityConfigurationException
-     * @throws IrisException
-     */
-    private String updateDocumentWithMetadata( DocumentId documentId, String documentBody ) throws BadRequestException,
-            SecurityConfigurationException, IrisException {
-        // upload the document blocks
-        updateDocumentWithoutMetadata( documentId.getDocumentId(), documentBody );
-
-        // index + map tokens for metadata
-        Set<Metadata> metadata = indexer.index( documentId.getDocumentId(), documentBody );
-
-        // generate nonce
-        BitVector searchNonce = context.generateSearchNonce();
-        EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
-
-        context.submitBridgeKeyWithSearchNonce( documentId, sharingKey, searchNonce );
-
-        MetadataRequest metadataRequest = prepareMetadata( metadata, searchNonce, sharingKey );
-        uploadMetadata( metadataRequest );
-
-        return documentId.getDocumentId();
-    }
+    // @Override
+    // // TODO: calculate fragments to request client side
+    // public Map<Integer, String> getDocumentFragments( DocumentId id, List<Integer> offsets, int characterWindow )
+    // throws ResourceNotFoundException, SecurityConfigurationException, IrisException {
+    // Map<Integer, String> plain = Maps.newHashMap();
+    //
+    // DocumentFragmentRequest fragmentRequest = new DocumentFragmentRequest( offsets, characterWindow );
+    //
+    // Map<Integer, List<EncryptableBlock>> encrypted = documentApi.getDocumentFragments(
+    // id.getDocumentId(),
+    // fragmentRequest ).getData();
+    //
+    // for ( Entry<Integer, List<EncryptableBlock>> e : encrypted.entrySet() ) {
+    // String preview = "";
+    // for ( EncryptableBlock block : e.getValue() ) {
+    // try {
+    // preview += StringUtils.newStringUtf8( loader.get( id ).decryptBytes( block.getBlock() ) );
+    // } catch ( ExecutionException e1 ) {
+    // throw new IrisException( e1 );
+    // }
+    // }
+    // plain.put( e.getKey(), preview );
+    // }
+    // return plain;
+    // }
 
     /**
      * Maps all metadata to an index that the server can compute when searching
@@ -248,62 +282,13 @@ public class DefaultStorageClient implements StorageClient {
 
             // encrypt the metadata
             for ( Metadata metadatumToEncrypt : metadataForKey ) {
-                Encryptable<Metadata> encryptedMetadatum = new AesEncryptable<Metadata>( metadatumToEncrypt );
+                Encryptable<Metadata> encryptedMetadatum = new Encryptable<Metadata>(
+                        metadatumToEncrypt,
+                        metadatumToEncrypt.getDocumentId().getDocumentId() );
                 metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum, metadatumToEncrypt.getDocumentId() ) );
             }
         }
         return new MetadataRequest( metadataIndex );
-    }
-
-    /**
-     * All the other update/uploadDocument functions are syntactic sugar for this method, which actually does all the
-     * work to update a document
-     * 
-     * This chunks up the blocks and uploads them in parallel
-     * 
-     * @param documentId
-     * @param documentBody
-     * @param verifiedStringBlocks
-     * @return
-     * @throws SecurityConfigurationException
-     * @throws IrisException
-     */
-    private String updateDocumentWithoutMetadata(
-            final String stringDocumentId,
-            String documentBody,
-            List<VerifiedString> verifiedStringBlocks ) throws SecurityConfigurationException, IrisException {
-        DocumentId documentId = new DocumentId( stringDocumentId );
-        Document doc = generateDocument( documentId, documentBody, verifiedStringBlocks );
-
-        submitBlocksToServer( documentId, doc.getBlocks() );
-
-        return stringDocumentId;
-    }
-
-    /**
-     * Chunk up a document into blocks
-     * 
-     * @param documentId
-     * @param documentBody
-     * @param verifiedStringBlocks
-     * @return
-     * @throws IrisException
-     * @throws SecurityConfigurationException
-     */
-    private Document generateDocument(
-            DocumentId documentId,
-            String documentBody,
-            List<VerifiedString> verifiedStringBlocks ) throws IrisException, SecurityConfigurationException {
-        try {
-            return AesEncryptableUtils.createEncryptedDocument(
-                    documentId.getDocumentId(),
-                    documentBody,
-                    VerifiedString.getEncryptables( verifiedStringBlocks ) );
-        } catch ( ClassNotFoundException e ) {
-            throw new IrisException( e );
-        } catch ( IOException e ) {
-            throw new IrisException( e );
-        }
     }
 
     /**
@@ -313,34 +298,16 @@ public class DefaultStorageClient implements StorageClient {
      * @param blocks
      * @throws IrisException
      */
-    private void submitBlocksToServer( final DocumentId documentId, final DocumentBlock[] blocks ) throws IrisException {
-        try {
-            Futures.allAsList(
-                    Iterables.transform( Arrays.asList( blocks ), new Function<DocumentBlock, ListenableFuture<?>>() {
-                        @Override
-                        public ListenableFuture<?> apply( final DocumentBlock input ) {
-                            return exec.submit( new Runnable() {
-                                @Override
-                                public void run() {
-                                    // push the block to the server
-                                    try {
-                                        documentApi.updateDocument( documentId.getDocumentId(), input );
-                                    } catch (
-                                            ResourceNotFoundException
-                                            | ResourceNotLockedException
-                                            | BadRequestException e ) {
-                                        log.error( "Failed to uploaded block. Should probably add a retry here!" );
-                                    }
-                                    log.info(
-                                            "Document blocked uploaded completed for document {} and block {}",
-                                            documentId.getDocumentId(),
-                                            input.getIndex() );
-                                }
-                            } );
-                        }
-                    } ) ).get();
-        } catch ( InterruptedException | ExecutionException e ) {
-            throw new IrisException( e );
+    private void submitBlocksToServer( final Document document ) throws IrisException {
+        Preconditions.checkNotNull( document.getBody().getEncryptedData() );
+        final String documentId = document.getMetadata().getId();
+        for ( EncryptableBlock input : document.getBody().getEncryptedData() ) {
+            try {
+                documentApi.updateDocument( documentId, input );
+            } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
+                log.error( "Failed to uploaded block. Should probably add a retry here!" );
+            }
+            log.info( "Document block uploaded completed for document {} and block {}", documentId, input.getIndex() );
         }
     }
 
@@ -352,10 +319,53 @@ public class DefaultStorageClient implements StorageClient {
     @Override
     public void deleteDocument( DocumentId id ) {
         documentApi.delete( id.getDocumentId() );
+        sharingApi.removeIncomingShares( id.getDocumentId() );
     }
 
     @Override
     public List<Document> getDocuments( List<DocumentId> ids ) throws ResourceNotFoundException {
         return documentApi.getDocuments( ids ).getData();
+    }
+
+    @Override
+    public List<EncryptableBlock> getDocumentBlocks( String id, List<Integer> indices )
+            throws ResourceNotFoundException {
+        return documentApi.getDocumentBlocks( id, indices ).getData();
+    }
+
+    @Override
+    public Map<Integer, String> getDocumentPreview( String documentId, List<Integer> locations, int wordRadius )
+            throws SecurityConfigurationException, ExecutionException, ResourceNotFoundException {
+        Map<Integer, Integer> offsetsToBlockIndex = DefaultChunkingStrategy.getBlockIndexForByteOffset( locations );
+
+        List<EncryptableBlock> blocks = getDocumentBlocks(
+                documentId,
+                Lists.newArrayList( Sets.newHashSet( offsetsToBlockIndex.values() ) ) );
+
+        Map<Integer, EncryptableBlock> offsetsToBlock = Maps.newHashMap();
+        for ( Integer offset : offsetsToBlockIndex.keySet() ) {
+            for ( EncryptableBlock block : blocks ) {
+                if ( block.getIndex() == offsetsToBlockIndex.get( offset ) ) {
+                    offsetsToBlock.put( offset, block );
+                    break;
+                }
+            }
+        }
+
+        Map<Integer, String> offsetsToString = Maps.newHashMap();
+        for ( Map.Entry<Integer, EncryptableBlock> entry : offsetsToBlock.entrySet() ) {
+            offsetsToString.put(
+                    entry.getKey(),
+                    StringUtils.newStringUtf8( loader.get( documentId ).decryptBytes( entry.getValue().getBlock() ) ) );
+        }
+
+        Map<Integer, String> offsetsToPreview = Maps.newHashMap();
+
+        for ( Map.Entry<Integer, String> item : offsetsToString.entrySet() ) {
+            String preview = DocumentFragmentFormatter.format( item, 2 );
+            offsetsToPreview.put( item.getKey(), preview );
+        }
+
+        return offsetsToPreview;
     }
 }

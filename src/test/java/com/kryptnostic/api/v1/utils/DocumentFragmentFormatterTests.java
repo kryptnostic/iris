@@ -62,6 +62,34 @@ public class DocumentFragmentFormatterTests {
     }
 
     @Test
+    public void testMultiple() {
+        Assert.assertEquals(
+                "she is cool he is",
+                DocumentFragmentFormatter.format( makeEntry( 7, "she is cool he is cool" ), 2 ) );
+
+        Assert.assertEquals(
+                "he is cool",
+                DocumentFragmentFormatter.format( makeEntry( 18, "she is cool he is cool" ), 2 ) );
+
+        Assert.assertEquals( "cool cool", DocumentFragmentFormatter.format( makeEntry( 0, "cool cool" ), 2 ) );
+
+        Assert.assertEquals( "cool cool", DocumentFragmentFormatter.format( makeEntry( 5, "cool cool" ), 2 ) );
+
+        Assert.assertEquals(
+                "cool cool buzz cool",
+                DocumentFragmentFormatter.format( makeEntry( 5, "cool cool buzz cool" ), 2 ) );
+
+        Assert.assertEquals(
+                "cool cool buzz",
+                DocumentFragmentFormatter.format( makeEntry( 0, "cool cool buzz cool" ), 2 ) );
+
+        Assert.assertEquals(
+                "cool buzz cool",
+                DocumentFragmentFormatter.format( makeEntry( 15, "cool cool buzz cool" ), 2 ) );
+
+    }
+
+    @Test
     public void testSymbols() {
         Assert.assertEquals(
                 "cool_word",

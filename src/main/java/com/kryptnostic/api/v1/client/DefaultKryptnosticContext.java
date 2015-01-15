@@ -5,6 +5,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.codec.binary.StringUtils;
 import org.slf4j.Logger;
@@ -15,6 +16,9 @@ import cern.colt.bitvector.BitVector;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
@@ -26,7 +30,9 @@ import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.models.UserKey;
+import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
@@ -35,7 +41,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
-import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.linear.EnhancedBitMatrix;
@@ -91,6 +96,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         this.fhePrivateKey = securityService.getFhePrivateKey();
         this.encryptedSearchPrivateKey = securityService.getEncryptedSearchPrivateKey();
         this.dataStore = securityService.getDataStore();
+
     }
 
     @Override
@@ -245,9 +251,6 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
-        return new RsaCompressingCryptoService(
-                RsaKeyLoader.CIPHER,
-                securityService.getRsaPrivateKey(),
-                securityService.getRsaPublicKey() );
+        return securityService.getRsaCryptoService();
     }
 }

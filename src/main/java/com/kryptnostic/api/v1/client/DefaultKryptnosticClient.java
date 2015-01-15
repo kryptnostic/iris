@@ -6,12 +6,12 @@ import com.kryptnostic.api.v1.sharing.SharingManager;
 import com.kryptnostic.api.v1.storage.DefaultStorageClient;
 import com.kryptnostic.directory.v1.DirectoryClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
+import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
-import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.sharing.v1.SharingClient;
@@ -39,7 +39,8 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
         this.storageClient = new DefaultStorageClient(
                 context,
                 factory.createDocumentApi(),
-                factory.createMetadataApi() );
+                factory.createMetadataApi(),
+                factory.createSharingApi() );
         this.searchClient = new DefaultSearchClient( context, factory.createSearchApi() );
         this.directoryClient = new DefaultDirectoryClient( context, factory.createDirectoryApi() );
         this.sharingClient = new SharingManager( context, factory.createSharingApi() );

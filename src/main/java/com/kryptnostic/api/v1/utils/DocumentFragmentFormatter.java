@@ -54,8 +54,12 @@ public class DocumentFragmentFormatter {
         Pattern p = Pattern.compile( pattern, Pattern.CASE_INSENSITIVE );
 
         Matcher m = p.matcher( block );
-        m.find();
-        m.groupCount();
+
+        while ( m.find() ) {
+            if ( m.start( 0 ) <= offset && m.end( 0 ) > offset ) {
+                break;
+            }
+        }
 
         String result = "";
 

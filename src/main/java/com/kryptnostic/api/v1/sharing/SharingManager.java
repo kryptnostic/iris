@@ -1,11 +1,10 @@
 package com.kryptnostic.api.v1.sharing;
 
 import java.io.IOException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,16 +16,15 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.directory.v1.models.UserKey;
+import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
-import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
-import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
+import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
-import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.sharing.v1.SharingClient;
@@ -55,7 +53,7 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public void shareDocumentWithUsers( DocumentId documentId, Set<UserKey> users ) {
+    public void shareDocumentWithUsers( CryptoServiceLoader loader, DocumentId documentId, Set<UserKey> users ) {
 
         DataStore dataStore = context.getConnection().getDataStore();
         EncryptedSearchSharingKey sharingKey = null;
@@ -74,7 +72,7 @@ public class SharingManager implements SharingClient {
 
         AesCryptoService service;
         try {
-            service = new AesCryptoService( Cypher.AES_CTR_128 );
+            service = (AesCryptoService) loader.get( documentId.getDocumentId() );
             Map<UserKey, RsaCompressingEncryptionService> services = context.getEncryptionServiceForUsers( users );
             Map<UserKey, byte[]> seals = Maps.newHashMap();
             for ( Entry<UserKey, RsaCompressingEncryptionService> serviceEntry : services.entrySet() ) {
@@ -88,28 +86,28 @@ public class SharingManager implements SharingClient {
             SharingRequest request = new SharingRequest( documentId, seals, encryptedSharingKey, encryptedDocumentKey );
             sharingApi.shareDocument( request );
 
-        } catch (
-                NoSuchAlgorithmException
-                | InvalidAlgorithmParameterException
-                | SecurityConfigurationException
-                | IOException e ) {
+        } catch ( SecurityConfigurationException | IOException | ExecutionException e ) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public int processIncomingShares() throws IOException, SecurityConfigurationException {
+    public int processIncomingShares( CryptoServiceLoader loader ) throws IOException, SecurityConfigurationException {
         IncomingShares incomingShares = sharingApi.getIncomingShares();
         if ( incomingShares == null || incomingShares.isEmpty() ) {
             return 0;
         }
-        RsaCompressingCryptoService service = context.getRsaCryptoService();
         Set<EncryptedSearchDocumentKey> keys = Sets.newHashSet();
 
         for ( Share share : incomingShares ) {
-            AesCryptoService decryptor = service.decrypt( share.getSeal(), AesCryptoService.class );
-
             DocumentId id = share.getDocumentId();
+            AesCryptoService decryptor;
+            try {
+                logger.info( "Processing share for {}", id.getDocumentId() );
+                decryptor = (AesCryptoService) loader.get( id.getDocumentId() );
+            } catch ( ExecutionException e ) {
+                throw new IOException( e );
+            }
 
             BitVector searchNonce = marshaller
                     .fromBytes( decryptor.decryptBytes( mapper.readValue(
