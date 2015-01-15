@@ -5,8 +5,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
+import org.apache.commons.codec.binary.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,10 +16,13 @@ import cern.colt.bitvector.BitVector;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
+import com.kryptnostic.api.v1.utils.DocumentFragmentFormatter;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
@@ -31,6 +36,7 @@ import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
 import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
+import com.kryptnostic.kodex.v1.serialization.crypto.DefaultChunkingStrategy;
 import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.sharing.v1.models.DocumentId;
@@ -319,5 +325,47 @@ public class DefaultStorageClient implements StorageClient {
     @Override
     public List<Document> getDocuments( List<DocumentId> ids ) throws ResourceNotFoundException {
         return documentApi.getDocuments( ids ).getData();
+    }
+
+    @Override
+    public List<EncryptableBlock> getDocumentBlocks( String id, List<Integer> indices )
+            throws ResourceNotFoundException {
+        return documentApi.getDocumentBlocks( id, indices ).getData();
+    }
+
+    @Override
+    public Map<Integer, String> getDocumentPreview( String documentId, List<Integer> locations, int wordRadius )
+            throws SecurityConfigurationException, ExecutionException, ResourceNotFoundException {
+        Map<Integer, Integer> offsetsToBlockIndex = DefaultChunkingStrategy.getBlockIndexForByteOffset( locations );
+
+        List<EncryptableBlock> blocks = getDocumentBlocks(
+                documentId,
+                Lists.newArrayList( Sets.newHashSet( offsetsToBlockIndex.values() ) ) );
+
+        Map<Integer, EncryptableBlock> offsetsToBlock = Maps.newHashMap();
+        for ( Integer offset : offsetsToBlockIndex.keySet() ) {
+            for ( EncryptableBlock block : blocks ) {
+                if ( block.getIndex() == offsetsToBlockIndex.get( offset ) ) {
+                    offsetsToBlock.put( offset, block );
+                    break;
+                }
+            }
+        }
+
+        Map<Integer, String> offsetsToString = Maps.newHashMap();
+        for ( Map.Entry<Integer, EncryptableBlock> entry : offsetsToBlock.entrySet() ) {
+            offsetsToString.put(
+                    entry.getKey(),
+                    StringUtils.newStringUtf8( loader.get( documentId ).decryptBytes( entry.getValue().getBlock() ) ) );
+        }
+
+        Map<Integer, String> offsetsToPreview = Maps.newHashMap();
+
+        for ( Map.Entry<Integer, String> item : offsetsToString.entrySet() ) {
+            String preview = DocumentFragmentFormatter.format( item, 2 );
+            offsetsToPreview.put( item.getKey(), preview );
+        }
+
+        return offsetsToPreview;
     }
 }
