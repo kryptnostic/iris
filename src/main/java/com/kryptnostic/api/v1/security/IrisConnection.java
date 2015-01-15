@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,7 @@ import retrofit.client.Client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.fhe.FreshKodexLoader;
 import com.kryptnostic.api.v1.security.loaders.fhe.KodexLoader;
@@ -124,45 +126,49 @@ public class IrisConnection implements KryptnosticConnection {
         /**
          * Load basic RSA keys into connection or generate them
          */
-        logger.debug( "Loading RSA keys" );
+        Stopwatch watch = Stopwatch.createStarted();
         if ( keyPair == null ) {
             keyPair = loadRsaKeys( cryptoService, userKey, dataStore, keyService );
         }
         this.rsaPrivateKey = keyPair.getPrivate();
         this.rsaPublicKey = keyPair.getPublic();
+        logger.debug( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
+        watch.reset().start();
         try {
             globalHashFunction = hashGetter.get();
         } catch ( InterruptedException | ExecutionException e ) {
             throw new IrisException( e );
         }
+        logger.debug( "[PROFILE] Took load globalhasher async {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         /**
          * Load kodex related information into IrisConnection or generate it
          */
-
         if ( kodex == null ) {
             kodex = loadSearchKodex( dataStore, keyPair, keyService, searchFunctionService, globalHashFunction );
-            // TODO: insert document keyring/kodex here!
         }
         this.kodex = kodex;
 
         try {
             this.kodex.setKeyWithClassAndJackson( PasswordCryptoService.class, cryptoService );
+
+            watch.reset().start();
             String qhpChecksum = this.kodex.getKeyWithJackson(
                     QueryHasherPairRequest.class.getCanonicalName(),
                     String.class );
 
-            logger.debug( "Getting QHP checksum..." );
             String checksum = searchFunctionService.getQueryHasherChecksum().getData();
-            logger.debug( "Done getting QHP checksum." );
+            logger.debug( "[PROFILE] getting QHP checksum {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
             Preconditions.checkState( qhpChecksum.equals( checksum ) );
 
+            watch.reset().start();
             this.fhePrivateKey = this.kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class );
             this.fhePublicKey = this.kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class );
             this.encryptedSearchPrivateKey = this.kodex
                     .getKeyWithJackson( com.kryptnostic.crypto.EncryptedSearchPrivateKey.class );
+            logger.debug( "[PROFILE] unmarshal Kodex objects {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         } catch ( SealedKodexException | KodexException | SecurityConfigurationException e ) {
             // TODO Auto-generated catch block
             e.printStackTrace();

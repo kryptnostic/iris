@@ -62,6 +62,14 @@ public class DocumentFragmentFormatterTests {
     }
 
     @Test
+    public void testNarrow() {
+        Assert.assertEquals(
+                "I am super cool and I dont care",
+                DocumentFragmentFormatter.format( makeEntry( 11, "I am super cool and I dont care" ), 5 ) );
+
+    }
+
+    @Test
     public void testMultiple() {
         Assert.assertEquals(
                 "she is cool he is",
