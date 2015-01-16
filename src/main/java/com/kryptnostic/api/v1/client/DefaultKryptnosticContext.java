@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
@@ -20,10 +19,7 @@ import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
-import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
-import com.kryptnostic.crypto.PrivateKey;
-import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
@@ -36,8 +32,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
-import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
-import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
@@ -56,17 +50,12 @@ import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
  *
  */
 public class DefaultKryptnosticContext implements KryptnosticContext {
-    private final ObjectMapper                mapper          = KodexObjectMapperFactory.getObjectMapper();
     private static DeflatingJacksonMarshaller marshaller      = new DeflatingJacksonMarshaller();
     private final SharingApi                  sharingClient;
     private final DirectoryApi                directoryClient;
     private final SearchFunctionApi           searchFunctionClient;
-    private final PrivateKey                  fhePrivateKey;
-    private final PublicKey                   fhePublicKey;
-    private final EncryptedSearchPrivateKey   encryptedSearchPrivateKey;
-    private final KryptnosticConnection       securityService;
-    private final DataStore                   dataStore;
     private SimplePolynomialFunction          globalHashFunction;
+    private final KryptnosticConnection       connection;
 
     public static final String                CHECKSUM_KEY    = "global-hash-checksum";
     public static final String                FUNCTION_KEY    = "global-hash-function";
@@ -82,21 +71,17 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             SearchFunctionApi searchFunctionClient,
             SharingApi sharingClient,
             DirectoryApi directoryClient,
-            KryptnosticConnection securityService ) throws IrisException {
+            KryptnosticConnection connection ) throws IrisException {
         this.searchFunctionClient = searchFunctionClient;
         this.sharingClient = sharingClient;
         this.directoryClient = directoryClient;
-        this.securityService = securityService;
-        this.fhePublicKey = securityService.getFhePublicKey();
-        this.fhePrivateKey = securityService.getFhePrivateKey();
-        this.encryptedSearchPrivateKey = securityService.getEncryptedSearchPrivateKey();
-        this.dataStore = securityService.getDataStore();
-
+        this.connection = connection;
+        this.globalHashFunction = null;
     }
 
     @Override
     public KryptnosticConnection getConnection() {
-        return this.securityService;
+        return this.connection;
     }
 
     @Override
@@ -110,8 +95,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             byte[] gbh = null;
             String checksum = null;
             try {
-                checksum = StringUtils.newStringUtf8( dataStore.get( CHECKSUM_KEY.getBytes() ) );
-                gbh = dataStore.get( FUNCTION_KEY.getBytes() );
+                checksum = StringUtils.newStringUtf8( connection.getDataStore().get( CHECKSUM_KEY.getBytes() ) );
+                gbh = connection.getDataStore().get( FUNCTION_KEY.getBytes() );
             } catch ( IOException e ) {
 
             }
@@ -128,8 +113,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                 checksum = searchFunctionClient.getGlobalHasherChecksum().getData();// Hashing.murmur3_128().hashBytes(
                                                                                     // gbh ).toString();
                 try {
-                    dataStore.put( CHECKSUM_KEY.getBytes(), StringUtils.getBytesUtf8( checksum ) );
-                    dataStore.put( FUNCTION_KEY.getBytes(), gbh );
+                    connection.getDataStore().put( CHECKSUM_KEY.getBytes(), StringUtils.getBytesUtf8( checksum ) );
+                    connection.getDataStore().put( FUNCTION_KEY.getBytes(), gbh );
                 } catch ( IOException e ) {
                     logger.error( "Unable to save global hash function. Will try again upon restart." );
                     return null;
@@ -153,8 +138,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public EncryptedSearchSharingKey generateSharingKey() {
-
-        EnhancedBitMatrix documentKey = encryptedSearchPrivateKey.newDocumentKey();
+        EnhancedBitMatrix documentKey = connection.getEncryptedSearchPrivateKey().newDocumentKey();
         EncryptedSearchSharingKey sharingKey = new EncryptedSearchSharingKey( documentKey );
 
         return sharingKey;
@@ -163,7 +147,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     @Override
     public EncryptedSearchBridgeKey fromSharingKey( EncryptedSearchSharingKey sharingKey ) throws IrisException {
         try {
-            return new EncryptedSearchBridgeKey( encryptedSearchPrivateKey, sharingKey );
+            return new EncryptedSearchBridgeKey( connection.getEncryptedSearchPrivateKey(), sharingKey );
         } catch ( SingularMatrixException e ) {
             throw new IrisException( e );
         }
@@ -176,10 +160,10 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             BitVector searchNonce ) throws IrisException {
 
         try {
-            dataStore.put(
+            connection.getDataStore().put(
                     ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() ).getBytes(),
                     marshaller.toBytes( sharingKey ) );
-            dataStore.put(
+            connection.getDataStore().put(
                     ( documentId.getDocumentId() + BitVector.class.getCanonicalName() ).getBytes(),
                     marshaller.toBytes( searchNonce ) );
         } catch ( IOException e1 ) {
@@ -196,14 +180,14 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public BitVector encryptNonce( BitVector nonce ) {
-        SimplePolynomialFunction encrypter = fhePublicKey.getEncrypter();
+        SimplePolynomialFunction encrypter = connection.getFhePublicKey().getEncrypter();
         return encrypter.apply( nonce, BitVectors.randomVector( nonce.size() ) );
     }
 
     @Override
     public BitVector generateIndexForToken( String token, BitVector searchNonce, EncryptedSearchSharingKey sharingKey )
             throws ResourceNotFoundException {
-        BitVector searchHash = encryptedSearchPrivateKey.hash( token );
+        BitVector searchHash = connection.getEncryptedSearchPrivateKey().hash( token );
         BitVector searchToken = BitVectors.concatenate( searchHash, searchNonce );
         EnhancedBitMatrix expectedMatrix = EnhancedBitMatrix.squareMatrixfromBitVector( getGlobalHashFunction().apply(
                 searchToken ) );
@@ -214,17 +198,17 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public BitVector prepareSearchToken( String token ) {
-        return encryptedSearchPrivateKey.prepareSearchToken( fhePublicKey, token );
+        return connection.getEncryptedSearchPrivateKey().prepareSearchToken( connection.getFhePublicKey(), token );
     }
 
     @Override
     public byte[] rsaDecrypt( byte[] ciphertext ) throws SecurityConfigurationException {
-        return Cyphers.decrypt( RsaKeyLoader.CIPHER, securityService.getRsaPrivateKey(), ciphertext );
+        return Cyphers.decrypt( RsaKeyLoader.CIPHER, connection.getRsaPrivateKey(), ciphertext );
     }
 
     @Override
     public byte[] rsaEncrypt( byte[] plaintext ) throws SecurityConfigurationException {
-        return Cyphers.encrypt( RsaKeyLoader.CIPHER, securityService.getRsaPublicKey(), plaintext );
+        return Cyphers.encrypt( RsaKeyLoader.CIPHER, connection.getRsaPublicKey(), plaintext );
     }
 
     @Override
@@ -246,6 +230,6 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
-        return securityService.getRsaCryptoService();
+        return connection.getRsaCryptoService();
     }
 }

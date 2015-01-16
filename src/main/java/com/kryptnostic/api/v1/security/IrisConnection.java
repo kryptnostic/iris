@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,21 +61,25 @@ import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class IrisConnection implements KryptnosticConnection {
-    private static final Logger                     logger  = LoggerFactory.getLogger( IrisConnection.class );
-    private final Kodex<String>                     kodex;
-    private transient PasswordCryptoService         cryptoService;
-    private final UserKey                           userKey;
-    private final String                            userCredential;
-    private final String                            url;
-    private final DirectoryApi                      keyService;
-    private final DataStore                         dataStore;
-    private final com.kryptnostic.crypto.PrivateKey fhePrivateKey;
-    private final com.kryptnostic.crypto.PublicKey  fhePublicKey;
-    private final EncryptedSearchPrivateKey         encryptedSearchPrivateKey;
-    private final PublicKey                         rsaPublicKey;
-    private final PrivateKey                        rsaPrivateKey;
-    private final CryptoServiceLoader               loader;
-    boolean                                         doFresh = false;
+    private static final Logger               logger         = LoggerFactory.getLogger( IrisConnection.class );
+    private Kodex<String>                     kodex;
+    private transient PasswordCryptoService   cryptoService;
+    private final UserKey                     userKey;
+    private final String                      userCredential;
+    private final String                      url;
+    private final DirectoryApi                keyService;
+    private final DataStore                   dataStore;
+    private com.kryptnostic.crypto.PrivateKey fhePrivateKey;
+    private com.kryptnostic.crypto.PublicKey  fhePublicKey;
+    private EncryptedSearchPrivateKey         encryptedSearchPrivateKey;
+    private final PublicKey                   rsaPublicKey;
+    private final PrivateKey                  rsaPrivateKey;
+    private final CryptoServiceLoader         loader;
+    boolean                                   doFresh        = false;
+    private final SearchFunctionApi           searchFunctionService;
+    private final SimplePolynomialFunction    globalHashFunction;
+    private final AtomicBoolean               isKodexLoaded  = new AtomicBoolean( false );
+    private final AtomicBoolean               isKodexLoading = new AtomicBoolean( false );
 
     public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore, Client client ) throws IrisException {
         this( url, userKey, userCredential, dataStore, client, null, null );
@@ -95,7 +100,7 @@ public class IrisConnection implements KryptnosticConnection {
                 userCredential,
                 client );
         this.keyService = adapter.create( DirectoryApi.class );
-        final SearchFunctionApi searchFunctionService = adapter.create( SearchFunctionApi.class );
+        this.searchFunctionService = adapter.create( SearchFunctionApi.class );
 
         ExecutorService exec = Executors.newCachedThreadPool();
 
@@ -120,8 +125,7 @@ public class IrisConnection implements KryptnosticConnection {
         this.userKey = userKey;
         this.url = url;
         this.dataStore = dataStore;
-
-        SimplePolynomialFunction globalHashFunction;
+        this.kodex = kodex;
 
         /**
          * Load basic RSA keys into connection or generate them
@@ -136,44 +140,11 @@ public class IrisConnection implements KryptnosticConnection {
 
         watch.reset().start();
         try {
-            globalHashFunction = hashGetter.get();
+            this.globalHashFunction = hashGetter.get();
         } catch ( InterruptedException | ExecutionException e ) {
             throw new IrisException( e );
         }
         logger.debug( "[PROFILE] Took load globalhasher async {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-
-        /**
-         * Load kodex related information into IrisConnection or generate it
-         */
-        if ( kodex == null ) {
-            kodex = loadSearchKodex( dataStore, keyPair, keyService, searchFunctionService, globalHashFunction );
-        }
-        this.kodex = kodex;
-
-        try {
-            this.kodex.setKeyWithClassAndJackson( PasswordCryptoService.class, cryptoService );
-
-            watch.reset().start();
-            String qhpChecksum = this.kodex.getKeyWithJackson(
-                    QueryHasherPairRequest.class.getCanonicalName(),
-                    String.class );
-
-            String checksum = searchFunctionService.getQueryHasherChecksum().getData();
-            logger.debug( "[PROFILE] getting QHP checksum {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-
-            Preconditions.checkState( qhpChecksum.equals( checksum ) );
-
-            watch.reset().start();
-            this.fhePrivateKey = this.kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class );
-            this.fhePublicKey = this.kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class );
-            this.encryptedSearchPrivateKey = this.kodex
-                    .getKeyWithJackson( com.kryptnostic.crypto.EncryptedSearchPrivateKey.class );
-            logger.debug( "[PROFILE] unmarshal Kodex objects {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-        } catch ( SealedKodexException | KodexException | SecurityConfigurationException e ) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-            throw new IrisException( e );
-        }
 
         this.loader = new DefaultCryptoServiceLoader( this, keyService, Cypher.AES_CTR_128 );
     }
@@ -331,11 +302,6 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     @Override
-    public Kodex<String> getKodex() {
-        return kodex;
-    }
-
-    @Override
     public String getUrl() {
         return url;
     }
@@ -363,22 +329,49 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     @Override
+    public Kodex<String> getKodex() {
+        ensureKodexLoaded();
+        return kodex;
+    }
+
+    @Override
     public com.kryptnostic.crypto.PrivateKey getFhePrivateKey() {
+        ensureKodexLoaded();
         return this.fhePrivateKey;
     }
 
     @Override
     public com.kryptnostic.crypto.PublicKey getFhePublicKey() {
+        ensureKodexLoaded();
         return this.fhePublicKey;
     }
 
     @Override
     public EncryptedSearchPrivateKey getEncryptedSearchPrivateKey() {
+        ensureKodexLoaded();
         return encryptedSearchPrivateKey;
+    }
+
+    private void ensureKodexLoaded() {
+        while ( !isKodexLoaded.get() ) {
+            try {
+                loadKodex();
+            } catch ( IrisException e ) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            try {
+                Thread.sleep( 1 );
+            } catch ( InterruptedException e ) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
     public DataStore getDataStore() {
+        ensureKodexLoaded();
         return dataStore;
     }
 
@@ -417,5 +410,55 @@ public class IrisConnection implements KryptnosticConnection {
     @Override
     public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
         return new RsaCompressingCryptoService( RsaKeyLoader.CIPHER, getRsaPrivateKey(), getRsaPublicKey() );
+    }
+
+    @Override
+    public boolean isKodexReady() {
+        return isKodexLoaded.get() && kodex != null && fhePrivateKey != null && fhePublicKey != null
+                && encryptedSearchPrivateKey != null;
+    }
+
+    @Override
+    public Kodex<String> loadKodex() throws IrisException {
+        if ( !isKodexLoaded.get() && !isKodexLoading.getAndSet( true ) ) {
+            Stopwatch watch = Stopwatch.createStarted();
+            /**
+             * Load kodex related information into IrisConnection or generate it
+             */
+            if ( kodex == null ) {
+                kodex = loadSearchKodex(
+                        dataStore,
+                        new KeyPair( rsaPublicKey, rsaPrivateKey ),
+                        keyService,
+                        searchFunctionService,
+                        globalHashFunction );
+            }
+
+            try {
+                this.kodex.setKeyWithClassAndJackson( PasswordCryptoService.class, cryptoService );
+                watch.reset().start();
+                String qhpChecksum = this.kodex.getKeyWithJackson(
+                        QueryHasherPairRequest.class.getCanonicalName(),
+                        String.class );
+
+                String checksum = searchFunctionService.getQueryHasherChecksum().getData();
+                logger.debug( "[PROFILE] getting QHP checksum {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+                Preconditions.checkState( qhpChecksum.equals( checksum ) );
+
+                watch.reset().start();
+                this.fhePrivateKey = this.kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class );
+                this.fhePublicKey = this.kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class );
+                this.encryptedSearchPrivateKey = this.kodex
+                        .getKeyWithJackson( com.kryptnostic.crypto.EncryptedSearchPrivateKey.class );
+                logger.debug( "[PROFILE] unmarshal Kodex objects {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+            } catch ( SealedKodexException | KodexException | SecurityConfigurationException e ) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+                throw new IrisException( e );
+            }
+            isKodexLoaded.set( true );
+        }
+        return kodex;
     }
 }
