@@ -5,7 +5,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.codec.binary.StringUtils;
 import org.slf4j.Logger;
@@ -16,9 +15,6 @@ import cern.colt.bitvector.BitVector;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
@@ -32,7 +28,6 @@ import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
-import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
@@ -140,7 +135,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                     return null;
                 }
             } else {
-                // Verify integrity of glabal hash function
+                // Verify integrity of global hash function
                 Preconditions.checkState( searchFunctionClient.getGlobalHasherChecksum().getData().equals( checksum ) );
                 try {
                     globalHashFunction = new JacksonKodexMarshaller<SimplePolynomialFunction>(
