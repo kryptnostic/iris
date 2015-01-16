@@ -146,6 +146,7 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
     }
 
     @Test
+    @Ignore
     public void getGlobalHasherTest() throws ResourceNotFoundException, IrisException {
         SimplePolynomialFunction actualGlobalHasher = client.getContext().getGlobalHashFunction();
         Assert.assertEquals( expectedGlobalHasher, actualGlobalHasher );
