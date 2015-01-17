@@ -77,9 +77,11 @@ public class IrisConnection implements KryptnosticConnection {
     private final CryptoServiceLoader         loader;
     boolean                                   doFresh        = false;
     private final SearchFunctionApi           searchFunctionService;
-    private final SimplePolynomialFunction    globalHashFunction;
+    private SimplePolynomialFunction          globalHashFunction;
     private final AtomicBoolean               isKodexLoaded  = new AtomicBoolean( false );
     private final AtomicBoolean               isKodexLoading = new AtomicBoolean( false );
+
+    private Future<SimplePolynomialFunction>  hashGetter;
 
     public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore, Client client ) throws IrisException {
         this( url, userKey, userCredential, dataStore, client, null, null );
@@ -105,7 +107,7 @@ public class IrisConnection implements KryptnosticConnection {
         ExecutorService exec = Executors.newCachedThreadPool();
 
         logger.debug( "Submitting async call for global hasher" );
-        Future<SimplePolynomialFunction> hashGetter = exec.submit( new Callable<SimplePolynomialFunction>() {
+        hashGetter = exec.submit( new Callable<SimplePolynomialFunction>() {
             @Override
             public SimplePolynomialFunction call() {
                 try {
@@ -137,14 +139,6 @@ public class IrisConnection implements KryptnosticConnection {
         this.rsaPrivateKey = keyPair.getPrivate();
         this.rsaPublicKey = keyPair.getPublic();
         logger.debug( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-
-        watch.reset().start();
-        try {
-            this.globalHashFunction = hashGetter.get();
-        } catch ( InterruptedException | ExecutionException e ) {
-            throw new IrisException( e );
-        }
-        logger.debug( "[PROFILE] Took load globalhasher async {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         this.loader = new DefaultCryptoServiceLoader( this, keyService, Cypher.AES_CTR_128 );
     }
@@ -371,7 +365,6 @@ public class IrisConnection implements KryptnosticConnection {
 
     @Override
     public DataStore getDataStore() {
-        ensureKodexLoaded();
         return dataStore;
     }
 
@@ -426,6 +419,14 @@ public class IrisConnection implements KryptnosticConnection {
              * Load kodex related information into IrisConnection or generate it
              */
             if ( kodex == null ) {
+                if ( globalHashFunction == null ) {
+                    try {
+                        globalHashFunction = hashGetter.get();
+                    } catch ( InterruptedException | ExecutionException e ) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
                 kodex = loadSearchKodex(
                         dataStore,
                         new KeyPair( rsaPublicKey, rsaPrivateKey ),
