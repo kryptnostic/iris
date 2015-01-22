@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
 import org.apache.commons.codec.binary.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -362,7 +363,9 @@ public class DefaultStorageClient implements StorageClient {
         Map<Integer, String> offsetsToPreview = Maps.newHashMap();
 
         for ( Map.Entry<Integer, String> item : offsetsToString.entrySet() ) {
-            String preview = DocumentFragmentFormatter.format( item, 2 );
+            Map.Entry<Integer, String> normalizedOffsetPair = Pair.<Integer, String> of( item.getKey()
+                    % DefaultChunkingStrategy.BLOCK_LENGTH_IN_BYTES, item.getValue() );
+            String preview = DocumentFragmentFormatter.format( normalizedOffsetPair, 2 );
             offsetsToPreview.put( item.getKey(), preview );
         }
 
