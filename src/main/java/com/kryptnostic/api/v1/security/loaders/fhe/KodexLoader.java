@@ -23,8 +23,8 @@ public abstract class KodexLoader extends Loader<Kodex<String>> {
     public static final String   LEFT_HASHER     = "LEFT";
     public static final String   RIGHT_HASHER    = "RIGHT";
 
-    public static final byte[]   LEFT_VALIDATOR  = "LEFT_VALIDATOR".getBytes();
-    public static final byte[]   RIGHT_VALIDATOR = "RIGHT_VALIDATOR".getBytes();
+    public static final String   LEFT_VALIDATOR  = "LEFT_VALIDATOR";
+    public static final String   RIGHT_VALIDATOR = "RIGHT_VALIDATOR";
 
     protected final ObjectMapper mapper          = KodexObjectMapperFactory.getObjectMapper();
 

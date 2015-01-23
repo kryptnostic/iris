@@ -60,11 +60,10 @@ public class SharingManager implements SharingClient {
         BitVector searchNonce = null;
         try {
             sharingKey = marshaller.fromBytes(
-                    dataStore.get( ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() )
-                            .getBytes() ),
+                    dataStore.get( documentId.getDocumentId(), EncryptedSearchSharingKey.class.getCanonicalName() ),
                     EncryptedSearchSharingKey.class );
             searchNonce = marshaller.fromBytes(
-                    dataStore.get( ( documentId.getDocumentId() + BitVector.class.getCanonicalName() ).getBytes() ),
+                    dataStore.get( documentId.getDocumentId(), BitVector.class.getCanonicalName() ),
                     BitVector.class );
         } catch ( IOException e1 ) {
             e1.printStackTrace();

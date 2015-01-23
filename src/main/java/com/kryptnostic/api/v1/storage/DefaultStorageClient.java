@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.codec.binary.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import cern.colt.bitvector.BitVector;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -56,7 +58,7 @@ import com.kryptnostic.storage.v1.models.request.StorageRequest;
  *
  */
 public class DefaultStorageClient implements StorageClient {
-    private static final Logger       log                      = LoggerFactory.getLogger( StorageClient.class );
+    private static final Logger       logger                   = LoggerFactory.getLogger( StorageClient.class );
     private static final int          PARALLEL_NETWORK_THREADS = 4;
     ListeningExecutorService          exec                     = MoreExecutors.listeningDecorator( Executors
                                                                        .newFixedThreadPool( PARALLEL_NETWORK_THREADS ) );
@@ -193,19 +195,31 @@ public class DefaultStorageClient implements StorageClient {
 
     private void makeDocumentSearchable( Document document ) throws IrisException, BadRequestException {
         // index + map tokens for metadata
+        Stopwatch watch = Stopwatch.createStarted();
         Set<Metadata> metadata = indexer.index( document.getMetadata().getId(), document.getBody().getData() );
+        logger.debug( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         // generate nonce
+        watch.reset().start();
         BitVector searchNonce = context.generateSearchNonce();
+        logger.debug( "[PROFILE] generating search nonce took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        watch.reset().start();
         EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
+        logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
+        watch.reset().start();
         context.submitBridgeKeyWithSearchNonce(
                 new DocumentId( document.getMetadata().getId() ),
                 sharingKey,
                 searchNonce );
+        logger.debug(
+                "[PROFILE] submitting bridge key and search nonce took {} ms",
+                watch.elapsed( TimeUnit.MILLISECONDS ) );
 
+        watch.reset().start();
         MetadataRequest metadataRequest = prepareMetadata( metadata, searchNonce, sharingKey );
         uploadMetadata( metadataRequest );
+        logger.debug( "[PROFILE] preparing metadata and upload took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
     }
 
@@ -273,7 +287,7 @@ public class DefaultStorageClient implements StorageClient {
 
         // create plaintext metadata
         MappedMetadata keyedMetadata = metadataMapper.mapTokensToKeys( metadata, searchNonce, sharingKey );
-        log.debug( "generated plaintext metadata {}", keyedMetadata );
+        logger.debug( "generated plaintext metadata {}", keyedMetadata );
 
         // encrypt the metadata and format for the server
         Collection<IndexedMetadata> metadataIndex = Lists.newArrayList();
@@ -306,9 +320,9 @@ public class DefaultStorageClient implements StorageClient {
             try {
                 documentApi.updateDocument( documentId, input );
             } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
-                log.error( "Failed to uploaded block. Should probably add a retry here!" );
+                logger.error( "Failed to uploaded block. Should probably add a retry here!" );
             }
-            log.info( "Document block uploaded completed for document {} and block {}", documentId, input.getIndex() );
+            logger.info( "Document block uploaded completed for document {} and block {}", documentId, input.getIndex() );
         }
     }
 
