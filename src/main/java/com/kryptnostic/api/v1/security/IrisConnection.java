@@ -303,7 +303,7 @@ public class IrisConnection implements KryptnosticConnection {
     public Kodex<String> getCryptoKodex() throws IrisException {
         Kodex<String> kodex;
         try {
-            kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_128, this.rsaPublicKey );
+            kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_4096, Cypher.AES_CTR_128, this.rsaPublicKey );
             kodex.setKey(
                     PasswordCryptoService.class.getCanonicalName(),
                     new JacksonKodexMarshaller<PasswordCryptoService>( PasswordCryptoService.class ),
