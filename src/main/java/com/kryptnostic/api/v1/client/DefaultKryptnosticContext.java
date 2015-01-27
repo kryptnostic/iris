@@ -154,26 +154,23 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public void submitBridgeKeyWithSearchNonce(
-            DocumentId documentId,
-            EncryptedSearchSharingKey sharingKey,
-            BitVector searchNonce ) throws IrisException {
+    public void submitBridgeKeyWithSearchNonce( DocumentId documentId, EncryptedSearchSharingKey sharingKey )
+            throws IrisException {
 
         try {
             connection.getDataStore().put(
                     ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() ).getBytes(),
                     marshaller.toBytes( sharingKey ) );
-            connection.getDataStore().put(
-                    ( documentId.getDocumentId() + BitVector.class.getCanonicalName() ).getBytes(),
-                    marshaller.toBytes( searchNonce ) );
+            // connection.getDataStore().put(
+            // ( documentId.getDocumentId() + BitVector.class.getCanonicalName() ).getBytes(),
+            // marshaller.toBytes( searchNonce ) );
         } catch ( IOException e1 ) {
             e1.printStackTrace();
         }
 
-        BitVector encryptedSearchNonce = encryptNonce( searchNonce );
         EncryptedSearchBridgeKey bridgeKey = fromSharingKey( sharingKey );
 
-        EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( encryptedSearchNonce, bridgeKey, documentId );
+        EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( bridgeKey, documentId );
 
         sharingClient.registerKeys( ImmutableSet.of( docKey ) );
     }
@@ -185,12 +182,11 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public BitVector generateIndexForToken( String token, BitVector searchNonce, EncryptedSearchSharingKey sharingKey )
+    public BitVector generateIndexForToken( String token, EncryptedSearchSharingKey sharingKey )
             throws ResourceNotFoundException {
         BitVector searchHash = connection.getEncryptedSearchPrivateKey().hash( token );
-        BitVector searchToken = BitVectors.concatenate( searchHash, searchNonce );
         EnhancedBitMatrix expectedMatrix = EnhancedBitMatrix.squareMatrixfromBitVector( getGlobalHashFunction().apply(
-                searchToken ) );
+                searchHash ) );
         BitVector indexForTerm = BitVectors.fromSquareMatrix( expectedMatrix.multiply( sharingKey.getMiddle() )
                 .multiply( expectedMatrix ) );
         return indexForTerm;

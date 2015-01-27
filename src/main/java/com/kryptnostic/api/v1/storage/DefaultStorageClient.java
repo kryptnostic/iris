@@ -195,15 +195,11 @@ public class DefaultStorageClient implements StorageClient {
         Set<Metadata> metadata = indexer.index( document.getMetadata().getId(), document.getBody().getData() );
 
         // generate nonce
-        BitVector searchNonce = context.generateSearchNonce();
         EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
 
-        context.submitBridgeKeyWithSearchNonce(
-                new DocumentId( document.getMetadata().getId() ),
-                sharingKey,
-                searchNonce );
+        context.submitBridgeKeyWithSearchNonce( new DocumentId( document.getMetadata().getId() ), sharingKey );
 
-        MetadataRequest metadataRequest = prepareMetadata( metadata, searchNonce, sharingKey );
+        MetadataRequest metadataRequest = prepareMetadata( metadata, sharingKey );
         uploadMetadata( metadataRequest );
 
     }
@@ -265,13 +261,11 @@ public class DefaultStorageClient implements StorageClient {
      * @return
      * @throws IrisException
      */
-    private MetadataRequest prepareMetadata(
-            Set<Metadata> metadata,
-            BitVector searchNonce,
-            EncryptedSearchSharingKey sharingKey ) throws IrisException {
+    private MetadataRequest prepareMetadata( Set<Metadata> metadata, EncryptedSearchSharingKey sharingKey )
+            throws IrisException {
 
         // create plaintext metadata
-        MappedMetadata keyedMetadata = metadataMapper.mapTokensToKeys( metadata, searchNonce, sharingKey );
+        MappedMetadata keyedMetadata = metadataMapper.mapTokensToKeys( metadata, sharingKey );
         log.debug( "generated plaintext metadata {}", keyedMetadata );
 
         // encrypt the metadata and format for the server

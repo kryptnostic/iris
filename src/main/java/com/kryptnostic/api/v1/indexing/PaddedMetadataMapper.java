@@ -34,7 +34,6 @@ public class PaddedMetadataMapper implements MetadataMapper {
     @Override
     public MappedMetadata mapTokensToKeys(
             Set<Metadata> metadata,
-            BitVector searchNonce,
             EncryptedSearchSharingKey sharingKey ) throws IrisException {
 
         /*
@@ -55,7 +54,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
 
                 BitVector indexForTerm;
                 try {
-                    indexForTerm = context.generateIndexForToken( token, searchNonce, sharingKey );
+                    indexForTerm = context.generateIndexForToken( token, sharingKey );
                 } catch ( ResourceNotFoundException e ) {
                     throw new IrisException( e );
                 }
