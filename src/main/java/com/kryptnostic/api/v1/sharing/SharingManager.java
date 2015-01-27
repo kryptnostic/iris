@@ -9,14 +9,11 @@ import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cern.colt.bitvector.BitVector;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.directory.v1.models.UserKey;
-import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
@@ -40,14 +37,10 @@ public class SharingManager implements SharingClient {
     private static final Logger               logger     = LoggerFactory.getLogger( SharingManager.class );
     private static ObjectMapper               mapper     = KodexObjectMapperFactory.getObjectMapper();
     private static DeflatingJacksonMarshaller marshaller = new DeflatingJacksonMarshaller();
-    private final DataStore                   dataStore;
-    private final KryptnosticConnection       connection;
     private final KryptnosticContext          context;
     private final SharingApi                  sharingApi;
 
     public SharingManager( KryptnosticContext context, SharingApi sharingClient ) {
-        this.connection = context.getConnection();
-        this.dataStore = connection.getDataStore();
         this.context = context;
         this.sharingApi = sharingClient;
     }
@@ -57,15 +50,11 @@ public class SharingManager implements SharingClient {
 
         DataStore dataStore = context.getConnection().getDataStore();
         EncryptedSearchSharingKey sharingKey = null;
-        BitVector searchNonce = null;
         try {
             sharingKey = marshaller.fromBytes(
                     dataStore.get( ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() )
                             .getBytes() ),
                     EncryptedSearchSharingKey.class );
-            searchNonce = marshaller.fromBytes(
-                    dataStore.get( ( documentId.getDocumentId() + BitVector.class.getCanonicalName() ).getBytes() ),
-                    BitVector.class );
         } catch ( IOException e1 ) {
             e1.printStackTrace();
         }
@@ -80,10 +69,8 @@ public class SharingManager implements SharingClient {
             }
 
             byte[] encryptedSharingKey = mapper.writeValueAsBytes( service.encrypt( marshaller.toBytes( sharingKey ) ) );
-            byte[] encryptedDocumentKey = mapper
-                    .writeValueAsBytes( service.encrypt( marshaller.toBytes( searchNonce ) ) );
 
-            SharingRequest request = new SharingRequest( documentId, seals, encryptedSharingKey, encryptedDocumentKey );
+            SharingRequest request = new SharingRequest( documentId, seals, encryptedSharingKey );
             sharingApi.shareDocument( request );
 
         } catch ( SecurityConfigurationException | IOException | ExecutionException e ) {
@@ -109,11 +96,6 @@ public class SharingManager implements SharingClient {
                 throw new IOException( e );
             }
 
-            BitVector searchNonce = marshaller
-                    .fromBytes( decryptor.decryptBytes( mapper.readValue(
-                            share.getEncryptedDocumentKey(),
-                            BlockCiphertext.class ) ), BitVector.class );
-
             EncryptedSearchSharingKey sharingKey = marshaller
                     .fromBytes( decryptor.decryptBytes( mapper.readValue(
                             share.getEncryptedSharingKey(),
@@ -123,7 +105,6 @@ public class SharingManager implements SharingClient {
 
             try {
                 documentKey = new EncryptedSearchDocumentKey(
-                        context.encryptNonce( searchNonce ),
                         context.fromSharingKey( sharingKey ),
                         share.getDocumentId() );
             } catch ( IrisException e ) {
