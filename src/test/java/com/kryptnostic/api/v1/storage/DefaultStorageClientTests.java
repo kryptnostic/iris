@@ -13,6 +13,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -46,6 +50,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
+import com.kryptnostic.kodex.v1.serialization.crypto.DefaultChunkingStrategy;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.sharing.v1.http.SharingApi;
@@ -54,12 +59,14 @@ import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.http.DocumentApi;
 import com.kryptnostic.storage.v1.http.MetadataApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.models.Document;
+import com.kryptnostic.storage.v1.models.DocumentMetadata;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.utils.SecurityConfigurationTestUtils;
 
 @SuppressWarnings( "javadoc" )
-public class DefaultStorageServiceTests extends SecurityConfigurationTestUtils {
+public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
 
     private StorageClient            storageService;
     private UserKey                  userKey;
@@ -145,6 +152,45 @@ public class DefaultStorageServiceTests extends SecurityConfigurationTestUtils {
 
         storageService.uploadDocument( new StorageRequestBuilder().withBody( "test" ).withId( "test" ).notSearchable()
                 .build() );
+    }
+
+    @Test
+    public void documentFragmentTest() throws BadRequestException, ResourceNotFoundException,
+            ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
+            NoSuchAlgorithmException, ExecutionException, ClassNotFoundException, IOException {
+        DocumentApi documentApi = Mockito.mock( DocumentApi.class );
+        MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
+        SharingApi sharingApi = Mockito.mock( SharingApi.class );
+        KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
+
+        Mockito.when( sharingApi.removeIncomingShares( Mockito.anyString() ) ).thenReturn(
+                new BasicResponse<String>( "done", 200, true ) );
+
+        String word = "word";
+        String intermediate = " cool cool ";
+        String docBody = word
+                + intermediate
+                + new String( new char[ DefaultChunkingStrategy.BLOCK_LENGTH_IN_BYTES - word.length()
+                        - ( intermediate.length() * 2 ) ] ) + intermediate + word;
+        String docId = "doc1";
+        loader.put( docId, crypto );
+        Document doc = new Document( new DocumentMetadata( docId ), docBody ).encrypt( loader );
+        List<EncryptableBlock> blocks = Arrays.asList( doc.getBody().getEncryptedData() );
+        Mockito.when( documentApi.getDocumentBlocks( Mockito.anyString(), Mockito.anyList() ) ).thenReturn(
+                new BasicResponse<List<EncryptableBlock>>( blocks, 200, true ) );
+
+        Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
+        Mockito.when( context.getConnection().getCryptoServiceLoader() ).thenReturn( loader );
+
+        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
+
+        Map<Integer, String> preview = storageService.getDocumentPreview(
+                docId,
+                Arrays.asList( 0, DefaultChunkingStrategy.BLOCK_LENGTH_IN_BYTES ),
+                2 );
+        Assert.assertEquals( 2, preview.size() );
+        Assert.assertEquals( ( word + intermediate ).trim(), preview.get( 0 ) );
+        Assert.assertEquals( word, preview.get( DefaultChunkingStrategy.BLOCK_LENGTH_IN_BYTES ) );
     }
 
     // FIXME duped from DefaultKryptnosticClientTests

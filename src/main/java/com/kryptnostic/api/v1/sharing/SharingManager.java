@@ -52,8 +52,7 @@ public class SharingManager implements SharingClient {
         EncryptedSearchSharingKey sharingKey = null;
         try {
             sharingKey = marshaller.fromBytes(
-                    dataStore.get( ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() )
-                            .getBytes() ),
+                    dataStore.get( documentId.getDocumentId(), EncryptedSearchSharingKey.class.getCanonicalName() ),
                     EncryptedSearchSharingKey.class );
         } catch ( IOException e1 ) {
             e1.printStackTrace();

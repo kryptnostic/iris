@@ -87,6 +87,6 @@ public class DocumentFragmentFormatter {
     }
 
     private static String clean( String token ) {
-        return token.replaceAll( "[\\\\_]", " " );
+        return token.replaceAll( "[\\\\_\\(\\)\\[\\]\\.\\@\\^\\$\\{\\}\\,\\/\\*\\+]", " " );
     }
 }
