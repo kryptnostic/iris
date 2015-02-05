@@ -38,10 +38,12 @@ public class FileStore implements DataStore {
 
     private File keyToFile( String dir, String file ) {
         file = clean( file );
+        File target = rootDirectory;
         if ( dir != null ) {
-            file = clean( dir ) + File.pathSeparator + file;
+            target = new File( rootDirectory, clean( dir ) );
+            target.mkdirs();
         }
-        return new File( rootDirectory, file );
+        return new File( target, file );
     }
 
     @Override

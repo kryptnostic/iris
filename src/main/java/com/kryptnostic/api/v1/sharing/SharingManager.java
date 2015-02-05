@@ -100,6 +100,11 @@ public class SharingManager implements SharingClient {
                             share.getEncryptedSharingKey(),
                             BlockCiphertext.class ) ), EncryptedSearchSharingKey.class );
 
+            if ( sharingKey == null ) {
+                logger.error( "Null sharing key for document {}", id.getDocumentId() );
+                continue;
+            }
+
             EncryptedSearchDocumentKey documentKey = null;
 
             try {
