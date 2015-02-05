@@ -238,31 +238,10 @@ public class DefaultStorageClient implements StorageClient {
         return documentApi.getDocumentIds().getData();
     }
 
-    // @Override
-    // // TODO: calculate fragments to request client side
-    // public Map<Integer, String> getDocumentFragments( DocumentId id, List<Integer> offsets, int characterWindow )
-    // throws ResourceNotFoundException, SecurityConfigurationException, IrisException {
-    // Map<Integer, String> plain = Maps.newHashMap();
-    //
-    // DocumentFragmentRequest fragmentRequest = new DocumentFragmentRequest( offsets, characterWindow );
-    //
-    // Map<Integer, List<EncryptableBlock>> encrypted = documentApi.getDocumentFragments(
-    // id.getDocumentId(),
-    // fragmentRequest ).getData();
-    //
-    // for ( Entry<Integer, List<EncryptableBlock>> e : encrypted.entrySet() ) {
-    // String preview = "";
-    // for ( EncryptableBlock block : e.getValue() ) {
-    // try {
-    // preview += StringUtils.newStringUtf8( loader.get( id ).decryptBytes( block.getBlock() ) );
-    // } catch ( ExecutionException e1 ) {
-    // throw new IrisException( e1 );
-    // }
-    // }
-    // plain.put( e.getKey(), preview );
-    // }
-    // return plain;
-    // }
+    @Override
+    public Collection<DocumentId> getDocumentIds( int offset, int pageSize ) {
+        return documentApi.getDocumentIds( offset, pageSize ).getData();
+    }
 
     /**
      * Maps all metadata to an index that the server can compute when searching
