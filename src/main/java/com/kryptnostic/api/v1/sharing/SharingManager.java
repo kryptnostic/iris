@@ -124,4 +124,13 @@ public class SharingManager implements SharingClient {
     public void unsharedDocumentWithUsers( DocumentId documentId, Set<UserKey> users ) {
 
     }
+
+    @Override
+    public int getIncomingSharesCount() {
+        IncomingShares incomingShares = sharingApi.getIncomingShares();
+        if ( incomingShares == null || incomingShares.isEmpty() ) {
+            return 0;
+        }
+        return incomingShares.size();
+    }
 }
