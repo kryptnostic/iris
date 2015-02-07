@@ -76,6 +76,13 @@ public abstract class DataStoreTestsBase {
         Assert.assertNull( store.get( "dir" + File.pathSeparator + "cool" ) );
     }
 
+    @Test
+    public void testDelete() throws IOException {
+        store.put( "test123", "test".getBytes() );
+        store.delete( "test123" );
+        Assert.assertNull( store.get( "test123" ) );
+    }
+
     private byte[] getRandomData() {
         return ( "test" + String.valueOf( counter.getAndIncrement() ) ).getBytes();
     }

@@ -30,4 +30,9 @@ public class InMemoryStore implements DataStore {
         store.put( file, value );
     }
 
+    @Override
+    public void delete( String file ) {
+        store.remove( file );
+    }
+
 }

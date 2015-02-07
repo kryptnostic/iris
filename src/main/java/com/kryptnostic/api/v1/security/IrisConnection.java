@@ -24,7 +24,6 @@ import retrofit.client.Client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.fhe.FreshKodexLoader;
@@ -445,7 +444,17 @@ public class IrisConnection implements KryptnosticConnection {
                 String checksum = searchFunctionService.getQueryHasherChecksum().getData();
                 logger.debug( "[PROFILE] getting QHP checksum {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-                Preconditions.checkState( qhpChecksum.equals( checksum ) );
+                if ( !qhpChecksum.equals( checksum ) ) {
+                    try {
+                        dataStore.delete( Kodex.class.getCanonicalName() );
+                        dataStore.delete( PrivateKey.class.getCanonicalName() );
+                        dataStore.delete( PublicKey.class.getCanonicalName() );
+                    } catch ( IOException e ) {
+                        logger.error( "Could not delete Kodex" );
+                        e.printStackTrace();
+                    }
+                    throw new KodexException( "QHP failed checksum validation" );
+                }
 
                 watch.reset().start();
                 this.fhePrivateKey = this.kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class );
@@ -453,12 +462,13 @@ public class IrisConnection implements KryptnosticConnection {
                 this.encryptedSearchPrivateKey = this.kodex
                         .getKeyWithJackson( com.kryptnostic.crypto.EncryptedSearchPrivateKey.class );
                 logger.debug( "[PROFILE] unmarshal Kodex objects {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+                isKodexLoaded.set( true );
             } catch ( SealedKodexException | KodexException | SecurityConfigurationException e ) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
                 throw new IrisException( e );
             }
-            isKodexLoaded.set( true );
         }
         return kodex;
     }
