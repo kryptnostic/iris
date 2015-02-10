@@ -301,8 +301,8 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public void deleteDocument( DocumentId id ) {
-        documentApi.delete( id.getDocumentId() );
         sharingApi.removeIncomingShares( id.getDocumentId() );
+        documentApi.delete( id.getDocumentId() );
     }
 
     @Override
