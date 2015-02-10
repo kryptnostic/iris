@@ -67,14 +67,7 @@ public class DocumentFragmentFormatterTests {
         Assert.assertEquals(
                 "I am super cool and I dont care",
                 DocumentFragmentFormatter.format( makeEntry( 11, "I am super cool and I dont care" ), 5 ) );
-    }
 
-    @Test
-    public void testTokenSpecial() {
-
-        Assert.assertEquals(
-                "See phillip@cool.com)",
-                DocumentFragmentFormatter.format( makeEntry( 5, "(See phillip@cool.com)" ), 1 ) );
     }
 
     @Test

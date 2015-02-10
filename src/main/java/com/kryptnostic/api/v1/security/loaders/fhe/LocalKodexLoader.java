@@ -37,7 +37,7 @@ public final class LocalKodexLoader extends KodexLoader {
         try {
             Stopwatch watch = Stopwatch.createStarted();
             byte[] kodexBytes = Preconditions.checkNotNull(
-                    dataStore.get( Kodex.class.getCanonicalName() ),
+                    dataStore.get( Kodex.class.getCanonicalName().getBytes() ),
                     "Unable to loaded kodex from data store." );
             logger.debug( "[PROFILE] Took {} ms to load Kodex from disk", watch.elapsed( TimeUnit.MILLISECONDS ) );
 

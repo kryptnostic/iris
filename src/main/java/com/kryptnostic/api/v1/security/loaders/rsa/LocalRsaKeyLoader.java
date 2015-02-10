@@ -39,7 +39,7 @@ public final class LocalRsaKeyLoader extends RsaKeyLoader {
     protected KeyPair tryLoading() throws KodexException {
         try {
             byte[] encryptedPrivateKeyBytes = Preconditions.checkNotNull(
-                    dataStore.get( PrivateKey.class.getCanonicalName() ),
+                    dataStore.get( PrivateKey.class.getCanonicalName().getBytes() ),
                     "Couldn't load private key from data store." );
             BlockCiphertext privateKeyCiphertext = mapper.readValue( encryptedPrivateKeyBytes, BlockCiphertext.class );
 
@@ -53,7 +53,7 @@ public final class LocalRsaKeyLoader extends RsaKeyLoader {
             byte[] decryptedPrivateKeyBytes = crypto.decryptBytes( privateKeyCiphertext );
 
             byte[] decryptedPublicKeyBytes = Preconditions.checkNotNull(
-                    dataStore.get( PublicKey.class.getCanonicalName() ),
+                    dataStore.get( PublicKey.class.getCanonicalName().getBytes() ),
                     "Couldn't load public key from data store." );
 
             PrivateKey rsaPrivateKey = Keys.privateKeyFromBytes( PublicKeyAlgorithm.RSA, decryptedPrivateKeyBytes );
@@ -70,4 +70,5 @@ public final class LocalRsaKeyLoader extends RsaKeyLoader {
         }
 
     }
+
 }

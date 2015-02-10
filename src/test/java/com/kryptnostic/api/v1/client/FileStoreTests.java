@@ -6,5 +6,4 @@ public class FileStoreTests extends DataStoreTestsBase {
     static {
         store = new FileStore( "iris-tests" );
     }
-
 }

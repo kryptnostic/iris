@@ -24,6 +24,7 @@ import retrofit.client.Client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.fhe.FreshKodexLoader;
@@ -215,11 +216,11 @@ public class IrisConnection implements KryptnosticConnection {
 
         // Flush to disk
         logger.debug( "Flushing RSA Private Key to disk..." );
-        dataStore.put( PrivateKey.class.getCanonicalName(), mapper.writeValueAsBytes( encPrivKey ) );
+        dataStore.put( PrivateKey.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( encPrivKey ) );
         logger.debug( "Done flushing RSA Private Key to disk." );
 
         logger.debug( "Flushing RSA pubkey to disk..." );
-        dataStore.put( PublicKey.class.getCanonicalName(), pubKey );
+        dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pubKey );
         logger.debug( "Done flushing RSA pubkey to disk..." );
     }
 
@@ -280,7 +281,7 @@ public class IrisConnection implements KryptnosticConnection {
     private void flushKodexToDisk( Kodex<String> searchKodex ) throws JsonProcessingException, IOException {
         ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
         logger.debug( "Flushing Kodex to disk..." );
-        dataStore.put( Kodex.class.getCanonicalName(), mapper.writeValueAsBytes( searchKodex ) );
+        dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( searchKodex ) );
         logger.debug( "Done flushing Kodex to disk." );
     }
 
@@ -302,7 +303,7 @@ public class IrisConnection implements KryptnosticConnection {
     public Kodex<String> getCryptoKodex() throws IrisException {
         Kodex<String> kodex;
         try {
-            kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_4096, Cypher.AES_CTR_128, this.rsaPublicKey );
+            kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_128, this.rsaPublicKey );
             kodex.setKey(
                     PasswordCryptoService.class.getCanonicalName(),
                     new JacksonKodexMarshaller<PasswordCryptoService>( PasswordCryptoService.class ),
@@ -444,17 +445,7 @@ public class IrisConnection implements KryptnosticConnection {
                 String checksum = searchFunctionService.getQueryHasherChecksum().getData();
                 logger.debug( "[PROFILE] getting QHP checksum {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-                if ( !qhpChecksum.equals( checksum ) ) {
-                    try {
-                        dataStore.delete( Kodex.class.getCanonicalName() );
-                        dataStore.delete( PrivateKey.class.getCanonicalName() );
-                        dataStore.delete( PublicKey.class.getCanonicalName() );
-                    } catch ( IOException e ) {
-                        logger.error( "Could not delete Kodex" );
-                        e.printStackTrace();
-                    }
-                    throw new KodexException( "QHP failed checksum validation" );
-                }
+                Preconditions.checkState( qhpChecksum.equals( checksum ) );
 
                 watch.reset().start();
                 this.fhePrivateKey = this.kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class );
@@ -462,13 +453,12 @@ public class IrisConnection implements KryptnosticConnection {
                 this.encryptedSearchPrivateKey = this.kodex
                         .getKeyWithJackson( com.kryptnostic.crypto.EncryptedSearchPrivateKey.class );
                 logger.debug( "[PROFILE] unmarshal Kodex objects {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-
-                isKodexLoaded.set( true );
             } catch ( SealedKodexException | KodexException | SecurityConfigurationException e ) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
                 throw new IrisException( e );
             }
+            isKodexLoaded.set( true );
         }
         return kodex;
     }

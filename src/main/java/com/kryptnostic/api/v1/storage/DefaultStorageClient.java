@@ -7,17 +7,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.codec.binary.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -58,7 +55,7 @@ import com.kryptnostic.storage.v1.models.request.StorageRequest;
  *
  */
 public class DefaultStorageClient implements StorageClient {
-    private static final Logger       logger                   = LoggerFactory.getLogger( StorageClient.class );
+    private static final Logger       log                      = LoggerFactory.getLogger( StorageClient.class );
     private static final int          PARALLEL_NETWORK_THREADS = 4;
     ListeningExecutorService          exec                     = MoreExecutors.listeningDecorator( Executors
                                                                        .newFixedThreadPool( PARALLEL_NETWORK_THREADS ) );
@@ -195,22 +192,15 @@ public class DefaultStorageClient implements StorageClient {
 
     private void makeDocumentSearchable( Document document ) throws IrisException, BadRequestException {
         // index + map tokens for metadata
-        Stopwatch watch = Stopwatch.createStarted();
         Set<Metadata> metadata = indexer.index( document.getMetadata().getId(), document.getBody().getData() );
-        logger.debug( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         // generate nonce
         EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
-        logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-        watch.reset().start();
         context.submitBridgeKeyWithSearchNonce( new DocumentId( document.getMetadata().getId() ), sharingKey );
 
-        logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-        watch.reset().start();
         MetadataRequest metadataRequest = prepareMetadata( metadata, sharingKey );
         uploadMetadata( metadataRequest );
-        logger.debug( "[PROFILE] preparing metadata and upload took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
     }
 
@@ -238,10 +228,31 @@ public class DefaultStorageClient implements StorageClient {
         return documentApi.getDocumentIds().getData();
     }
 
-    @Override
-    public Collection<DocumentId> getDocumentIds( int offset, int pageSize ) {
-        return documentApi.getDocumentIds( offset, pageSize ).getData();
-    }
+    // @Override
+    // // TODO: calculate fragments to request client side
+    // public Map<Integer, String> getDocumentFragments( DocumentId id, List<Integer> offsets, int characterWindow )
+    // throws ResourceNotFoundException, SecurityConfigurationException, IrisException {
+    // Map<Integer, String> plain = Maps.newHashMap();
+    //
+    // DocumentFragmentRequest fragmentRequest = new DocumentFragmentRequest( offsets, characterWindow );
+    //
+    // Map<Integer, List<EncryptableBlock>> encrypted = documentApi.getDocumentFragments(
+    // id.getDocumentId(),
+    // fragmentRequest ).getData();
+    //
+    // for ( Entry<Integer, List<EncryptableBlock>> e : encrypted.entrySet() ) {
+    // String preview = "";
+    // for ( EncryptableBlock block : e.getValue() ) {
+    // try {
+    // preview += StringUtils.newStringUtf8( loader.get( id ).decryptBytes( block.getBlock() ) );
+    // } catch ( ExecutionException e1 ) {
+    // throw new IrisException( e1 );
+    // }
+    // }
+    // plain.put( e.getKey(), preview );
+    // }
+    // return plain;
+    // }
 
     /**
      * Maps all metadata to an index that the server can compute when searching
@@ -255,7 +266,7 @@ public class DefaultStorageClient implements StorageClient {
 
         // create plaintext metadata
         MappedMetadata keyedMetadata = metadataMapper.mapTokensToKeys( metadata, sharingKey );
-        logger.debug( "generated plaintext metadata {}", keyedMetadata );
+        log.debug( "generated plaintext metadata {}", keyedMetadata );
 
         // encrypt the metadata and format for the server
         Collection<IndexedMetadata> metadataIndex = Lists.newArrayList();
@@ -288,9 +299,9 @@ public class DefaultStorageClient implements StorageClient {
             try {
                 documentApi.updateDocument( documentId, input );
             } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
-                logger.error( "Failed to uploaded block. Should probably add a retry here!" );
+                log.error( "Failed to uploaded block. Should probably add a retry here!" );
             }
-            logger.info( "Document block uploaded completed for document {} and block {}", documentId, input.getIndex() );
+            log.info( "Document block uploaded completed for document {} and block {}", documentId, input.getIndex() );
         }
     }
 
@@ -345,9 +356,7 @@ public class DefaultStorageClient implements StorageClient {
         Map<Integer, String> offsetsToPreview = Maps.newHashMap();
 
         for ( Map.Entry<Integer, String> item : offsetsToString.entrySet() ) {
-            Map.Entry<Integer, String> normalizedOffsetPair = Pair.<Integer, String> of( item.getKey()
-                    % DefaultChunkingStrategy.BLOCK_LENGTH_IN_BYTES, item.getValue() );
-            String preview = DocumentFragmentFormatter.format( normalizedOffsetPair, 2 );
+            String preview = DocumentFragmentFormatter.format( item, 2 );
             offsetsToPreview.put( item.getKey(), preview );
         }
 
