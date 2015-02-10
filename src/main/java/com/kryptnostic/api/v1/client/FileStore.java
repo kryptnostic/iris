@@ -38,10 +38,12 @@ public class FileStore implements DataStore {
 
     private File keyToFile( String dir, String file ) {
         file = clean( file );
+        File target = rootDirectory;
         if ( dir != null ) {
-            file = clean( dir ) + File.pathSeparator + file;
+            target = new File( rootDirectory, clean( dir ) );
+            target.mkdirs();
         }
-        return new File( rootDirectory, file );
+        return new File( target, file );
     }
 
     @Override
@@ -56,5 +58,13 @@ public class FileStore implements DataStore {
 
     private String clean( String str ) {
         return str.replaceAll( "[^\\w\\.]+", "" );
+    }
+
+    @Override
+    public void delete( String file ) throws IOException {
+        File target = new File( rootDirectory, clean( file ) );
+        if ( !target.delete() ) {
+            throw new IOException( "File or directory " + file + " could not be deleted" );
+        }
     }
 }

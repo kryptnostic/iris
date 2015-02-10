@@ -1,5 +1,6 @@
 package com.kryptnostic.utils;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
@@ -66,6 +67,20 @@ public abstract class DataStoreTestsBase {
         store.put( p.getLeft(), p.getRight(), data1 );
         byte[] retrieved1 = store.get( p.getLeft(), p.getRight() );
         Assert.assertTrue( Arrays.equals( data1, retrieved1 ) );
+    }
+
+    @Test
+    public void testDirectory() throws IOException {
+        store.put( "dir", "cool", "test".getBytes() );
+        Assert.assertEquals( "test", StringUtils.newStringUtf8( store.get( "dir", "cool" ) ) );
+        Assert.assertNull( store.get( "dir" + File.pathSeparator + "cool" ) );
+    }
+
+    @Test
+    public void testDelete() throws IOException {
+        store.put( "test123", "test".getBytes() );
+        store.delete( "test123" );
+        Assert.assertNull( store.get( "test123" ) );
     }
 
     private byte[] getRandomData() {
