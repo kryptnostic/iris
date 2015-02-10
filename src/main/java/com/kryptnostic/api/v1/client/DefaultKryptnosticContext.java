@@ -57,8 +57,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private SimplePolynomialFunction          globalHashFunction;
     private final KryptnosticConnection       connection;
 
-    public static final String                CHECKSUM_KEY    = "global-hash-checksum";
-    public static final String                FUNCTION_KEY    = "global-hash-function";
+    public static final String                CHECKSUM_KEY    = "global.hash.checksum";
+    public static final String                FUNCTION_KEY    = "global.hash.function";
 
     private static final Logger               logger          = LoggerFactory
                                                                       .getLogger( DefaultKryptnosticContext.class );
@@ -95,8 +95,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             byte[] gbh = null;
             String checksum = null;
             try {
-                checksum = StringUtils.newStringUtf8( connection.getDataStore().get( CHECKSUM_KEY.getBytes() ) );
-                gbh = connection.getDataStore().get( FUNCTION_KEY.getBytes() );
+                checksum = StringUtils.newStringUtf8( connection.getDataStore().get( CHECKSUM_KEY ) );
+                gbh = connection.getDataStore().get( FUNCTION_KEY );
             } catch ( IOException e ) {
 
             }
@@ -113,8 +113,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                 checksum = searchFunctionClient.getGlobalHasherChecksum().getData();// Hashing.murmur3_128().hashBytes(
                                                                                     // gbh ).toString();
                 try {
-                    connection.getDataStore().put( CHECKSUM_KEY.getBytes(), StringUtils.getBytesUtf8( checksum ) );
-                    connection.getDataStore().put( FUNCTION_KEY.getBytes(), gbh );
+                    connection.getDataStore().put( CHECKSUM_KEY, StringUtils.getBytesUtf8( checksum ) );
+                    connection.getDataStore().put( FUNCTION_KEY, gbh );
                 } catch ( IOException e ) {
                     logger.error( "Unable to save global hash function. Will try again upon restart." );
                     return null;
@@ -159,11 +159,9 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
         try {
             connection.getDataStore().put(
-                    ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() ).getBytes(),
+                    documentId.getDocumentId(),
+                    EncryptedSearchSharingKey.class.getCanonicalName(),
                     marshaller.toBytes( sharingKey ) );
-            // connection.getDataStore().put(
-            // ( documentId.getDocumentId() + BitVector.class.getCanonicalName() ).getBytes(),
-            // marshaller.toBytes( searchNonce ) );
         } catch ( IOException e1 ) {
             e1.printStackTrace();
         }

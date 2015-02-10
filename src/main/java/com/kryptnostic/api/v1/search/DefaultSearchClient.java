@@ -1,6 +1,5 @@
 package com.kryptnostic.api.v1.search;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,7 +15,7 @@ import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.search.v1.http.SearchApi;
-import com.kryptnostic.search.v1.models.SearchResult;
+import com.kryptnostic.search.v1.models.QueryHasherPairResult;
 import com.kryptnostic.search.v1.models.request.SearchRequest;
 import com.kryptnostic.search.v1.models.response.SearchResultResponse;
 
@@ -41,14 +40,31 @@ public class DefaultSearchClient implements SearchClient {
      * Analyze query into tokens, convert tokens into searchTokens, and generate a SearchRequest to Kryptnostic RESTful
      * search service.
      */
+
     @Override
-    public Collection<SearchResult> search( String query ) {
+    public SearchResultResponse search( String query ) {
+        return search( query, null );
+    }
+
+    @Override
+    public SearchResultResponse search( String query, SearchRequest request ) {
         List<String> tokens = analyzeQuery( query );
         SearchRequest searchRequest = generateSearchRequest( tokens );
 
-        SearchResultResponse searchResult = searchService.search( searchRequest );
+        if ( request != null ) {
+            searchRequest = new SearchRequest(
+                    searchRequest.getSearchToken(),
+                    request.getMaxResults(),
+                    request.getPairResults(),
+                    request.getOffset() );
+        }
 
-        return searchResult.getData();
+        return search( searchRequest );
+    }
+
+    @Override
+    public SearchResultResponse search( SearchRequest request ) {
+        return searchService.search( request );
     }
 
     /**
@@ -57,7 +73,7 @@ public class DefaultSearchClient implements SearchClient {
     private SearchRequest generateSearchRequest( List<String> tokens ) {
         Preconditions.checkArgument( tokens != null, "Cannot pass null tokens param." );
 
-        Collection<BitVector> searchTokens = Lists.newArrayList();
+        List<BitVector> searchTokens = Lists.newArrayList();
         for ( String token : tokens ) {
             searchTokens.add( context.prepareSearchToken( token ) );
         }
@@ -82,4 +98,14 @@ public class DefaultSearchClient implements SearchClient {
         return Lists.newArrayList( tokens );
     }
 
+    @Override
+    public SearchResultResponse nextPage( SearchResultResponse response ) {
+        List<BitVector> tokens = Lists.newArrayList();
+        List<QueryHasherPairResult> pairs = Lists.newArrayList();
+        for ( Map.Entry<BitVector, QueryHasherPairResult> entry : response.getPairMap().entrySet() ) {
+            tokens.add( entry.getKey() );
+            pairs.add( entry.getValue() );
+        }
+        return search( SearchRequest.searchToken( tokens, response.getData().size(), pairs, response.getOffset() ) );
+    }
 }

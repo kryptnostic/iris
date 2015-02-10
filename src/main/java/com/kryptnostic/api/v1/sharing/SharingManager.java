@@ -52,8 +52,7 @@ public class SharingManager implements SharingClient {
         EncryptedSearchSharingKey sharingKey = null;
         try {
             sharingKey = marshaller.fromBytes(
-                    dataStore.get( ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() )
-                            .getBytes() ),
+                    dataStore.get( documentId.getDocumentId(), EncryptedSearchSharingKey.class.getCanonicalName() ),
                     EncryptedSearchSharingKey.class );
         } catch ( IOException e1 ) {
             e1.printStackTrace();
@@ -101,6 +100,11 @@ public class SharingManager implements SharingClient {
                             share.getEncryptedSharingKey(),
                             BlockCiphertext.class ) ), EncryptedSearchSharingKey.class );
 
+            if ( sharingKey == null ) {
+                logger.error( "Null sharing key for document {}", id.getDocumentId() );
+                continue;
+            }
+
             EncryptedSearchDocumentKey documentKey = null;
 
             try {
@@ -124,5 +128,14 @@ public class SharingManager implements SharingClient {
     @Override
     public void unsharedDocumentWithUsers( DocumentId documentId, Set<UserKey> users ) {
 
+    }
+
+    @Override
+    public int getIncomingSharesCount() {
+        IncomingShares incomingShares = sharingApi.getIncomingShares();
+        if ( incomingShares == null || incomingShares.isEmpty() ) {
+            return 0;
+        }
+        return incomingShares.size();
     }
 }
