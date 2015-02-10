@@ -26,7 +26,6 @@ import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.sharing.v1.SharingClient;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.sharing.v1.models.IncomingShares;
 import com.kryptnostic.sharing.v1.models.Share;
 import com.kryptnostic.sharing.v1.models.request.KeyRegistrationRequest;
@@ -46,13 +45,13 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public void shareDocumentWithUsers( CryptoServiceLoader loader, DocumentId documentId, Set<UserKey> users ) {
+    public void shareDocumentWithUsers( CryptoServiceLoader loader, String documentId, Set<UserKey> users ) {
 
         DataStore dataStore = context.getConnection().getDataStore();
         EncryptedSearchSharingKey sharingKey = null;
         try {
             sharingKey = marshaller.fromBytes(
-                    dataStore.get( documentId.getDocumentId(), EncryptedSearchSharingKey.class.getCanonicalName() ),
+                    dataStore.get( documentId, EncryptedSearchSharingKey.class.getCanonicalName() ),
                     EncryptedSearchSharingKey.class );
         } catch ( IOException e1 ) {
             e1.printStackTrace();
@@ -60,7 +59,7 @@ public class SharingManager implements SharingClient {
 
         AesCryptoService service;
         try {
-            service = (AesCryptoService) loader.get( documentId.getDocumentId() );
+            service = (AesCryptoService) loader.get( documentId );
             Map<UserKey, RsaCompressingEncryptionService> services = context.getEncryptionServiceForUsers( users );
             Map<UserKey, byte[]> seals = Maps.newHashMap();
             for ( Entry<UserKey, RsaCompressingEncryptionService> serviceEntry : services.entrySet() ) {
@@ -86,11 +85,11 @@ public class SharingManager implements SharingClient {
         Set<EncryptedSearchDocumentKey> keys = Sets.newHashSet();
 
         for ( Share share : incomingShares ) {
-            DocumentId id = share.getDocumentId();
+            String id = share.getDocumentId();
             AesCryptoService decryptor;
             try {
-                logger.info( "Processing share for {}", id.getDocumentId() );
-                decryptor = (AesCryptoService) loader.get( id.getDocumentId() );
+                logger.info( "Processing share for {}", id );
+                decryptor = (AesCryptoService) loader.get( id );
             } catch ( ExecutionException e ) {
                 throw new IOException( e );
             }
@@ -101,7 +100,7 @@ public class SharingManager implements SharingClient {
                             BlockCiphertext.class ) ), EncryptedSearchSharingKey.class );
 
             if ( sharingKey == null ) {
-                logger.error( "Null sharing key for document {}", id.getDocumentId() );
+                logger.error( "Null sharing key for document {}", id );
                 continue;
             }
 
@@ -126,7 +125,7 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public void unsharedDocumentWithUsers( DocumentId documentId, Set<UserKey> users ) {
+    public void unsharedDocumentWithUsers( String documentId, Set<UserKey> users ) {
 
     }
 

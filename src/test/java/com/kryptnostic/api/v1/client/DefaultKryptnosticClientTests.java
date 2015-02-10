@@ -57,7 +57,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
-import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.http.DocumentApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
@@ -166,7 +165,7 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
         String docId = "DOCUMENT_1";
         String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + docId;
 
-        String docIdResponse = serialize( new BasicResponse<DocumentId>( new DocumentId( docId ), 200, true ) );
+        String docIdResponse = serialize( new BasicResponse<String>( docId, 200, true ) );
 
         stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
 
@@ -182,18 +181,18 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
     public void uploadDocumentWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException {
-        DocumentId docId = DocumentId.fromId( "DOCUMENT_0" );
+        String docId = "DOCUMENT_0";
         String documentCreateUrl = DocumentApi.DOCUMENT;
-        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + docId.getDocumentId();
+        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + docId;
 
-        String docIdResponse = serialize( new BasicResponse<DocumentId>( docId, 200, true ) );
+        String docIdResponse = serialize( new BasicResponse<String>( docId, 200, true ) );
 
         stubFor( put( urlMatching( documentCreateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
         stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
 
         String receivedDocId = client.getStorageClient().uploadDocument(
                 new StorageRequestBuilder().withBody( "test" ).notSearchable().build() );
-        Assert.assertEquals( docId.getDocumentId(), receivedDocId );
+        Assert.assertEquals( docId, receivedDocId );
 
         verify( 1, putRequestedFor( urlMatching( documentCreateUrl ) ) );
         verify( 1, postRequestedFor( urlMatching( documentUpdateUrl ) ) );

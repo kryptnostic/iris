@@ -36,7 +36,6 @@ import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
 
@@ -154,12 +153,12 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public void submitBridgeKeyWithSearchNonce( DocumentId documentId, EncryptedSearchSharingKey sharingKey )
+    public void submitBridgeKeyWithSearchNonce( String documentId, EncryptedSearchSharingKey sharingKey )
             throws IrisException {
 
         try {
             connection.getDataStore().put(
-                    documentId.getDocumentId(),
+                    documentId,
                     EncryptedSearchSharingKey.class.getCanonicalName(),
                     marshaller.toBytes( sharingKey ) );
         } catch ( IOException e1 ) {

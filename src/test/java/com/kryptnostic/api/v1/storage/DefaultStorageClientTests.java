@@ -54,7 +54,6 @@ import com.kryptnostic.kodex.v1.serialization.crypto.DefaultChunkingStrategy;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.http.DocumentApi;
 import com.kryptnostic.storage.v1.http.MetadataApi;
@@ -116,21 +115,21 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
 
         storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
 
-        Mockito.when( documentApi.createPendingDocument() ).then( new Answer<BasicResponse<DocumentId>>() {
+        Mockito.when( documentApi.createPendingDocument() ).then( new Answer<BasicResponse<String>>() {
 
             @Override
-            public BasicResponse<DocumentId> answer( InvocationOnMock invocation ) throws Throwable {
-                return new BasicResponse<DocumentId>( new DocumentId( "document1" ), HttpStatus.SC_OK, true );
+            public BasicResponse<String> answer( InvocationOnMock invocation ) throws Throwable {
+                return new BasicResponse<String>( "document1", HttpStatus.SC_OK, true );
             }
 
         } );
 
         Mockito.when( documentApi.updateDocument( Mockito.anyString(), Mockito.any( EncryptableBlock.class ) ) ).then(
-                new Answer<BasicResponse<DocumentId>>() {
+                new Answer<BasicResponse<String>>() {
 
                     @Override
-                    public BasicResponse<DocumentId> answer( InvocationOnMock invocation ) throws Throwable {
-                        return new BasicResponse<DocumentId>( new DocumentId( "document1" ), HttpStatus.SC_OK, true );
+                    public BasicResponse<String> answer( InvocationOnMock invocation ) throws Throwable {
+                        return new BasicResponse<String>( "document1", HttpStatus.SC_OK, true );
                     }
 
                 } );

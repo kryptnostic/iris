@@ -42,7 +42,6 @@ import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.serialization.crypto.DefaultChunkingStrategy;
 import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.http.DocumentApi;
 import com.kryptnostic.storage.v1.http.MetadataApi;
@@ -172,7 +171,7 @@ public class DefaultStorageClient implements StorageClient {
         String documentId = req.getDocumentId();
 
         if ( documentId == null ) {
-            documentId = documentApi.createPendingDocument().getData().getDocumentId();
+            documentId = documentApi.createPendingDocument().getData();
         } else {
             documentApi.createPendingDocument( documentId );
         }
@@ -204,7 +203,7 @@ public class DefaultStorageClient implements StorageClient {
         logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         watch.reset().start();
-        context.submitBridgeKeyWithSearchNonce( new DocumentId( document.getMetadata().getId() ), sharingKey );
+        context.submitBridgeKeyWithSearchNonce( document.getMetadata().getId(), sharingKey );
 
         logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         watch.reset().start();
@@ -224,8 +223,8 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public Document getDocument( DocumentId id ) throws ResourceNotFoundException {
-        return documentApi.getDocument( id.getDocumentId() ).getData();
+    public Document getDocument( String id ) throws ResourceNotFoundException {
+        return documentApi.getDocument( id ).getData();
     }
 
     @Override
@@ -234,12 +233,12 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public Collection<DocumentId> getDocumentIds() {
+    public Collection<String> getDocumentIds() {
         return documentApi.getDocumentIds().getData();
     }
 
     @Override
-    public Collection<DocumentId> getDocumentIds( int offset, int pageSize ) {
+    public Collection<String> getDocumentIds( int offset, int pageSize ) {
         return documentApi.getDocumentIds( offset, pageSize ).getData();
     }
 
@@ -267,7 +266,7 @@ public class DefaultStorageClient implements StorageClient {
             for ( Metadata metadatumToEncrypt : metadataForKey ) {
                 Encryptable<Metadata> encryptedMetadatum = new Encryptable<Metadata>(
                         metadatumToEncrypt,
-                        metadatumToEncrypt.getDocumentId().getDocumentId() );
+                        metadatumToEncrypt.getDocumentId() );
                 metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum, metadatumToEncrypt.getDocumentId() ) );
             }
         }
@@ -295,18 +294,18 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public void deleteMetadata( DocumentId id ) {
+    public void deleteMetadata( String id ) {
         metadataApi.deleteAll( new MetadataDeleteRequest( Lists.newArrayList( id ) ) );
     }
 
     @Override
-    public void deleteDocument( DocumentId id ) {
-        sharingApi.removeIncomingShares( id.getDocumentId() );
-        documentApi.delete( id.getDocumentId() );
+    public void deleteDocument( String id ) {
+        sharingApi.removeIncomingShares( id );
+        documentApi.delete( id );
     }
 
     @Override
-    public List<Document> getDocuments( List<DocumentId> ids ) throws ResourceNotFoundException {
+    public List<Document> getDocuments( List<String> ids ) throws ResourceNotFoundException {
         return documentApi.getDocuments( ids ).getData();
     }
 
