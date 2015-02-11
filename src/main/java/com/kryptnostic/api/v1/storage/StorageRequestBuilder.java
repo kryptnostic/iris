@@ -76,6 +76,6 @@ public class StorageRequestBuilder {
         if ( !isSearchable && !isStoreable ) {
             throw new IllegalStateException( "Not searchable or storeable, so no-op" );
         }
-        return new StorageRequest( objectId, objectBody, isSearchable, isStoreable );
+        return new StorageRequest( objectId, objectBody, isSearchable, isStoreable, type );
     }
 }

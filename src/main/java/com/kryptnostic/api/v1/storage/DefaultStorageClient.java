@@ -50,6 +50,7 @@ import com.kryptnostic.storage.v1.models.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
 import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
+import com.kryptnostic.storage.v1.models.request.PendingObjectRequest;
 import com.kryptnostic.storage.v1.models.request.StorageRequest;
 
 /**
@@ -102,7 +103,7 @@ public class DefaultStorageClient implements StorageClient {
         String id = req.getObjectId();
 
         if ( id == null ) {
-            id = objectApi.createPendingObject().getData();
+            id = objectApi.createPendingObject( new PendingObjectRequest( req.getType() ) ).getData();
         } else {
             objectApi.createPendingObject( id );
         }

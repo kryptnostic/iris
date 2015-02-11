@@ -61,6 +61,7 @@ import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
 import com.kryptnostic.storage.v1.models.ObjectMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
+import com.kryptnostic.storage.v1.models.request.PendingObjectRequest;
 import com.kryptnostic.utils.SecurityConfigurationTestUtils;
 
 @SuppressWarnings( "javadoc" )
@@ -114,14 +115,15 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
 
         storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
 
-        Mockito.when( documentApi.createPendingObject() ).then( new Answer<BasicResponse<String>>() {
+        Mockito.when( documentApi.createPendingObject( Mockito.<PendingObjectRequest> any() ) ).then(
+                new Answer<BasicResponse<String>>() {
 
-            @Override
-            public BasicResponse<String> answer( InvocationOnMock invocation ) throws Throwable {
-                return new BasicResponse<String>( "document1", HttpStatus.SC_OK, true );
-            }
+                    @Override
+                    public BasicResponse<String> answer( InvocationOnMock invocation ) throws Throwable {
+                        return new BasicResponse<String>( "document1", HttpStatus.SC_OK, true );
+                    }
 
-        } );
+                } );
 
         Mockito.when( documentApi.updateObject( Mockito.anyString(), Mockito.any( EncryptableBlock.class ) ) ).then(
                 new Answer<BasicResponse<String>>() {
