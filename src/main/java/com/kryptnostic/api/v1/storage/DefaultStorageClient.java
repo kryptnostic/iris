@@ -43,11 +43,11 @@ import com.kryptnostic.kodex.v1.serialization.crypto.DefaultChunkingStrategy;
 import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.StorageClient;
-import com.kryptnostic.storage.v1.http.DocumentApi;
 import com.kryptnostic.storage.v1.http.MetadataApi;
-import com.kryptnostic.storage.v1.models.Document;
+import com.kryptnostic.storage.v1.http.ObjectApi;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.IndexedMetadata;
+import com.kryptnostic.storage.v1.models.KryptnosticObject;
 import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.storage.v1.models.request.StorageRequest;
@@ -65,7 +65,7 @@ public class DefaultStorageClient implements StorageClient {
     /**
      * Server-side
      */
-    private final DocumentApi         documentApi;
+    private final ObjectApi           objectApi;
     private final MetadataApi         metadataApi;
     private final SharingApi          sharingApi;
 
@@ -79,16 +79,16 @@ public class DefaultStorageClient implements StorageClient {
 
     /**
      * @param context
-     * @param documentApi
+     * @param objectApi
      * @param metadataApi
      */
     public DefaultStorageClient(
             KryptnosticContext context,
-            DocumentApi documentApi,
+            ObjectApi objectApi,
             MetadataApi metadataApi,
             SharingApi sharingApi ) {
         this.context = context;
-        this.documentApi = documentApi;
+        this.objectApi = objectApi;
         this.metadataApi = metadataApi;
         this.sharingApi = sharingApi;
         this.metadataMapper = new PaddedMetadataMapper( context );
@@ -97,36 +97,36 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     public static class StorageRequestBuilder {
-        private String  documentId;
-        private String  documentBody;
+        private String  objectId;
+        private String  objectBody;
         private boolean isSearchable;
         private boolean isStoreable;
 
         public StorageRequestBuilder() {
-            documentBody = null;
-            documentId = null;
+            objectBody = null;
+            objectId = null;
             isSearchable = true;
             isStoreable = true;
         }
 
         private StorageRequestBuilder clone( StorageRequestBuilder o ) {
             StorageRequestBuilder b = new StorageRequestBuilder();
-            b.documentBody = o.documentBody;
-            b.documentId = o.documentId;
+            b.objectBody = o.objectBody;
+            b.objectId = o.objectId;
             b.isSearchable = o.isSearchable;
             b.isStoreable = o.isStoreable;
             return b;
         }
 
-        public StorageRequestBuilder withBody( String documentBody ) {
+        public StorageRequestBuilder withBody( String objectBody ) {
             StorageRequestBuilder b = clone( this );
-            b.documentBody = documentBody;
+            b.objectBody = objectBody;
             return b;
         }
 
-        public StorageRequestBuilder withId( String documentId ) {
+        public StorageRequestBuilder withId( String objectId ) {
             StorageRequestBuilder b = clone( this );
-            b.documentId = documentId;
+            b.objectId = objectId;
             return b;
         }
 
@@ -155,47 +155,47 @@ public class DefaultStorageClient implements StorageClient {
         }
 
         public StorageRequest build() {
-            if ( documentBody == null ) {
-                throw new IllegalStateException( "Document body must not be null" );
+            if ( objectBody == null ) {
+                throw new IllegalStateException( "Object body must not be null" );
             }
             if ( !isSearchable && !isStoreable ) {
                 throw new IllegalStateException( "Not searchable or storeable, so no-op" );
             }
-            return new StorageRequest( documentId, documentBody, isSearchable, isStoreable );
+            return new StorageRequest( objectId, objectBody, isSearchable, isStoreable );
         }
     }
 
     @Override
-    public String uploadDocument( StorageRequest req ) throws BadRequestException, SecurityConfigurationException,
+    public String uploadObject( StorageRequest req ) throws BadRequestException, SecurityConfigurationException,
             IrisException, ResourceLockedException, ResourceNotFoundException {
-        String documentId = req.getDocumentId();
+        String id = req.getObjectId();
 
-        if ( documentId == null ) {
-            documentId = documentApi.createPendingDocument().getData();
+        if ( id == null ) {
+            id = objectApi.createPendingObject().getData();
         } else {
-            documentApi.createPendingDocument( documentId );
+            objectApi.createPendingObject( id );
         }
 
-        Document document = Document.fromIdAndBody( documentId, req.getDocumentBody() );
+        KryptnosticObject obj = KryptnosticObject.fromIdAndBody( id, req.getObjectBody() );
 
-        Preconditions.checkArgument( !document.getBody().isEncrypted() );
-        String docId = document.getMetadata().getId();
-        // upload the document blocks
+        Preconditions.checkArgument( !obj.getBody().isEncrypted() );
+        String objId = obj.getMetadata().getId();
+        // upload the object blocks
         if ( req.isStoreable() ) {
-            storeDocument( document );
+            storeObject( obj );
         }
 
         if ( req.isSearchable() ) {
-            makeDocumentSearchable( document );
+            makeObjectSearchable( obj );
         }
 
-        return docId;
+        return objId;
     }
 
-    private void makeDocumentSearchable( Document document ) throws IrisException, BadRequestException {
+    private void makeObjectSearchable( KryptnosticObject object ) throws IrisException, BadRequestException {
         // index + map tokens for metadata
         Stopwatch watch = Stopwatch.createStarted();
-        Set<Metadata> metadata = indexer.index( document.getMetadata().getId(), document.getBody().getData() );
+        Set<Metadata> metadata = indexer.index( object.getMetadata().getId(), object.getBody().getData() );
         logger.debug( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         // generate nonce
@@ -203,7 +203,7 @@ public class DefaultStorageClient implements StorageClient {
         logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         watch.reset().start();
-        context.submitBridgeKeyWithSearchNonce( document.getMetadata().getId(), sharingKey );
+        context.submitBridgeKeyWithSearchNonce( object.getMetadata().getId(), sharingKey );
 
         logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         watch.reset().start();
@@ -213,18 +213,18 @@ public class DefaultStorageClient implements StorageClient {
 
     }
 
-    private void storeDocument( Document document ) throws SecurityConfigurationException, IrisException {
+    private void storeObject( KryptnosticObject object ) throws SecurityConfigurationException, IrisException {
         try {
-            document = document.encrypt( loader );
+            object = object.encrypt( loader );
         } catch ( ClassNotFoundException | IOException e ) {
             throw new SecurityConfigurationException( e );
         }
-        submitBlocksToServer( document );
+        submitBlocksToServer( object );
     }
 
     @Override
-    public Document getDocument( String id ) throws ResourceNotFoundException {
-        return documentApi.getDocument( id ).getData();
+    public KryptnosticObject getObject( String id ) throws ResourceNotFoundException {
+        return objectApi.getObject( id );
     }
 
     @Override
@@ -233,13 +233,13 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public Collection<String> getDocumentIds() {
-        return documentApi.getDocumentIds().getData();
+    public Collection<String> getObjectIds() {
+        return objectApi.getObjectIds().getData();
     }
 
     @Override
-    public Collection<String> getDocumentIds( int offset, int pageSize ) {
-        return documentApi.getDocumentIds( offset, pageSize ).getData();
+    public Collection<String> getObjectIds( int offset, int pageSize ) {
+        return objectApi.getObjectIds( offset, pageSize ).getData();
     }
 
     /**
@@ -266,8 +266,8 @@ public class DefaultStorageClient implements StorageClient {
             for ( Metadata metadatumToEncrypt : metadataForKey ) {
                 Encryptable<Metadata> encryptedMetadatum = new Encryptable<Metadata>(
                         metadatumToEncrypt,
-                        metadatumToEncrypt.getDocumentId() );
-                metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum, metadatumToEncrypt.getDocumentId() ) );
+                        metadatumToEncrypt.getObjectId() );
+                metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
             }
         }
         return new MetadataRequest( metadataIndex );
@@ -276,20 +276,20 @@ public class DefaultStorageClient implements StorageClient {
     /**
      * Submit blocks in parallel
      * 
-     * @param documentId
+     * @param objectId
      * @param blocks
      * @throws IrisException
      */
-    private void submitBlocksToServer( final Document document ) throws IrisException {
-        Preconditions.checkNotNull( document.getBody().getEncryptedData() );
-        final String documentId = document.getMetadata().getId();
-        for ( EncryptableBlock input : document.getBody().getEncryptedData() ) {
+    private void submitBlocksToServer( final KryptnosticObject obj ) throws IrisException {
+        Preconditions.checkNotNull( obj.getBody().getEncryptedData() );
+        final String objectId = obj.getMetadata().getId();
+        for ( EncryptableBlock input : obj.getBody().getEncryptedData() ) {
             try {
-                documentApi.updateDocument( documentId, input );
+                objectApi.updateObject( objectId, input );
             } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
                 logger.error( "Failed to uploaded block. Should probably add a retry here!" );
             }
-            logger.info( "Document block uploaded completed for document {} and block {}", documentId, input.getIndex() );
+            logger.info( "Object block upload completed for object {} and block {}", objectId, input.getIndex() );
         }
     }
 
@@ -299,29 +299,28 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public void deleteDocument( String id ) {
+    public void deleteObject( String id ) {
         sharingApi.removeIncomingShares( id );
-        documentApi.delete( id );
+        objectApi.delete( id );
     }
 
     @Override
-    public List<Document> getDocuments( List<String> ids ) throws ResourceNotFoundException {
-        return documentApi.getDocuments( ids ).getData();
+    public List<KryptnosticObject> getObjects( List<String> ids ) throws ResourceNotFoundException {
+        return objectApi.getObjects( ids ).getData();
     }
 
     @Override
-    public List<EncryptableBlock> getDocumentBlocks( String id, List<Integer> indices )
-            throws ResourceNotFoundException {
-        return documentApi.getDocumentBlocks( id, indices ).getData();
+    public List<EncryptableBlock> getObjectBlocks( String id, List<Integer> indices ) throws ResourceNotFoundException {
+        return objectApi.getObjectBlocks( id, indices ).getData();
     }
 
     @Override
-    public Map<Integer, String> getDocumentPreview( String documentId, List<Integer> locations, int wordRadius )
+    public Map<Integer, String> getObjectPreview( String objectId, List<Integer> locations, int wordRadius )
             throws SecurityConfigurationException, ExecutionException, ResourceNotFoundException {
         Map<Integer, Integer> offsetsToBlockIndex = DefaultChunkingStrategy.getBlockIndexForByteOffset( locations );
 
-        List<EncryptableBlock> blocks = getDocumentBlocks(
-                documentId,
+        List<EncryptableBlock> blocks = getObjectBlocks(
+                objectId,
                 Lists.newArrayList( Sets.newHashSet( offsetsToBlockIndex.values() ) ) );
 
         Map<Integer, EncryptableBlock> offsetsToBlock = Maps.newHashMap();
@@ -338,7 +337,7 @@ public class DefaultStorageClient implements StorageClient {
         for ( Map.Entry<Integer, EncryptableBlock> entry : offsetsToBlock.entrySet() ) {
             offsetsToString.put(
                     entry.getKey(),
-                    StringUtils.newStringUtf8( loader.get( documentId ).decryptBytes( entry.getValue().getBlock() ) ) );
+                    StringUtils.newStringUtf8( loader.get( objectId ).decryptBytes( entry.getValue().getBlock() ) ) );
         }
 
         Map<Integer, String> offsetsToPreview = Maps.newHashMap();

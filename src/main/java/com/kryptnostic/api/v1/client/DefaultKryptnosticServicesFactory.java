@@ -10,7 +10,7 @@ import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.search.v1.http.SearchApi;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.storage.v1.http.DocumentApi;
+import com.kryptnostic.storage.v1.http.ObjectApi;
 import com.kryptnostic.storage.v1.http.MetadataApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 
@@ -18,7 +18,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     private final static Logger     logger = LoggerFactory.getLogger( DefaultKryptnosticServicesFactory.class );
 
     private final MetadataApi       metadataApi;
-    private final DocumentApi       documentApi;
+    private final ObjectApi       documentApi;
     private final SearchApi         searchApi;
     private final SearchFunctionApi searchFunctionApi;
     private final SharingApi        sharingApi;
@@ -29,7 +29,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     }
 
     public DefaultKryptnosticServicesFactory( RestAdapter restAdapter ) {
-        documentApi = restAdapter.create( DocumentApi.class );
+        documentApi = restAdapter.create( ObjectApi.class );
         metadataApi = restAdapter.create( MetadataApi.class );
         searchApi = restAdapter.create( SearchApi.class );
         searchFunctionApi = restAdapter.create( SearchFunctionApi.class );
@@ -43,7 +43,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     }
 
     @Override
-    public DocumentApi createDocumentApi() {
+    public ObjectApi createDocumentApi() {
         return documentApi;
     }
 

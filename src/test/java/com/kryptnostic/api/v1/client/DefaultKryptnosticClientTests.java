@@ -57,7 +57,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
-import com.kryptnostic.storage.v1.http.DocumentApi;
+import com.kryptnostic.storage.v1.http.ObjectApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 import com.kryptnostic.utils.SecurityConfigurationTestUtils;
@@ -109,10 +109,11 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
 
     private void generateDocumentStubs() {
         try {
-            stubFor( get( urlEqualTo( "/directory/document/DOCUMENT_0" ) ).willReturn(
+            stubFor( get( urlEqualTo( "/directory/object/DOCUMENT_0" ) ).willReturn(
                     aResponse().withBody(
                             serialize( new BasicResponse<byte[]>( connection.getRsaCryptoService().encrypt(
                                     new AesCryptoService( Cypher.AES_CTR_128 ) ), 200, true ) ) ) ) );
+            stubFor( post( urlEqualTo( "/directory/object/DOCUMENT_0" ) ).willReturn( aResponse() ) );
         } catch (
                 IOException
                 | SecurityConfigurationException
@@ -163,13 +164,13 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException {
         String docId = "DOCUMENT_1";
-        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + docId;
+        String documentUpdateUrl = ObjectApi.OBJECT + "/" + docId;
 
         String docIdResponse = serialize( new BasicResponse<String>( docId, 200, true ) );
 
         stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
 
-        String receivedDocId = client.getStorageClient().uploadDocument(
+        String receivedDocId = client.getStorageClient().uploadObject(
                 new StorageRequestBuilder().withBody( "test" ).withId( docId ).build() );
 
         Assert.assertEquals( docId, receivedDocId );
@@ -182,15 +183,15 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException {
         String docId = "DOCUMENT_0";
-        String documentCreateUrl = DocumentApi.DOCUMENT;
-        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + docId;
+        String documentCreateUrl = ObjectApi.OBJECT;
+        String documentUpdateUrl = ObjectApi.OBJECT + "/" + docId;
 
         String docIdResponse = serialize( new BasicResponse<String>( docId, 200, true ) );
 
         stubFor( put( urlMatching( documentCreateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
         stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
 
-        String receivedDocId = client.getStorageClient().uploadDocument(
+        String receivedDocId = client.getStorageClient().uploadObject(
                 new StorageRequestBuilder().withBody( "test" ).notSearchable().build() );
         Assert.assertEquals( docId, receivedDocId );
 

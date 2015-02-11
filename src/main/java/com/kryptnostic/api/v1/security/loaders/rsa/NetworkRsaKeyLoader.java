@@ -18,8 +18,8 @@ import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 
 public final class NetworkRsaKeyLoader extends RsaKeyLoader {
     private final PasswordCryptoService crypto;
-    private final DirectoryApi        keyClient;
-    private final UserKey       userKey;
+    private final DirectoryApi          keyClient;
+    private final UserKey               userKey;
 
     public NetworkRsaKeyLoader( PasswordCryptoService crypto, DirectoryApi keyClient, UserKey userKey ) throws KodexException {
         if ( crypto == null || keyClient == null || userKey == null ) {
@@ -33,7 +33,7 @@ public final class NetworkRsaKeyLoader extends RsaKeyLoader {
     @Override
     protected KeyPair tryLoading() throws KodexException {
         BlockCiphertext rsaPrivateKeyCiphertext = keyClient.getPrivateKey();
-        PublicKeyEnvelope envelope = keyClient.getPublicKey( userKey.getRealm(), userKey.getName() );
+        PublicKeyEnvelope envelope = keyClient.getPublicKey( userKey.getName() );
         if ( rsaPrivateKeyCiphertext == null || envelope == null ) {
             throw new KodexException( "Encryption keys could not be retrieved from the network" );
         }

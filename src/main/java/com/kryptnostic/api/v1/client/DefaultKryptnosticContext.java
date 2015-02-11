@@ -37,7 +37,7 @@ import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
-import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
+import com.kryptnostic.storage.v1.models.EncryptedSearchObjectKey;
 
 /**
  * 
@@ -137,8 +137,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public EncryptedSearchSharingKey generateSharingKey() {
-        EnhancedBitMatrix documentKey = connection.getEncryptedSearchPrivateKey().newDocumentKey();
-        EncryptedSearchSharingKey sharingKey = new EncryptedSearchSharingKey( documentKey );
+        EnhancedBitMatrix objectKey = connection.getEncryptedSearchPrivateKey().newObjectKey();
+        EncryptedSearchSharingKey sharingKey = new EncryptedSearchSharingKey( objectKey );
 
         return sharingKey;
     }
@@ -153,12 +153,12 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public void submitBridgeKeyWithSearchNonce( String documentId, EncryptedSearchSharingKey sharingKey )
+    public void submitBridgeKeyWithSearchNonce( String objectId, EncryptedSearchSharingKey sharingKey )
             throws IrisException {
 
         try {
             connection.getDataStore().put(
-                    documentId,
+                    objectId,
                     EncryptedSearchSharingKey.class.getCanonicalName(),
                     marshaller.toBytes( sharingKey ) );
         } catch ( IOException e1 ) {
@@ -167,7 +167,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
         EncryptedSearchBridgeKey bridgeKey = fromSharingKey( sharingKey );
 
-        EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( bridgeKey, documentId );
+        EncryptedSearchObjectKey docKey = new EncryptedSearchObjectKey( bridgeKey, objectId );
 
         sharingClient.registerKeys( ImmutableSet.of( docKey ) );
     }
@@ -212,7 +212,6 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             public RsaCompressingEncryptionService apply( UserKey input ) {
                 try {
                     return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, directoryClient.getPublicKey(
-                            input.getRealm(),
                             input.getName() ).asRsaPublicKey() );
                 } catch ( InvalidKeySpecException | NoSuchAlgorithmException | SecurityConfigurationException e ) {
                     return null;

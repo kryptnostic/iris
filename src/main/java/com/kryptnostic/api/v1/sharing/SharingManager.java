@@ -30,7 +30,7 @@ import com.kryptnostic.sharing.v1.models.IncomingShares;
 import com.kryptnostic.sharing.v1.models.Share;
 import com.kryptnostic.sharing.v1.models.request.KeyRegistrationRequest;
 import com.kryptnostic.sharing.v1.models.request.SharingRequest;
-import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
+import com.kryptnostic.storage.v1.models.EncryptedSearchObjectKey;
 
 public class SharingManager implements SharingClient {
     private static final Logger               logger     = LoggerFactory.getLogger( SharingManager.class );
@@ -45,13 +45,13 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public void shareDocumentWithUsers( CryptoServiceLoader loader, String documentId, Set<UserKey> users ) {
+    public void shareObjectWithUsers( CryptoServiceLoader loader, String objectId, Set<UserKey> users ) {
 
         DataStore dataStore = context.getConnection().getDataStore();
         EncryptedSearchSharingKey sharingKey = null;
         try {
             sharingKey = marshaller.fromBytes(
-                    dataStore.get( documentId, EncryptedSearchSharingKey.class.getCanonicalName() ),
+                    dataStore.get( objectId, EncryptedSearchSharingKey.class.getCanonicalName() ),
                     EncryptedSearchSharingKey.class );
         } catch ( IOException e1 ) {
             e1.printStackTrace();
@@ -59,7 +59,7 @@ public class SharingManager implements SharingClient {
 
         AesCryptoService service;
         try {
-            service = (AesCryptoService) loader.get( documentId );
+            service = (AesCryptoService) loader.get( objectId );
             Map<UserKey, RsaCompressingEncryptionService> services = context.getEncryptionServiceForUsers( users );
             Map<UserKey, byte[]> seals = Maps.newHashMap();
             for ( Entry<UserKey, RsaCompressingEncryptionService> serviceEntry : services.entrySet() ) {
@@ -68,8 +68,8 @@ public class SharingManager implements SharingClient {
 
             byte[] encryptedSharingKey = mapper.writeValueAsBytes( service.encrypt( marshaller.toBytes( sharingKey ) ) );
 
-            SharingRequest request = new SharingRequest( documentId, seals, encryptedSharingKey );
-            sharingApi.shareDocument( request );
+            SharingRequest request = new SharingRequest( objectId, seals, encryptedSharingKey );
+            sharingApi.share( request );
 
         } catch ( SecurityConfigurationException | IOException | ExecutionException e ) {
             e.printStackTrace();
@@ -82,10 +82,10 @@ public class SharingManager implements SharingClient {
         if ( incomingShares == null || incomingShares.isEmpty() ) {
             return 0;
         }
-        Set<EncryptedSearchDocumentKey> keys = Sets.newHashSet();
+        Set<EncryptedSearchObjectKey> keys = Sets.newHashSet();
 
         for ( Share share : incomingShares ) {
-            String id = share.getDocumentId();
+            String id = share.getObjectId();
             AesCryptoService decryptor;
             try {
                 logger.info( "Processing share for {}", id );
@@ -100,24 +100,19 @@ public class SharingManager implements SharingClient {
                             BlockCiphertext.class ) ), EncryptedSearchSharingKey.class );
 
             if ( sharingKey == null ) {
-                logger.error( "Null sharing key for document {}", id );
+                logger.error( "Null sharing key for object {}", id );
                 continue;
             }
 
-            EncryptedSearchDocumentKey documentKey = null;
+            EncryptedSearchObjectKey searchKey = null;
 
             try {
-                documentKey = new EncryptedSearchDocumentKey(
-                        context.fromSharingKey( sharingKey ),
-                        share.getDocumentId() );
+                searchKey = new EncryptedSearchObjectKey( context.fromSharingKey( sharingKey ), share.getObjectId() );
             } catch ( IrisException e ) {
-                logger.error(
-                        "Unable to create encrypted search document key for document: {}",
-                        share.getDocumentId(),
-                        e );
+                logger.error( "Unable to create encrypted search key for object: {}", share.getObjectId(), e );
             }
 
-            keys.add( documentKey );
+            keys.add( searchKey );
         }
         KeyRegistrationRequest request = new KeyRegistrationRequest( keys );
         sharingApi.registerKeys( request );
@@ -125,7 +120,7 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public void unsharedDocumentWithUsers( String documentId, Set<UserKey> users ) {
+    public void unshareObjectWithUsers( String objectId, Set<UserKey> users ) {
 
     }
 

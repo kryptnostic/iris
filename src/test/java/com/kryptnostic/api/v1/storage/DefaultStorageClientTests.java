@@ -55,12 +55,12 @@ import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.StorageClient;
-import com.kryptnostic.storage.v1.http.DocumentApi;
 import com.kryptnostic.storage.v1.http.MetadataApi;
+import com.kryptnostic.storage.v1.http.ObjectApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
-import com.kryptnostic.storage.v1.models.Document;
-import com.kryptnostic.storage.v1.models.DocumentMetadata;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
+import com.kryptnostic.storage.v1.models.KryptnosticObject;
+import com.kryptnostic.storage.v1.models.ObjectMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.utils.SecurityConfigurationTestUtils;
 
@@ -102,7 +102,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     public void uploadingWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
             NoSuchAlgorithmException, JsonProcessingException {
-        DocumentApi documentApi = Mockito.mock( DocumentApi.class );
+        ObjectApi documentApi = Mockito.mock( ObjectApi.class );
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         SharingApi sharingApi = Mockito.mock( SharingApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
@@ -115,7 +115,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
 
         storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
 
-        Mockito.when( documentApi.createPendingDocument() ).then( new Answer<BasicResponse<String>>() {
+        Mockito.when( documentApi.createPendingObject() ).then( new Answer<BasicResponse<String>>() {
 
             @Override
             public BasicResponse<String> answer( InvocationOnMock invocation ) throws Throwable {
@@ -124,7 +124,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
 
         } );
 
-        Mockito.when( documentApi.updateDocument( Mockito.anyString(), Mockito.any( EncryptableBlock.class ) ) ).then(
+        Mockito.when( documentApi.updateObject( Mockito.anyString(), Mockito.any( EncryptableBlock.class ) ) ).then(
                 new Answer<BasicResponse<String>>() {
 
                     @Override
@@ -147,9 +147,9 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         loader.put( "document1", crypto );
         loader.put( "test", crypto );
 
-        storageService.uploadDocument( new StorageRequestBuilder().withBody( "test" ).notSearchable().build() );
+        storageService.uploadObject( new StorageRequestBuilder().withBody( "test" ).notSearchable().build() );
 
-        storageService.uploadDocument( new StorageRequestBuilder().withBody( "test" ).withId( "test" ).notSearchable()
+        storageService.uploadObject( new StorageRequestBuilder().withBody( "test" ).withId( "test" ).notSearchable()
                 .build() );
     }
 
@@ -157,7 +157,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     public void documentFragmentTest() throws BadRequestException, ResourceNotFoundException,
             ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
             NoSuchAlgorithmException, ExecutionException, ClassNotFoundException, IOException {
-        DocumentApi documentApi = Mockito.mock( DocumentApi.class );
+        ObjectApi documentApi = Mockito.mock( ObjectApi.class );
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         SharingApi sharingApi = Mockito.mock( SharingApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
@@ -173,9 +173,9 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
                         - ( intermediate.length() * 2 ) ] ) + intermediate + word;
         String docId = "doc1";
         loader.put( docId, crypto );
-        Document doc = new Document( new DocumentMetadata( docId ), docBody ).encrypt( loader );
+        KryptnosticObject doc = new KryptnosticObject( new ObjectMetadata( docId ), docBody ).encrypt( loader );
         List<EncryptableBlock> blocks = Arrays.asList( doc.getBody().getEncryptedData() );
-        Mockito.when( documentApi.getDocumentBlocks( Mockito.anyString(), Mockito.anyList() ) ).thenReturn(
+        Mockito.when( documentApi.getObjectBlocks( Mockito.anyString(), Mockito.anyList() ) ).thenReturn(
                 new BasicResponse<List<EncryptableBlock>>( blocks, 200, true ) );
 
         Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
@@ -183,7 +183,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
 
         storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
 
-        Map<Integer, String> preview = storageService.getDocumentPreview(
+        Map<Integer, String> preview = storageService.getObjectPreview(
                 docId,
                 Arrays.asList( 0, DefaultChunkingStrategy.BLOCK_LENGTH_IN_BYTES ),
                 2 );
