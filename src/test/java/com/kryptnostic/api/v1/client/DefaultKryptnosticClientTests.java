@@ -38,7 +38,7 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
-import com.kryptnostic.api.v1.storage.DefaultStorageClient.StorageRequestBuilder;
+import com.kryptnostic.api.v1.storage.StorageRequestBuilder;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.directory.v1.models.response.PublicKeyEnvelope;

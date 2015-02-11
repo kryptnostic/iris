@@ -96,75 +96,6 @@ public class DefaultStorageClient implements StorageClient {
         this.loader = context.getConnection().getCryptoServiceLoader();
     }
 
-    public static class StorageRequestBuilder {
-        private String  objectId;
-        private String  objectBody;
-        private boolean isSearchable;
-        private boolean isStoreable;
-
-        public StorageRequestBuilder() {
-            objectBody = null;
-            objectId = null;
-            isSearchable = true;
-            isStoreable = true;
-        }
-
-        private StorageRequestBuilder clone( StorageRequestBuilder o ) {
-            StorageRequestBuilder b = new StorageRequestBuilder();
-            b.objectBody = o.objectBody;
-            b.objectId = o.objectId;
-            b.isSearchable = o.isSearchable;
-            b.isStoreable = o.isStoreable;
-            return b;
-        }
-
-        public StorageRequestBuilder withBody( String objectBody ) {
-            StorageRequestBuilder b = clone( this );
-            b.objectBody = objectBody;
-            return b;
-        }
-
-        public StorageRequestBuilder withId( String objectId ) {
-            StorageRequestBuilder b = clone( this );
-            b.objectId = objectId;
-            return b;
-        }
-
-        public StorageRequestBuilder searchable() {
-            StorageRequestBuilder b = clone( this );
-            b.isSearchable = true;
-            return b;
-        }
-
-        public StorageRequestBuilder storeable() {
-            StorageRequestBuilder b = clone( this );
-            b.isStoreable = true;
-            return b;
-        }
-
-        public StorageRequestBuilder notSearchable() {
-            StorageRequestBuilder b = clone( this );
-            b.isSearchable = false;
-            return b;
-        }
-
-        public StorageRequestBuilder notStoreable() {
-            StorageRequestBuilder b = clone( this );
-            b.isStoreable = false;
-            return b;
-        }
-
-        public StorageRequest build() {
-            if ( objectBody == null ) {
-                throw new IllegalStateException( "Object body must not be null" );
-            }
-            if ( !isSearchable && !isStoreable ) {
-                throw new IllegalStateException( "Not searchable or storeable, so no-op" );
-            }
-            return new StorageRequest( objectId, objectBody, isSearchable, isStoreable );
-        }
-    }
-
     @Override
     public String uploadObject( StorageRequest req ) throws BadRequestException, SecurityConfigurationException,
             IrisException, ResourceLockedException, ResourceNotFoundException {
@@ -240,6 +171,11 @@ public class DefaultStorageClient implements StorageClient {
     @Override
     public Collection<String> getObjectIds( int offset, int pageSize ) {
         return objectApi.getObjectIds( offset, pageSize ).getData();
+    }
+
+    @Override
+    public Collection<String> getObjectIdsByType( String type ) {
+        return objectApi.getObjectIdsByType( type ).getData();
     }
 
     /**
