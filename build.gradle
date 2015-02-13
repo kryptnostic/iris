@@ -138,7 +138,7 @@ task javadocJar(type: Jar) {
 }
 
 artifacts {
-	archives sourcesJar,javadocJar
+	archives jar,sourcesJar,javadocJar
 }
 
 sourceCompatibility=JavaVersion.VERSION_1_7
