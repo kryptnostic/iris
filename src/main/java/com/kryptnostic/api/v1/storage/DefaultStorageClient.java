@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
@@ -28,6 +30,8 @@ import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.api.v1.utils.DocumentFragmentFormatter;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -41,6 +45,7 @@ import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.serialization.crypto.DefaultChunkingStrategy;
 import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
+import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.http.MetadataApi;
@@ -48,6 +53,7 @@ import com.kryptnostic.storage.v1.http.ObjectApi;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
+import com.kryptnostic.storage.v1.models.ObjectMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.storage.v1.models.request.PendingObjectRequest;
@@ -287,5 +293,29 @@ public class DefaultStorageClient implements StorageClient {
         }
 
         return offsetsToPreview;
+    }
+
+    @Override
+    public String appendObject( ObjectMetadata objectMetadata, String body ) throws SecurityConfigurationException,
+            ExecutionException, ResourceNotFoundException {
+        CryptoService crypto = this.context.getConnection().getCryptoServiceLoader().get( objectMetadata.getId() );
+
+        int curNumBlocks = objectMetadata.getNumBlocks();
+        BlockCiphertext ciphertext = crypto.encrypt( body.getBytes() );
+
+        EncryptableBlock blockToAppend = new EncryptableBlock( ciphertext, Encryptable.hashFunction.hashBytes(
+                ciphertext.getContents() ).asBytes(), curNumBlocks, true, crypto.encrypt( String.class
+                .getCanonicalName().getBytes() ), objectMetadata.getChunkingStrategy() );
+
+        ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
+        String str = null;
+        try {
+            str = mapper.writeValueAsString( blockToAppend );
+        } catch ( JsonProcessingException e ) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        return objectApi.appendObject( objectMetadata.getId(), blockToAppend ).getData();
     }
 }
