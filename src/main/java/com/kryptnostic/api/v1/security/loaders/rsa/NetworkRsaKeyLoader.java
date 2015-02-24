@@ -14,6 +14,7 @@ import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
 import com.kryptnostic.kodex.v1.crypto.keys.PublicKeyAlgorithm;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 
 public final class NetworkRsaKeyLoader extends RsaKeyLoader {
@@ -33,7 +34,12 @@ public final class NetworkRsaKeyLoader extends RsaKeyLoader {
     @Override
     protected KeyPair tryLoading() throws KodexException {
         BlockCiphertext rsaPrivateKeyCiphertext = keyClient.getPrivateKey();
-        PublicKeyEnvelope envelope = keyClient.getPublicKey( userKey.getName() );
+        PublicKeyEnvelope envelope = null;
+        try {
+            envelope = keyClient.getPublicKey( userKey.getName() );
+        } catch ( ResourceNotFoundException e1 ) {
+            e1.printStackTrace();
+        }
         if ( rsaPrivateKeyCiphertext == null || envelope == null ) {
             throw new KodexException( "Encryption keys could not be retrieved from the network" );
         }

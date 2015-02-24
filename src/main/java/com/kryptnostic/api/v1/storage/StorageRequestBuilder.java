@@ -1,5 +1,6 @@
 package com.kryptnostic.api.v1.storage;
 
+import com.kryptnostic.storage.v1.models.ObjectMetadata;
 import com.kryptnostic.storage.v1.models.request.StorageRequest;
 
 public class StorageRequestBuilder {
@@ -14,7 +15,7 @@ public class StorageRequestBuilder {
         objectId = null;
         isSearchable = true;
         isStoreable = true;
-        type = null;
+        type = ObjectMetadata.DEFAULT_TYPE;
     }
 
     private StorageRequestBuilder clone( StorageRequestBuilder o ) {

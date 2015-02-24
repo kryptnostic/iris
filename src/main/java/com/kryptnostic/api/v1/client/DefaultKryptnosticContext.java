@@ -213,7 +213,11 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                 try {
                     return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, directoryClient.getPublicKey(
                             input.getName() ).asRsaPublicKey() );
-                } catch ( InvalidKeySpecException | NoSuchAlgorithmException | SecurityConfigurationException e ) {
+                } catch (
+                        InvalidKeySpecException
+                        | NoSuchAlgorithmException
+                        | SecurityConfigurationException
+                        | ResourceNotFoundException e ) {
                     return null;
                 }
             }
