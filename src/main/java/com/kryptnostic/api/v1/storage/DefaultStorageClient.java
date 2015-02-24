@@ -185,6 +185,11 @@ public class DefaultStorageClient implements StorageClient {
         return objectApi.getObjectIdsByType( type ).getData();
     }
 
+    @Override
+    public Collection<String> getObjectIdsByType( String type, int offset, int pageSize ) {
+        return objectApi.getObjectIdsByType( type, offset, pageSize ).getData();
+    }
+
     /**
      * Maps all metadata to an index that the server can compute when searching
      * 
