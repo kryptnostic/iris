@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.codec.binary.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -310,7 +311,7 @@ public class DefaultStorageClient implements StorageClient {
 
         EncryptableBlock blockToAppend = new EncryptableBlock( ciphertext, Encryptable.hashFunction.hashBytes(
                 ciphertext.getContents() ).asBytes(), curNumBlocks, true, crypto.encrypt( String.class
-                .getCanonicalName().getBytes() ), objectMetadata.getChunkingStrategy() );
+                .getCanonicalName().getBytes() ), objectMetadata.getChunkingStrategy(), DateTime.now() );
 
         ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
         String str = null;
@@ -322,5 +323,10 @@ public class DefaultStorageClient implements StorageClient {
         }
 
         return objectApi.appendObject( objectMetadata.getId(), blockToAppend ).getData();
+    }
+
+    @Override
+    public ObjectMetadata getObjectMetadata( String id ) throws ResourceNotFoundException {
+        return objectApi.getObjectMetadata( id );
     }
 }
