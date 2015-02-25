@@ -29,6 +29,8 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.api.v1.utils.DocumentFragmentFormatter;
+import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
+import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
@@ -303,7 +305,7 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public String appendObject( ObjectMetadata objectMetadata, String body ) throws SecurityConfigurationException,
-            ExecutionException, ResourceNotFoundException {
+            ExecutionException, ResourceNotFoundException, IrisException, BadRequestException {
         CryptoService crypto = this.context.getConnection().getCryptoServiceLoader().get( objectMetadata.getId() );
 
         int curNumBlocks = objectMetadata.getNumBlocks();
@@ -322,6 +324,14 @@ public class DefaultStorageClient implements StorageClient {
             e.printStackTrace();
         }
 
+        Set<Metadata> metadata = indexer.index( objectMetadata.getId(), body );
+        EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
+        EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectMetadata.getId() )
+                .getBridgeKey();
+
+        EncryptedSearchSharingKey encryptedSearchSharingKey = privKey.calculateSharingKey( bridgeKey );
+        MetadataRequest mreq = prepareMetadata( metadata, encryptedSearchSharingKey );
+        uploadMetadata( mreq );
         return objectApi.appendObject( objectMetadata.getId(), blockToAppend ).getData();
     }
 
