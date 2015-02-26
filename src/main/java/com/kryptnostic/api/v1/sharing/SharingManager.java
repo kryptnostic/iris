@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
+import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
@@ -46,17 +48,13 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public void shareObjectWithUsers( CryptoServiceLoader loader, String objectId, Set<UserKey> users ) {
-
+    public void shareObjectWithUsers( String objectId, Set<UserKey> users ) throws ResourceNotFoundException {
+        CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
         DataStore dataStore = context.getConnection().getDataStore();
-        EncryptedSearchSharingKey sharingKey = null;
-        try {
-            sharingKey = marshaller.fromBytes(
-                    dataStore.get( objectId, EncryptedSearchSharingKey.class.getCanonicalName() ),
-                    EncryptedSearchSharingKey.class );
-        } catch ( IOException e1 ) {
-            e1.printStackTrace();
-        }
+        EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
+        EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectId ).getBridgeKey();
+
+        EncryptedSearchSharingKey sharingKey = privKey.calculateSharingKey( bridgeKey );
 
         AesCryptoService service;
         try {
@@ -78,7 +76,8 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public int processIncomingShares( CryptoServiceLoader loader ) throws IOException, SecurityConfigurationException {
+    public int processIncomingShares() throws IOException, SecurityConfigurationException {
+        CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
         IncomingShares incomingShares = sharingApi.getIncomingShares();
         if ( incomingShares == null || incomingShares.isEmpty() ) {
             return 0;
