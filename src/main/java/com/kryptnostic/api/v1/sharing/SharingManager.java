@@ -93,11 +93,14 @@ public class SharingManager implements SharingClient {
             } catch ( ExecutionException e ) {
                 throw new IOException( e );
             }
-
-            EncryptedSearchSharingKey sharingKey = marshaller
-                    .fromBytes( decryptor.decryptBytes( mapper.readValue(
-                            share.getEncryptedSharingKey(),
-                            BlockCiphertext.class ) ), EncryptedSearchSharingKey.class );
+            EncryptedSearchSharingKey sharingKey = null;
+            try {
+                sharingKey = marshaller.fromBytes( decryptor.decryptBytes( mapper.readValue(
+                        share.getEncryptedSharingKey(),
+                        BlockCiphertext.class ) ), EncryptedSearchSharingKey.class );
+            } catch ( NegativeArraySizeException e ) {
+                e.printStackTrace();
+            }
 
             if ( sharingKey == null ) {
                 logger.error( "Null sharing key for object {}", id );
