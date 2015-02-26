@@ -8,6 +8,7 @@ import com.kryptnostic.directory.v1.models.UserKey;
 import com.kryptnostic.directory.v1.models.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.sharing.v1.models.NotificationPreference;
 
 public class DefaultDirectoryClient implements DirectoryClient {
 
@@ -27,6 +28,16 @@ public class DefaultDirectoryClient implements DirectoryClient {
     @Override
     public PublicKeyEnvelope getPublicKey( String username ) throws ResourceNotFoundException {
         return directoryApi.getPublicKey( username );
+    }
+
+    @Override
+    public NotificationPreference getNotificationPreference() {
+        return directoryApi.getNotificationPreference().getData();
+    }
+
+    @Override
+    public void setNotificationPreference( NotificationPreference preference ) {
+        directoryApi.setNotificationPreference( preference );
     }
 
 }
