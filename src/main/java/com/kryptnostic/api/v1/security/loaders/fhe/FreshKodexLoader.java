@@ -27,23 +27,35 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class FreshKodexLoader extends KodexLoader {
 
-    private static final Logger            logger = LoggerFactory.getLogger( FreshKodexLoader.class );
+    private static final Logger            logger           = LoggerFactory.getLogger( FreshKodexLoader.class );
     private final KeyPair                  keyPair;
     private final SimplePolynomialFunction globalHashFunction;
     private final DataStore                dataStore;
     private final SearchFunctionApi        searchFunctionApi;
+    private final int                      keySize;
+    private static final int               DEFAULT_KEY_SIZE = 128;
 
     public FreshKodexLoader(
             KeyPair keyPair,
             SimplePolynomialFunction globalHashFunction,
             SearchFunctionApi searchFunctionApi,
-            DataStore dataStore ) {
+            DataStore dataStore,
+            int keySize ) {
         Preconditions.checkNotNull( globalHashFunction );
         Preconditions.checkNotNull( keyPair );
         this.keyPair = keyPair;
         this.globalHashFunction = globalHashFunction;
         this.dataStore = dataStore;
         this.searchFunctionApi = searchFunctionApi;
+        this.keySize = keySize;
+    }
+
+    public FreshKodexLoader(
+            KeyPair keyPair,
+            SimplePolynomialFunction globalHashFunction,
+            SearchFunctionApi searchFunctionApi,
+            DataStore dataStore ) {
+        this( keyPair, globalHashFunction, searchFunctionApi, dataStore, DEFAULT_KEY_SIZE );
     }
 
     /**
@@ -76,7 +88,7 @@ public class FreshKodexLoader extends KodexLoader {
         }
     }
 
-    private void generateAllKeys( Kodex<String> kodex ) throws SealedKodexException, KodexException,
+    protected void generateAllKeys( Kodex<String> kodex ) throws SealedKodexException, KodexException,
             SecurityConfigurationException, SingularMatrixException, IOException {
         com.kryptnostic.crypto.PrivateKey fhePrivateKey = getFhePrivateKey();
         com.kryptnostic.crypto.PublicKey fhePublicKey = getFhePublicKey( fhePrivateKey );
@@ -100,7 +112,7 @@ public class FreshKodexLoader extends KodexLoader {
 
     }
 
-    private QueryHasherPairRequest getQueryHasher(
+    protected QueryHasherPairRequest getQueryHasher(
             EncryptedSearchPrivateKey encryptedSearchPrivateKey,
             com.kryptnostic.crypto.PrivateKey fhePrivateKey ) throws SingularMatrixException, IOException {
         Pair<SimplePolynomialFunction, SimplePolynomialFunction> pair = encryptedSearchPrivateKey.getQueryHasherPair(
@@ -110,15 +122,15 @@ public class FreshKodexLoader extends KodexLoader {
         return new QueryHasherPairRequest( pair.getLeft(), pair.getRight() );
     }
 
-    private EncryptedSearchPrivateKey getEncryptedSearchPrivateKey() throws SingularMatrixException {
+    protected EncryptedSearchPrivateKey getEncryptedSearchPrivateKey() throws SingularMatrixException {
         return new EncryptedSearchPrivateKey( (int) Math.sqrt( globalHashFunction.getOutputLength() ) );
     }
 
-    private com.kryptnostic.crypto.PublicKey getFhePublicKey( com.kryptnostic.crypto.PrivateKey fhePrivateKey ) {
+    protected com.kryptnostic.crypto.PublicKey getFhePublicKey( com.kryptnostic.crypto.PrivateKey fhePrivateKey ) {
         return new com.kryptnostic.crypto.PublicKey( fhePrivateKey );
     }
 
-    private com.kryptnostic.crypto.PrivateKey getFhePrivateKey() {
-        return new com.kryptnostic.crypto.PrivateKey( 128, 64 );
+    protected com.kryptnostic.crypto.PrivateKey getFhePrivateKey() {
+        return new com.kryptnostic.crypto.PrivateKey( this.keySize, this.keySize / 2 );
     }
 }
