@@ -235,7 +235,7 @@ public class IrisConnection implements KryptnosticConnection {
             logger.debug( "Loading kodex from disk" );
             searchKodex = new LocalKodexLoader( keyPair, dataStore ).load();
         } catch ( KodexException e ) {
-            logger.debug( "Could not load Kodex from disk, trying network... {}", e );
+            logger.debug( "Could not load Kodex from disk, trying network... {}", e.getMessage() );
         }
         if ( searchKodex == null ) {
             try {
@@ -244,10 +244,10 @@ public class IrisConnection implements KryptnosticConnection {
                 try {
                     flushKodexToDisk( searchKodex );
                 } catch ( IOException e ) {
-                    e.printStackTrace();
+                    logger.error( "Couldn't flush Kodex to disk {}", e );
                 }
             } catch ( KodexException e ) {
-                logger.debug( "Could not load Kodex from network, trying to generate... {}", e );
+                logger.debug( "Could not load Kodex from network, trying to generate... {}", e.getMessage() );
             }
         }
         if ( searchKodex == null ) {
@@ -258,7 +258,7 @@ public class IrisConnection implements KryptnosticConnection {
                 try {
                     flushKodexToDisk( searchKodex );
                 } catch ( IOException e ) {
-                    e.printStackTrace();
+                    logger.error( "Couldn't flush Kodex to disk {}", e );
                 }
                 flushKodexToWeb( searchKodex );
             } catch ( KodexException e ) {

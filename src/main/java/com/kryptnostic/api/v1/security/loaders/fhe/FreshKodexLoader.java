@@ -27,13 +27,13 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class FreshKodexLoader extends KodexLoader {
 
-    private static final Logger            logger           = LoggerFactory.getLogger( FreshKodexLoader.class );
-    private final KeyPair                  keyPair;
-    private final SimplePolynomialFunction globalHashFunction;
-    private final DataStore                dataStore;
-    private final SearchFunctionApi        searchFunctionApi;
-    private final int                      keySize;
-    private static final int               DEFAULT_KEY_SIZE = 128;
+    private static final Logger              logger           = LoggerFactory.getLogger( FreshKodexLoader.class );
+    protected final KeyPair                  keyPair;
+    protected final SimplePolynomialFunction globalHashFunction;
+    protected final DataStore                dataStore;
+    protected final SearchFunctionApi        searchFunctionApi;
+    protected final int                      keySize;
+    protected static final int               DEFAULT_KEY_SIZE = 128;
 
     public FreshKodexLoader(
             KeyPair keyPair,
