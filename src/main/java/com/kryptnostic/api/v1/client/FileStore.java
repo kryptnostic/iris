@@ -20,6 +20,13 @@ public class FileStore implements DataStore {
         this.rootDirectory.mkdirs();
     }
 
+    public FileStore( String rootDirectory, String name ) {
+        File tmpRoot = new File( rootDirectory, ".kryptnostic" );
+        tmpRoot.mkdirs();
+        this.rootDirectory = new File( tmpRoot, name );
+        this.rootDirectory.mkdirs();
+    }
+
     @Override
     public byte[] get( String dir, String file ) throws IOException {
         File keyFile = keyToFile( dir, file );
