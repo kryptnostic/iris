@@ -18,7 +18,7 @@ import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.models.UserKey;
+import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
@@ -35,9 +35,9 @@ import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class NetworkKodexLoaderTests {
-    private DirectoryApi                   keyClient;
+    private DirectoryApi             keyClient;
     private UserKey                  userKey;
-    private PasswordCryptoService            cryptoService;
+    private PasswordCryptoService    cryptoService;
     private KeyPair                  keyPair;
     private PrivateKey               fhePrivateKey;
     private PublicKey                fhePublicKey;
@@ -77,10 +77,7 @@ public class NetworkKodexLoaderTests {
     private Kodex<String> makeValidKodex() throws InvalidKeyException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, SignatureException, SecurityConfigurationException, IOException,
             SealedKodexException, KodexException, CorruptKodexException, SingularMatrixException {
-        Kodex<String> kodex = new Kodex<String>(
-                Cypher.RSA_OAEP_SHA1_1024,
-                Cypher.AES_CTR_128,
-                keyPair.getPublic() );
+        Kodex<String> kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_128, keyPair.getPublic() );
 
         kodex.unseal( keyPair.getPublic(), keyPair.getPrivate() );
 

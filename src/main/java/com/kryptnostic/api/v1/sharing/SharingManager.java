@@ -15,7 +15,7 @@ import com.google.common.collect.Sets;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
-import com.kryptnostic.directory.v1.models.UserKey;
+import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
