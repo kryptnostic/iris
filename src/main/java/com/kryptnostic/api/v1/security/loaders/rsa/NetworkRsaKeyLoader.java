@@ -7,8 +7,8 @@ import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.models.UserKey;
-import com.kryptnostic.directory.v1.models.response.PublicKeyEnvelope;
+import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
+import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
