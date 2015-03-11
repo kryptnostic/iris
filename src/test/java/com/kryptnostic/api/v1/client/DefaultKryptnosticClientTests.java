@@ -80,7 +80,6 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
             InvalidKeySpecException, InvalidParameterSpecException, SealedKodexException, IOException,
             ResourceNotFoundException, SignatureException, Exception {
         if ( client == null ) {
-            initializeCryptoService();
 
             // set up http stubs for getting global hasher and checking query pair
             expectedGlobalHasher = generateGlobalHasherStub();

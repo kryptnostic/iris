@@ -114,7 +114,7 @@ public class DefaultStorageClient implements StorageClient {
         if ( id == null ) {
             id = objectApi.createPendingObject( new PendingObjectRequest( req.getType() ) ).getData();
         } else {
-            objectApi.createPendingObject( id );
+            objectApi.createPendingObjectFromExisting( id );
         }
 
         KryptnosticObject obj = KryptnosticObject.fromIdAndBody( id, req.getObjectBody() );

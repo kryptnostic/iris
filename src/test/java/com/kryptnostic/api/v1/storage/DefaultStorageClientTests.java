@@ -79,7 +79,6 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
             NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException, InvalidParameterSpecException,
             InvalidAlgorithmParameterException, SealedKodexException, IOException, SignatureException, Exception {
         userKey = new UserKey( "krypt", "sina" );
-        initializeCryptoService();
 
         generateGlobalHasherStub();
         generateQueryHasherPairStub();
@@ -101,7 +100,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     @Test
     public void uploadingWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
-            NoSuchAlgorithmException, JsonProcessingException {
+            NoSuchAlgorithmException, JsonProcessingException, ExecutionException {
         ObjectApi documentApi = Mockito.mock( ObjectApi.class );
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         SharingApi sharingApi = Mockito.mock( SharingApi.class );
