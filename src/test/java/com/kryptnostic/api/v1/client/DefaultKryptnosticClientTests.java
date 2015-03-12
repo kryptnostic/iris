@@ -54,6 +54,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
+import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.sharing.v1.http.SharingApi;
@@ -110,6 +111,31 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
 
             client = new DefaultKryptnosticClient( factory, connection );
         }
+    }
+
+    @Test
+    public void testMismatchGlobalHashFunctionChecksum() throws InvalidKeyException, NoSuchAlgorithmException,
+            InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException,
+            InvalidKeySpecException, InvalidParameterSpecException, SignatureException, SealedKodexException, Exception {
+
+        client = null;
+        initClient();
+
+        String docId = "DOCUMENT_0";
+        String documentCreateUrl = ObjectApi.CONTROLLER;
+        String documentUpdateUrl = ObjectApi.CONTROLLER + "/" + docId;
+
+        String docIdResponse = serialize( new BasicResponse<String>( docId, 200, true ) );
+
+        stubFor( put( urlMatching( documentCreateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
+        stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
+
+        store.put( DefaultKryptnosticContext.CHECKSUM_KEY, "abc".getBytes() );
+        store.put( DefaultKryptnosticContext.FUNCTION_KEY, KodexObjectMapperFactory.getObjectMapper()
+                .writeValueAsBytes( SimplePolynomialFunctions.randomFunction( 128, 64 ) ) );
+
+        client.getStorageClient().uploadObject( new StorageRequestBuilder().withBody( "test" ).build() );
+
     }
 
     private void generateDocumentStubs() {

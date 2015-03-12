@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import cern.colt.bitvector.BitVector;
 
 import com.google.common.base.Function;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
@@ -32,6 +31,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
+import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
@@ -90,49 +90,72 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public SimplePolynomialFunction getGlobalHashFunction() throws ResourceNotFoundException {
+        DataStore store = connection.getDataStore();
+
         if ( globalHashFunction == null ) {
             byte[] gbh = null;
             String checksum = null;
             try {
-                checksum = StringUtils.newStringUtf8( connection.getDataStore().get( CHECKSUM_KEY ) );
-                gbh = connection.getDataStore().get( FUNCTION_KEY );
+                checksum = StringUtils.newStringUtf8( store.get( CHECKSUM_KEY ) );
+                gbh = store.get( FUNCTION_KEY );
             } catch ( IOException e ) {
-
+                if ( e.getMessage() != null ) {
+                    logger.debug( e.getMessage() );
+                }
             }
             // If function isn't set retrieve it and persist it.
             if ( gbh == null ) {
-                globalHashFunction = searchFunctionClient.getFunction();
-                try {
-                    gbh = new JacksonKodexMarshaller<SimplePolynomialFunction>( SimplePolynomialFunction.class )
-                            .toBytes( globalHashFunction );
-                } catch ( IOException e1 ) {
-                    // TODO Auto-generated catch block
-                    e1.printStackTrace();
-                }
-                checksum = searchFunctionClient.getGlobalHasherChecksum().getData();// Hashing.murmur3_128().hashBytes(
-                                                                                    // gbh ).toString();
-                try {
-                    connection.getDataStore().put( CHECKSUM_KEY, StringUtils.getBytesUtf8( checksum ) );
-                    connection.getDataStore().put( FUNCTION_KEY, gbh );
-                } catch ( IOException e ) {
-                    logger.error( "Unable to save global hash function. Will try again upon restart." );
-                    return null;
-                }
+                fetchAndFlushGlobalHasher();
             } else {
                 // Verify integrity of global hash function
-                Preconditions.checkState( searchFunctionClient.getGlobalHasherChecksum().getData().equals( checksum ) );
-                try {
-                    globalHashFunction = new JacksonKodexMarshaller<SimplePolynomialFunction>(
-                            SimplePolynomialFunction.class ).fromBytes( gbh );
-                } catch ( IOException e ) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
+                if ( !searchFunctionClient.getGlobalHasherChecksum().getData().equals( checksum ) ) {
+                    try {
+                        store.delete( CHECKSUM_KEY );
+                        store.delete( FUNCTION_KEY );
+                    } catch ( IOException e ) {
+                        if ( e.getMessage() != null ) {
+                            logger.error( e.getMessage() );
+                        }
+                    }
+                    fetchAndFlushGlobalHasher();
+                } else {
+                    try {
+                        globalHashFunction = new JacksonKodexMarshaller<SimplePolynomialFunction>(
+                                SimplePolynomialFunction.class ).fromBytes( gbh );
+                    } catch ( IOException e ) {
+                        if ( e.getMessage() != null ) {
+                            logger.error( e.getMessage() );
+                        }
+                    }
                 }
             }
 
         }
 
         return globalHashFunction;
+    }
+
+    private void fetchAndFlushGlobalHasher() throws ResourceNotFoundException {
+        byte[] gbh = null;
+        String checksum = null;
+        DataStore store = connection.getDataStore();
+
+        globalHashFunction = searchFunctionClient.getFunction();
+        try {
+            gbh = new JacksonKodexMarshaller<SimplePolynomialFunction>( SimplePolynomialFunction.class )
+                    .toBytes( globalHashFunction );
+        } catch ( IOException e1 ) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+        checksum = searchFunctionClient.getGlobalHasherChecksum().getData();// Hashing.murmur3_128().hashBytes(
+                                                                            // gbh ).toString();
+        try {
+            store.put( CHECKSUM_KEY, StringUtils.getBytesUtf8( checksum ) );
+            store.put( FUNCTION_KEY, gbh );
+        } catch ( IOException e ) {
+            logger.error( "Unable to save global hash function. Will try again upon restart." );
+        }
     }
 
     @Override
