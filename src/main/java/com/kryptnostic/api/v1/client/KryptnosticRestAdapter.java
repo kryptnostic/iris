@@ -48,6 +48,17 @@ public final class KryptnosticRestAdapter {
         return builder( url, user, userCredential, new JacksonConverter() ).setClient( client ).build();
     }
 
+    public static RestAdapter createWithNoAuthAndDefaultJacksonConverter( String url, Client client ) {
+        return new RestAdapter.Builder().setConverter( new JacksonConverter() ).setEndpoint( url )
+                .setErrorHandler( new DefaultErrorHandler() ).setLogLevel( LogLevel.FULL )
+                .setLog( new RestAdapter.Log() {
+                    @Override
+                    public void log( String msg ) {
+                        logger.debug( msg.replaceAll( "%", "[percent]" ) );
+                    }
+                } ).build();
+    }
+
     public static RestAdapter.Builder builder( KryptnosticConnection credentialService, Converter converter ) {
         return builder(
                 credentialService.getUrl(),

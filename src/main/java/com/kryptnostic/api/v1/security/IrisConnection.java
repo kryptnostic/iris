@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -38,6 +39,7 @@ import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.directory.v1.principal.UserKey;
+import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
@@ -89,16 +91,25 @@ public class IrisConnection implements KryptnosticConnection {
     public IrisConnection(
             String url,
             UserKey userKey,
-            String userCredential,
+            String password,
             DataStore dataStore,
             Client client,
             Kodex<String> kodex,
             KeyPair keyPair ) throws IrisException {
-        this.cryptoService = new PasswordCryptoService( Cypher.AES_CTR_128, userCredential.toCharArray() );
+
+        RestAdapter bootstrap = KryptnosticRestAdapter.createWithNoAuthAndDefaultJacksonConverter( url, client );
+        BlockCiphertext encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt();
+        String credential;
+        try {
+            credential = CredentialFactory.deriveCredential( password, encryptedSalt );
+        } catch ( SecurityConfigurationException | InvalidKeySpecException | NoSuchAlgorithmException e ) {
+            throw new IrisException( e );
+        }
+
         RestAdapter adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
                 url,
                 userKey,
-                userCredential,
+                credential,
                 client );
         this.keyService = adapter.create( DirectoryApi.class );
         this.searchFunctionService = adapter.create( SearchFunctionApi.class );
@@ -122,7 +133,7 @@ public class IrisConnection implements KryptnosticConnection {
 
         } );
 
-        this.userCredential = userCredential;
+        this.userCredential = credential;
         this.userKey = userKey;
         this.url = url;
         this.dataStore = dataStore;
