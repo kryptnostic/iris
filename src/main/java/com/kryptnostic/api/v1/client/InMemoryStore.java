@@ -35,4 +35,8 @@ public class InMemoryStore implements DataStore {
         store.remove( file );
     }
 
+    public void clear() {
+        store.clear();
+    }
+
 }
