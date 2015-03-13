@@ -50,7 +50,7 @@ public final class KryptnosticRestAdapter {
 
     public static RestAdapter createWithNoAuthAndDefaultJacksonConverter( String url, Client client ) {
         return new RestAdapter.Builder().setConverter( new JacksonConverter() ).setEndpoint( url )
-                .setErrorHandler( new DefaultErrorHandler() ).setLogLevel( LogLevel.FULL )
+                .setErrorHandler( new DefaultErrorHandler() ).setLogLevel( LogLevel.FULL ).setClient( client )
                 .setLog( new RestAdapter.Log() {
                     @Override
                     public void log( String msg ) {

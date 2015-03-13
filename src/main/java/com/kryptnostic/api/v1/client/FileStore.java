@@ -3,6 +3,8 @@ package com.kryptnostic.api.v1.client;
 import java.io.File;
 import java.io.IOException;
 
+import org.apache.commons.io.FileUtils;
+
 import com.google.common.io.Files;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 
@@ -73,5 +75,10 @@ public class FileStore implements DataStore {
         if ( !target.delete() ) {
             throw new IOException( "File or directory " + file + " could not be deleted" );
         }
+    }
+
+    @Override
+    public void clear() throws IOException {
+        FileUtils.deleteDirectory( rootDirectory );
     }
 }

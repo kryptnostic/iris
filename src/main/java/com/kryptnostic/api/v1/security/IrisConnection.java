@@ -17,6 +17,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,27 +63,29 @@ import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class IrisConnection implements KryptnosticConnection {
-    private static final Logger               logger         = LoggerFactory.getLogger( IrisConnection.class );
-    private Kodex<String>                     kodex;
-    private transient PasswordCryptoService   cryptoService;
-    private final UserKey                     userKey;
-    private final String                      userCredential;
-    private final String                      url;
-    private final DirectoryApi                keyService;
-    private final DataStore                   dataStore;
-    private com.kryptnostic.crypto.PrivateKey fhePrivateKey;
-    private com.kryptnostic.crypto.PublicKey  fhePublicKey;
-    private EncryptedSearchPrivateKey         encryptedSearchPrivateKey;
-    private final PublicKey                   rsaPublicKey;
-    private final PrivateKey                  rsaPrivateKey;
-    private final CryptoServiceLoader         loader;
-    boolean                                   doFresh        = false;
-    private final SearchFunctionApi           searchFunctionService;
-    private SimplePolynomialFunction          globalHashFunction;
-    private final AtomicBoolean               isKodexLoaded  = new AtomicBoolean( false );
-    private final AtomicBoolean               isKodexLoading = new AtomicBoolean( false );
+    private static final Logger                   logger                     = LoggerFactory
+                                                                                     .getLogger( IrisConnection.class );
+    private static final String                   GLOBAL_HASHER_CHECKSUM_KEY = "global_hasher_checksum";
+    private Kodex<String>                         kodex;
+    private transient final PasswordCryptoService cryptoService;
+    private final UserKey                         userKey;
+    private final String                          userCredential;
+    private final String                          url;
+    private final DirectoryApi                    keyService;
+    private final DataStore                       dataStore;
+    private com.kryptnostic.crypto.PrivateKey     fhePrivateKey;
+    private com.kryptnostic.crypto.PublicKey      fhePublicKey;
+    private EncryptedSearchPrivateKey             encryptedSearchPrivateKey;
+    private final PublicKey                       rsaPublicKey;
+    private final PrivateKey                      rsaPrivateKey;
+    private final CryptoServiceLoader             loader;
+    boolean                                       doFresh                    = false;
+    private final SearchFunctionApi               searchFunctionService;
+    private SimplePolynomialFunction              globalHashFunction;
+    private final AtomicBoolean                   isKodexLoaded              = new AtomicBoolean( false );
+    private final AtomicBoolean                   isKodexLoading             = new AtomicBoolean( false );
 
-    private Future<SimplePolynomialFunction>  hashGetter;
+    private Future<SimplePolynomialFunction>      hashGetter;
 
     public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore, Client client ) throws IrisException {
         this( url, userKey, userCredential, dataStore, client, null, null );
@@ -96,15 +99,8 @@ public class IrisConnection implements KryptnosticConnection {
             Client client,
             Kodex<String> kodex,
             KeyPair keyPair ) throws IrisException {
-
-        RestAdapter bootstrap = KryptnosticRestAdapter.createWithNoAuthAndDefaultJacksonConverter( url, client );
-        BlockCiphertext encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt();
-        String credential;
-        try {
-            credential = CredentialFactory.deriveCredential( password, encryptedSalt );
-        } catch ( SecurityConfigurationException | InvalidKeySpecException | NoSuchAlgorithmException e ) {
-            throw new IrisException( e );
-        }
+        cryptoService = new PasswordCryptoService( password );
+        String credential = bootstrapCredential( userKey, url, password, client );
 
         RestAdapter adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
                 url,
@@ -114,24 +110,8 @@ public class IrisConnection implements KryptnosticConnection {
         this.keyService = adapter.create( DirectoryApi.class );
         this.searchFunctionService = adapter.create( SearchFunctionApi.class );
 
-        ExecutorService exec = Executors.newCachedThreadPool();
-
-        logger.debug( "Submitting async call for global hasher" );
-        hashGetter = exec.submit( new Callable<SimplePolynomialFunction>() {
-            @Override
-            public SimplePolynomialFunction call() {
-                try {
-                    SimplePolynomialFunction gh = searchFunctionService.getFunction();
-                    logger.debug( "Done with async call for global hasher" );
-                    return gh;
-                } catch ( ResourceNotFoundException e ) {
-                    logger.error( "Global hasher request failed {}", e );
-                    e.printStackTrace();
-                }
-                return null;
-            }
-
-        } );
+        ensureLocalDataBelongsToCurrentServer( searchFunctionService, dataStore );
+        requestGlobalHasherAsync();
 
         this.userCredential = credential;
         this.userKey = userKey;
@@ -151,6 +131,62 @@ public class IrisConnection implements KryptnosticConnection {
         logger.debug( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         this.loader = new DefaultCryptoServiceLoader( this, keyService, Cypher.AES_CTR_128 );
+    }
+
+    private void requestGlobalHasherAsync() {
+        ExecutorService exec = Executors.newCachedThreadPool();
+
+        logger.debug( "Submitting async call for global hasher" );
+        hashGetter = exec.submit( new Callable<SimplePolynomialFunction>() {
+            @Override
+            public SimplePolynomialFunction call() {
+                try {
+                    SimplePolynomialFunction gh = searchFunctionService.getFunction();
+                    logger.debug( "Done with async call for global hasher" );
+                    return gh;
+                } catch ( ResourceNotFoundException e ) {
+                    logger.error( "Global hasher request failed {}", e );
+                    e.printStackTrace();
+                }
+                return null;
+            }
+
+        } );
+    }
+
+    private static String bootstrapCredential( UserKey userKey, String url, String password, Client client )
+            throws IrisException {
+        RestAdapter bootstrap = KryptnosticRestAdapter.createWithNoAuthAndDefaultJacksonConverter( url, client );
+        BlockCiphertext encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt(
+                userKey.getRealm(),
+                userKey.getName() );
+        try {
+            return CredentialFactory.deriveCredential( password, encryptedSalt );
+        } catch ( SecurityConfigurationException | InvalidKeySpecException | NoSuchAlgorithmException e ) {
+            throw new IrisException( e );
+        }
+    }
+
+    private static void ensureLocalDataBelongsToCurrentServer(
+            SearchFunctionApi searchFunctionService,
+            DataStore dataStore ) {
+        // check if we are hitting the right server, else clear
+        byte[] checksumBytes = null;
+        try {
+            checksumBytes = dataStore.get( GLOBAL_HASHER_CHECKSUM_KEY );
+        } catch ( IOException e1 ) {}
+        if ( checksumBytes != null ) {
+            String localCheck = Base64.encodeBase64String( checksumBytes );
+            String check = searchFunctionService.getGlobalHasherChecksum().getData();
+            if ( !localCheck.equals( check ) ) {
+                try {
+                    dataStore.clear();
+                } catch ( IOException e ) {
+                    logger.error( "Failed to clear data when server mismatched" );
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     private KeyPair loadRsaKeys(
@@ -446,7 +482,6 @@ public class IrisConnection implements KryptnosticConnection {
             }
 
             try {
-                this.kodex.setKeyWithClassAndJackson( PasswordCryptoService.class, cryptoService );
                 watch.reset().start();
                 String qhpChecksum = this.kodex.getKeyWithJackson(
                         QueryHasherPairRequest.class.getCanonicalName(),
