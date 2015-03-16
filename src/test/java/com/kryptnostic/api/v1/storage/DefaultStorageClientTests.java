@@ -60,6 +60,7 @@ import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
 import com.kryptnostic.storage.v1.models.ObjectMetadata;
+import com.kryptnostic.storage.v1.models.StorageRequestBuilder;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.storage.v1.models.request.PendingObjectRequest;
 import com.kryptnostic.utils.SecurityConfigurationTestUtils;

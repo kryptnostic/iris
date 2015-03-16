@@ -87,8 +87,8 @@ public class IrisConnection implements KryptnosticConnection {
 
     private Future<SimplePolynomialFunction>      hashGetter;
 
-    public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore, Client client ) throws IrisException {
-        this( url, userKey, userCredential, dataStore, client, null, null );
+    public IrisConnection( String url, UserKey userKey, String password, DataStore dataStore, Client client ) throws IrisException {
+        this( url, userKey, password, dataStore, client, null, null );
     }
 
     public IrisConnection(

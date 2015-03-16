@@ -38,7 +38,6 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
-import com.kryptnostic.api.v1.storage.StorageRequestBuilder;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
@@ -61,6 +60,7 @@ import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.http.MetadataApi;
 import com.kryptnostic.storage.v1.http.ObjectApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.models.StorageRequestBuilder;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 import com.kryptnostic.utils.SecurityConfigurationTestUtils;
 
