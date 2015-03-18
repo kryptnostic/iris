@@ -18,7 +18,7 @@ import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.models.UserKey;
+import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
@@ -27,6 +27,7 @@ import com.kryptnostic.kodex.v1.crypto.keys.Kodex.CorruptKodexException;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
@@ -35,9 +36,9 @@ import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class NetworkKodexLoaderTests {
-    private DirectoryApi                   keyClient;
+    private DirectoryApi             keyClient;
     private UserKey                  userKey;
-    private PasswordCryptoService            cryptoService;
+    private PasswordCryptoService    cryptoService;
     private KeyPair                  keyPair;
     private PrivateKey               fhePrivateKey;
     private PublicKey                fhePublicKey;
@@ -61,7 +62,7 @@ public class NetworkKodexLoaderTests {
     @Test
     public void initTest() throws IrisException, KodexException, SecurityConfigurationException, SealedKodexException,
             CorruptKodexException, InvalidKeyException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
-            SignatureException, IOException, SingularMatrixException {
+            SignatureException, IOException, SingularMatrixException, ResourceNotFoundException {
 
         Mockito.when( keyClient.getKodex() ).thenReturn( makeValidKodex() );
 
@@ -77,10 +78,7 @@ public class NetworkKodexLoaderTests {
     private Kodex<String> makeValidKodex() throws InvalidKeyException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, SignatureException, SecurityConfigurationException, IOException,
             SealedKodexException, KodexException, CorruptKodexException, SingularMatrixException {
-        Kodex<String> kodex = new Kodex<String>(
-                Cypher.RSA_OAEP_SHA1_1024,
-                Cypher.AES_CTR_128,
-                keyPair.getPublic() );
+        Kodex<String> kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_128, keyPair.getPublic() );
 
         kodex.unseal( keyPair.getPublic(), keyPair.getPrivate() );
 

@@ -15,6 +15,7 @@ import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
 import com.kryptnostic.kodex.v1.crypto.keys.PublicKeyAlgorithm;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
@@ -39,13 +40,16 @@ public final class LocalRsaKeyLoader extends RsaKeyLoader {
     protected KeyPair tryLoading() throws KodexException {
         try {
             byte[] encryptedPrivateKeyBytes = Preconditions.checkNotNull(
-                    dataStore.get( PrivateKey.class.getCanonicalName().getBytes() ),
+                    dataStore.get( PrivateKey.class.getCanonicalName() ),
                     "Couldn't load private key from data store." );
             BlockCiphertext privateKeyCiphertext = mapper.readValue( encryptedPrivateKeyBytes, BlockCiphertext.class );
 
             // need to check if local privateKey is synced with the server and user is authenticated
 
-            BlockCiphertext networkPrivateKey = keyClient.getPrivateKey();
+            BlockCiphertext networkPrivateKey = null;
+            try {
+                networkPrivateKey = keyClient.getPrivateKey();
+            } catch ( ResourceNotFoundException e ) {}
             if ( networkPrivateKey == null ) {
                 throw new KodexException( "User not recognized" );
             }
@@ -53,7 +57,7 @@ public final class LocalRsaKeyLoader extends RsaKeyLoader {
             byte[] decryptedPrivateKeyBytes = crypto.decryptBytes( privateKeyCiphertext );
 
             byte[] decryptedPublicKeyBytes = Preconditions.checkNotNull(
-                    dataStore.get( PublicKey.class.getCanonicalName().getBytes() ),
+                    dataStore.get( PublicKey.class.getCanonicalName() ),
                     "Couldn't load public key from data store." );
 
             PrivateKey rsaPrivateKey = Keys.privateKeyFromBytes( PublicKeyAlgorithm.RSA, decryptedPrivateKeyBytes );
@@ -70,5 +74,4 @@ public final class LocalRsaKeyLoader extends RsaKeyLoader {
         }
 
     }
-
 }

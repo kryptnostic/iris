@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -16,6 +17,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +26,6 @@ import retrofit.client.Client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.fhe.FreshKodexLoader;
@@ -37,8 +38,9 @@ import com.kryptnostic.api.v1.security.loaders.rsa.NetworkRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.models.UserKey;
-import com.kryptnostic.directory.v1.models.response.PublicKeyEnvelope;
+import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
+import com.kryptnostic.directory.v1.principal.UserKey;
+import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
@@ -61,49 +63,77 @@ import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class IrisConnection implements KryptnosticConnection {
-    private static final Logger               logger         = LoggerFactory.getLogger( IrisConnection.class );
-    private Kodex<String>                     kodex;
-    private transient PasswordCryptoService   cryptoService;
-    private final UserKey                     userKey;
-    private final String                      userCredential;
-    private final String                      url;
-    private final DirectoryApi                keyService;
-    private final DataStore                   dataStore;
-    private com.kryptnostic.crypto.PrivateKey fhePrivateKey;
-    private com.kryptnostic.crypto.PublicKey  fhePublicKey;
-    private EncryptedSearchPrivateKey         encryptedSearchPrivateKey;
-    private final PublicKey                   rsaPublicKey;
-    private final PrivateKey                  rsaPrivateKey;
-    private final CryptoServiceLoader         loader;
-    boolean                                   doFresh        = false;
-    private final SearchFunctionApi           searchFunctionService;
-    private SimplePolynomialFunction          globalHashFunction;
-    private final AtomicBoolean               isKodexLoaded  = new AtomicBoolean( false );
-    private final AtomicBoolean               isKodexLoading = new AtomicBoolean( false );
+    private static final Logger                   logger                     = LoggerFactory
+                                                                                     .getLogger( IrisConnection.class );
+    private static final String                   GLOBAL_HASHER_CHECKSUM_KEY = "global_hasher_checksum";
+    private Kodex<String>                         kodex;
+    private transient final PasswordCryptoService cryptoService;
+    private final UserKey                         userKey;
+    private final String                          userCredential;
+    private final String                          url;
+    private final DirectoryApi                    keyService;
+    private final DataStore                       dataStore;
+    private com.kryptnostic.crypto.PrivateKey     fhePrivateKey;
+    private com.kryptnostic.crypto.PublicKey      fhePublicKey;
+    private EncryptedSearchPrivateKey             encryptedSearchPrivateKey;
+    private final PublicKey                       rsaPublicKey;
+    private final PrivateKey                      rsaPrivateKey;
+    private final CryptoServiceLoader             loader;
+    boolean                                       doFresh                    = false;
+    private final SearchFunctionApi               searchFunctionService;
+    private SimplePolynomialFunction              globalHashFunction;
+    private final AtomicBoolean                   isKodexLoaded              = new AtomicBoolean( false );
+    private final AtomicBoolean                   isKodexLoading             = new AtomicBoolean( false );
 
-    private Future<SimplePolynomialFunction>  hashGetter;
+    private Future<SimplePolynomialFunction>      hashGetter;
 
-    public IrisConnection( String url, UserKey userKey, String userCredential, DataStore dataStore, Client client ) throws IrisException {
-        this( url, userKey, userCredential, dataStore, client, null, null );
+    public IrisConnection( String url, UserKey userKey, String password, DataStore dataStore, Client client ) throws IrisException {
+        this( url, userKey, password, dataStore, client, null, null );
     }
 
     public IrisConnection(
             String url,
             UserKey userKey,
-            String userCredential,
+            String password,
             DataStore dataStore,
             Client client,
             Kodex<String> kodex,
             KeyPair keyPair ) throws IrisException {
-        this.cryptoService = new PasswordCryptoService( Cypher.AES_CTR_128, userCredential.toCharArray() );
+        cryptoService = new PasswordCryptoService( password );
+        String credential = bootstrapCredential( userKey, url, password, client );
+
         RestAdapter adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
                 url,
                 userKey,
-                userCredential,
+                credential,
                 client );
         this.keyService = adapter.create( DirectoryApi.class );
         this.searchFunctionService = adapter.create( SearchFunctionApi.class );
 
+        ensureLocalDataBelongsToCurrentServer( searchFunctionService, dataStore );
+        requestGlobalHasherAsync();
+
+        this.userCredential = credential;
+        this.userKey = userKey;
+        this.url = url;
+        this.dataStore = dataStore;
+        this.kodex = kodex;
+
+        /**
+         * Load basic RSA keys into connection or generate them
+         */
+        Stopwatch watch = Stopwatch.createStarted();
+        if ( keyPair == null ) {
+            keyPair = loadRsaKeys( cryptoService, userKey, dataStore, keyService );
+        }
+        this.rsaPrivateKey = keyPair.getPrivate();
+        this.rsaPublicKey = keyPair.getPublic();
+        logger.debug( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+        this.loader = new DefaultCryptoServiceLoader( this, keyService, Cypher.AES_CTR_128 );
+    }
+
+    private void requestGlobalHasherAsync() {
         ExecutorService exec = Executors.newCachedThreadPool();
 
         logger.debug( "Submitting async call for global hasher" );
@@ -122,25 +152,46 @@ public class IrisConnection implements KryptnosticConnection {
             }
 
         } );
+    }
 
-        this.userCredential = userCredential;
-        this.userKey = userKey;
-        this.url = url;
-        this.dataStore = dataStore;
-        this.kodex = kodex;
+    private static String bootstrapCredential( UserKey userKey, String url, String password, Client client )
+            throws IrisException {
+        RestAdapter bootstrap = KryptnosticRestAdapter.createWithNoAuthAndDefaultJacksonConverter( url, client );
+        BlockCiphertext encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt(
+                userKey.getRealm(),
+                userKey.getName() );
 
-        /**
-         * Load basic RSA keys into connection or generate them
-         */
-        Stopwatch watch = Stopwatch.createStarted();
-        if ( keyPair == null ) {
-            keyPair = loadRsaKeys( cryptoService, userKey, dataStore, keyService );
+        if ( encryptedSalt == null ) {
+            throw new IrisException( "Salt not found for user. Is this user registered?" );
         }
-        this.rsaPrivateKey = keyPair.getPrivate();
-        this.rsaPublicKey = keyPair.getPublic();
-        logger.debug( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-        this.loader = new DefaultCryptoServiceLoader( this, keyService, Cypher.AES_CTR_128 );
+        try {
+            return CredentialFactory.deriveCredential( password, encryptedSalt );
+        } catch ( SecurityConfigurationException | InvalidKeySpecException | NoSuchAlgorithmException e ) {
+            throw new IrisException( e );
+        }
+    }
+
+    private static void ensureLocalDataBelongsToCurrentServer(
+            SearchFunctionApi searchFunctionService,
+            DataStore dataStore ) {
+        // check if we are hitting the right server, else clear
+        byte[] checksumBytes = null;
+        try {
+            checksumBytes = dataStore.get( GLOBAL_HASHER_CHECKSUM_KEY );
+        } catch ( IOException e1 ) {}
+        if ( checksumBytes != null ) {
+            String localCheck = Base64.encodeBase64String( checksumBytes );
+            String check = searchFunctionService.getGlobalHasherChecksum().getData();
+            if ( !localCheck.equals( check ) ) {
+                try {
+                    dataStore.clear();
+                } catch ( IOException e ) {
+                    logger.error( "Failed to clear data when server mismatched" );
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     private KeyPair loadRsaKeys(
@@ -216,11 +267,11 @@ public class IrisConnection implements KryptnosticConnection {
 
         // Flush to disk
         logger.debug( "Flushing RSA Private Key to disk..." );
-        dataStore.put( PrivateKey.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( encPrivKey ) );
+        dataStore.put( PrivateKey.class.getCanonicalName(), mapper.writeValueAsBytes( encPrivKey ) );
         logger.debug( "Done flushing RSA Private Key to disk." );
 
         logger.debug( "Flushing RSA pubkey to disk..." );
-        dataStore.put( PublicKey.class.getCanonicalName().getBytes(), pubKey );
+        dataStore.put( PublicKey.class.getCanonicalName(), pubKey );
         logger.debug( "Done flushing RSA pubkey to disk..." );
     }
 
@@ -236,7 +287,7 @@ public class IrisConnection implements KryptnosticConnection {
             logger.debug( "Loading kodex from disk" );
             searchKodex = new LocalKodexLoader( keyPair, dataStore ).load();
         } catch ( KodexException e ) {
-            logger.debug( "Could not load Kodex from disk, trying network... {}", e );
+            logger.debug( "Could not load Kodex from disk, trying network... {}", e.getMessage() );
         }
         if ( searchKodex == null ) {
             try {
@@ -245,10 +296,10 @@ public class IrisConnection implements KryptnosticConnection {
                 try {
                     flushKodexToDisk( searchKodex );
                 } catch ( IOException e ) {
-                    e.printStackTrace();
+                    logger.error( "Couldn't flush Kodex to disk {}", e );
                 }
             } catch ( KodexException e ) {
-                logger.debug( "Could not load Kodex from network, trying to generate... {}", e );
+                logger.debug( "Could not load Kodex from network, trying to generate... {}", e.getMessage() );
             }
         }
         if ( searchKodex == null ) {
@@ -259,7 +310,7 @@ public class IrisConnection implements KryptnosticConnection {
                 try {
                     flushKodexToDisk( searchKodex );
                 } catch ( IOException e ) {
-                    e.printStackTrace();
+                    logger.error( "Couldn't flush Kodex to disk {}", e );
                 }
                 flushKodexToWeb( searchKodex );
             } catch ( KodexException e ) {
@@ -281,7 +332,7 @@ public class IrisConnection implements KryptnosticConnection {
     private void flushKodexToDisk( Kodex<String> searchKodex ) throws JsonProcessingException, IOException {
         ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
         logger.debug( "Flushing Kodex to disk..." );
-        dataStore.put( Kodex.class.getCanonicalName().getBytes(), mapper.writeValueAsBytes( searchKodex ) );
+        dataStore.put( Kodex.class.getCanonicalName(), mapper.writeValueAsBytes( searchKodex ) );
         logger.debug( "Done flushing Kodex to disk." );
     }
 
@@ -303,7 +354,7 @@ public class IrisConnection implements KryptnosticConnection {
     public Kodex<String> getCryptoKodex() throws IrisException {
         Kodex<String> kodex;
         try {
-            kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_128, this.rsaPublicKey );
+            kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_4096, Cypher.AES_CTR_128, this.rsaPublicKey );
             kodex.setKey(
                     PasswordCryptoService.class.getCanonicalName(),
                     new JacksonKodexMarshaller<PasswordCryptoService>( PasswordCryptoService.class ),
@@ -436,7 +487,6 @@ public class IrisConnection implements KryptnosticConnection {
             }
 
             try {
-                this.kodex.setKeyWithClassAndJackson( PasswordCryptoService.class, cryptoService );
                 watch.reset().start();
                 String qhpChecksum = this.kodex.getKeyWithJackson(
                         QueryHasherPairRequest.class.getCanonicalName(),
@@ -445,7 +495,17 @@ public class IrisConnection implements KryptnosticConnection {
                 String checksum = searchFunctionService.getQueryHasherChecksum().getData();
                 logger.debug( "[PROFILE] getting QHP checksum {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-                Preconditions.checkState( qhpChecksum.equals( checksum ) );
+                if ( !qhpChecksum.equals( checksum ) ) {
+                    try {
+                        dataStore.delete( Kodex.class.getCanonicalName() );
+                        dataStore.delete( PrivateKey.class.getCanonicalName() );
+                        dataStore.delete( PublicKey.class.getCanonicalName() );
+                    } catch ( IOException e ) {
+                        logger.error( "Could not delete Kodex" );
+                        e.printStackTrace();
+                    }
+                    throw new KodexException( "QHP failed checksum validation" );
+                }
 
                 watch.reset().start();
                 this.fhePrivateKey = this.kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class );
@@ -453,12 +513,13 @@ public class IrisConnection implements KryptnosticConnection {
                 this.encryptedSearchPrivateKey = this.kodex
                         .getKeyWithJackson( com.kryptnostic.crypto.EncryptedSearchPrivateKey.class );
                 logger.debug( "[PROFILE] unmarshal Kodex objects {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+                isKodexLoaded.set( true );
             } catch ( SealedKodexException | KodexException | SecurityConfigurationException e ) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
                 throw new IrisException( e );
             }
-            isKodexLoaded.set( true );
         }
         return kodex;
     }

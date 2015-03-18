@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import cern.colt.bitvector.BitVector;
 
 import com.google.common.base.Function;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
@@ -21,7 +20,7 @@ import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.models.UserKey;
+import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
@@ -32,13 +31,13 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
+import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.sharing.v1.models.DocumentId;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
-import com.kryptnostic.storage.v1.models.EncryptedSearchDocumentKey;
+import com.kryptnostic.storage.v1.models.EncryptedSearchObjectKey;
 
 /**
  * 
@@ -57,8 +56,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private SimplePolynomialFunction          globalHashFunction;
     private final KryptnosticConnection       connection;
 
-    public static final String                CHECKSUM_KEY    = "global-hash-checksum";
-    public static final String                FUNCTION_KEY    = "global-hash-function";
+    public static final String                CHECKSUM_KEY    = "global.hash.checksum";
+    public static final String                FUNCTION_KEY    = "global.hash.function";
 
     private static final Logger               logger          = LoggerFactory
                                                                       .getLogger( DefaultKryptnosticContext.class );
@@ -91,43 +90,43 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public SimplePolynomialFunction getGlobalHashFunction() throws ResourceNotFoundException {
+        DataStore store = connection.getDataStore();
+
         if ( globalHashFunction == null ) {
             byte[] gbh = null;
             String checksum = null;
             try {
-                checksum = StringUtils.newStringUtf8( connection.getDataStore().get( CHECKSUM_KEY.getBytes() ) );
-                gbh = connection.getDataStore().get( FUNCTION_KEY.getBytes() );
+                checksum = StringUtils.newStringUtf8( store.get( CHECKSUM_KEY ) );
+                gbh = store.get( FUNCTION_KEY );
             } catch ( IOException e ) {
-
+                if ( e.getMessage() != null ) {
+                    logger.debug( e.getMessage() );
+                }
             }
             // If function isn't set retrieve it and persist it.
             if ( gbh == null ) {
-                globalHashFunction = searchFunctionClient.getFunction();
-                try {
-                    gbh = new JacksonKodexMarshaller<SimplePolynomialFunction>( SimplePolynomialFunction.class )
-                            .toBytes( globalHashFunction );
-                } catch ( IOException e1 ) {
-                    // TODO Auto-generated catch block
-                    e1.printStackTrace();
-                }
-                checksum = searchFunctionClient.getGlobalHasherChecksum().getData();// Hashing.murmur3_128().hashBytes(
-                                                                                    // gbh ).toString();
-                try {
-                    connection.getDataStore().put( CHECKSUM_KEY.getBytes(), StringUtils.getBytesUtf8( checksum ) );
-                    connection.getDataStore().put( FUNCTION_KEY.getBytes(), gbh );
-                } catch ( IOException e ) {
-                    logger.error( "Unable to save global hash function. Will try again upon restart." );
-                    return null;
-                }
+                fetchAndFlushGlobalHasher();
             } else {
                 // Verify integrity of global hash function
-                Preconditions.checkState( searchFunctionClient.getGlobalHasherChecksum().getData().equals( checksum ) );
-                try {
-                    globalHashFunction = new JacksonKodexMarshaller<SimplePolynomialFunction>(
-                            SimplePolynomialFunction.class ).fromBytes( gbh );
-                } catch ( IOException e ) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
+                if ( !searchFunctionClient.getGlobalHasherChecksum().getData().equals( checksum ) ) {
+                    try {
+                        store.delete( CHECKSUM_KEY );
+                        store.delete( FUNCTION_KEY );
+                    } catch ( IOException e ) {
+                        if ( e.getMessage() != null ) {
+                            logger.error( e.getMessage() );
+                        }
+                    }
+                    fetchAndFlushGlobalHasher();
+                } else {
+                    try {
+                        globalHashFunction = new JacksonKodexMarshaller<SimplePolynomialFunction>(
+                                SimplePolynomialFunction.class ).fromBytes( gbh );
+                    } catch ( IOException e ) {
+                        if ( e.getMessage() != null ) {
+                            logger.error( e.getMessage() );
+                        }
+                    }
                 }
             }
 
@@ -136,10 +135,33 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         return globalHashFunction;
     }
 
+    private void fetchAndFlushGlobalHasher() throws ResourceNotFoundException {
+        byte[] gbh = null;
+        String checksum = null;
+        DataStore store = connection.getDataStore();
+
+        globalHashFunction = searchFunctionClient.getFunction();
+        try {
+            gbh = new JacksonKodexMarshaller<SimplePolynomialFunction>( SimplePolynomialFunction.class )
+                    .toBytes( globalHashFunction );
+        } catch ( IOException e1 ) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+        checksum = searchFunctionClient.getGlobalHasherChecksum().getData();// Hashing.murmur3_128().hashBytes(
+                                                                            // gbh ).toString();
+        try {
+            store.put( CHECKSUM_KEY, StringUtils.getBytesUtf8( checksum ) );
+            store.put( FUNCTION_KEY, gbh );
+        } catch ( IOException e ) {
+            logger.error( "Unable to save global hash function. Will try again upon restart." );
+        }
+    }
+
     @Override
     public EncryptedSearchSharingKey generateSharingKey() {
-        EnhancedBitMatrix documentKey = connection.getEncryptedSearchPrivateKey().newDocumentKey();
-        EncryptedSearchSharingKey sharingKey = new EncryptedSearchSharingKey( documentKey );
+        EnhancedBitMatrix objectKey = connection.getEncryptedSearchPrivateKey().newObjectKey();
+        EncryptedSearchSharingKey sharingKey = new EncryptedSearchSharingKey( objectKey );
 
         return sharingKey;
     }
@@ -154,23 +176,21 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public void submitBridgeKeyWithSearchNonce( DocumentId documentId, EncryptedSearchSharingKey sharingKey )
+    public void submitBridgeKeyWithSearchNonce( String objectId, EncryptedSearchSharingKey sharingKey )
             throws IrisException {
 
         try {
             connection.getDataStore().put(
-                    ( documentId.getDocumentId() + EncryptedSearchSharingKey.class.getCanonicalName() ).getBytes(),
+                    objectId,
+                    EncryptedSearchSharingKey.class.getCanonicalName(),
                     marshaller.toBytes( sharingKey ) );
-            // connection.getDataStore().put(
-            // ( documentId.getDocumentId() + BitVector.class.getCanonicalName() ).getBytes(),
-            // marshaller.toBytes( searchNonce ) );
         } catch ( IOException e1 ) {
             e1.printStackTrace();
         }
 
         EncryptedSearchBridgeKey bridgeKey = fromSharingKey( sharingKey );
 
-        EncryptedSearchDocumentKey docKey = new EncryptedSearchDocumentKey( bridgeKey, documentId );
+        EncryptedSearchObjectKey docKey = new EncryptedSearchObjectKey( bridgeKey, objectId );
 
         sharingClient.registerKeys( ImmutableSet.of( docKey ) );
     }
@@ -215,9 +235,12 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             public RsaCompressingEncryptionService apply( UserKey input ) {
                 try {
                     return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, directoryClient.getPublicKey(
-                            input.getRealm(),
                             input.getName() ).asRsaPublicKey() );
-                } catch ( InvalidKeySpecException | NoSuchAlgorithmException | SecurityConfigurationException e ) {
+                } catch (
+                        InvalidKeySpecException
+                        | NoSuchAlgorithmException
+                        | SecurityConfigurationException
+                        | ResourceNotFoundException e ) {
                     return null;
                 }
             }

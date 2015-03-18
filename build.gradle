@@ -49,7 +49,7 @@ repositories {
 }
 
 ext.hazelcast_version='3.2.4'
-ext.fhe_core_version='0.1.1-SNAPSHOT'
+ext.fhe_core_version='0.1.2-SNAPSHOT'
 ext.kodex_version="0.0.1-SNAPSHOT"
 ext.retrofit_version='1.6.1'
 ext.spring_framework_version='4.0.6.RELEASE'
@@ -138,7 +138,7 @@ task javadocJar(type: Jar) {
 }
 
 artifacts {
-	archives sourcesJar,javadocJar
+	archives jar,sourcesJar,javadocJar
 }
 
 sourceCompatibility=JavaVersion.VERSION_1_7

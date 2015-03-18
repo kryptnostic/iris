@@ -32,9 +32,8 @@ public class PaddedMetadataMapper implements MetadataMapper {
     }
 
     @Override
-    public MappedMetadata mapTokensToKeys(
-            Set<Metadata> metadata,
-            EncryptedSearchSharingKey sharingKey ) throws IrisException {
+    public MappedMetadata mapTokensToKeys( Set<Metadata> metadata, EncryptedSearchSharingKey sharingKey )
+            throws IrisException {
 
         /*
          * Let's balance the metadatum set and generate random nonces. Generally, the list of metadatum should be of
@@ -59,7 +58,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
                     throw new IrisException( e );
                 }
 
-                Metadata balancedMetadatum = new Metadata( metadatum.getDocumentId(), token, subListAndPad(
+                Metadata balancedMetadatum = new Metadata( metadatum.getObjectId(), token, subListAndPad(
                         locations,
                         fromIndex,
                         toIndex ) );

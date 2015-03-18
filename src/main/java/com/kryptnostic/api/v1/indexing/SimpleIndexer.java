@@ -11,7 +11,6 @@ import com.kryptnostic.api.v1.indexing.analysis.TokenizingWhitespaceAnalyzer;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
-import com.kryptnostic.sharing.v1.models.DocumentId;
 
 public class SimpleIndexer implements Indexer {
     private final Set<Analyzer> analyzers;
@@ -21,14 +20,14 @@ public class SimpleIndexer implements Indexer {
     }
 
     @Override
-    public Set<Metadata> index( String documentId, String document ) {
+    public Set<Metadata> index( String objectId, String object ) {
         Set<Metadata> metadata = Sets.newHashSet();
         for ( Analyzer analyzer : analyzers ) {
-            Map<String, List<Integer>> invertedIndex = analyzer.analyze( document );
+            Map<String, List<Integer>> invertedIndex = analyzer.analyze( object );
             for ( Entry<String, List<Integer>> entry : invertedIndex.entrySet() ) {
                 String token = entry.getKey();
                 List<Integer> locations = entry.getValue();
-                metadata.add( new Metadata( new DocumentId( documentId ), token, locations ) );
+                metadata.add( new Metadata( objectId, token, locations ) );
             }
         }
         return metadata;
