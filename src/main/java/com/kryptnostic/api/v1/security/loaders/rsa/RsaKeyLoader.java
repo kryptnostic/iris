@@ -3,9 +3,15 @@ package com.kryptnostic.api.v1.security.loaders.rsa;
 import java.security.KeyPair;
 
 import com.kryptnostic.api.v1.security.loaders.Loader;
+import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
+import com.kryptnostic.kodex.v1.crypto.keys.PublicKeyAlgorithm;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 
 public abstract class RsaKeyLoader extends Loader<KeyPair> {
+    public static final int                KEY_SIZE  = 4096;
+    public static final Cypher             CIPHER    = Cypher.RSA_OAEP_SHA1_4096;
+    public static final PublicKeyAlgorithm ALGORITHM = PublicKeyAlgorithm.RSA;
+
     @Override
     protected abstract KeyPair tryLoading() throws KodexException;
 

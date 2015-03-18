@@ -21,12 +21,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
-import com.kryptnostic.crypto.v1.ciphers.CryptoService;
-import com.kryptnostic.crypto.v1.ciphers.Cypher;
-import com.kryptnostic.crypto.v1.keys.Keys;
-import com.kryptnostic.crypto.v1.keys.Kodex;
-import com.kryptnostic.crypto.v1.keys.Kodex.CorruptKodexException;
-import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
+import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
+import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
+import com.kryptnostic.kodex.v1.crypto.keys.Keys;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex.CorruptKodexException;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
@@ -39,7 +39,7 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class LocalKodexLoaderTests {
     private static final Logger      logger = LoggerFactory.getLogger( LocalKodexLoaderTests.class );
-    private CryptoService            cryptoService;
+    private PasswordCryptoService    cryptoService;
     private DataStore                dataStore;
     private ObjectMapper             mapper = KodexObjectMapperFactory.getObjectMapper();
 
@@ -52,7 +52,7 @@ public class LocalKodexLoaderTests {
 
         String password = "test";
         dataStore = Mockito.mock( DataStore.class );
-        cryptoService = new CryptoService( Cypher.AES_CTR_PKCS5_128, password.toCharArray() );
+        cryptoService = new PasswordCryptoService( Cypher.AES_CTR_128, password.toCharArray() );
 
         fhePrivateKey = new PrivateKey( 128, 64 );
         fhePublicKey = new PublicKey( fhePrivateKey );
@@ -75,9 +75,7 @@ public class LocalKodexLoaderTests {
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PrivateKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( com.kryptnostic.crypto.PublicKey.class ) );
         Assert.assertNotNull( kodex.getKeyWithJackson( EncryptedSearchPrivateKey.class ) );
-        Assert.assertNotNull( kodex.getKeyWithJackson(
-                QueryHasherPairRequest.class.getCanonicalName(),
-                QueryHasherPairRequest.class ) );
+        Assert.assertNotNull( kodex.getKeyWithJackson( QueryHasherPairRequest.class.getCanonicalName(), String.class ) );
     }
 
     private KeyPair makeValidRsa() throws NoSuchAlgorithmException, IOException, SecurityConfigurationException,
@@ -85,9 +83,9 @@ public class LocalKodexLoaderTests {
         KeyPair pair = Keys.generateRsaKeyPair( 1024 );
         Assert.assertEquals( pair.getPublic(), Keys.publicKeyFromPrivateKey( pair.getPrivate() ) );
 
-        Mockito.when( dataStore.get( java.security.PrivateKey.class.getCanonicalName().getBytes() ) ).thenReturn(
+        Mockito.when( dataStore.get( java.security.PrivateKey.class.getCanonicalName() ) ).thenReturn(
                 mapper.writeValueAsBytes( cryptoService.encrypt( pair.getPrivate().getEncoded() ) ) );
-        Mockito.when( dataStore.get( java.security.PublicKey.class.getCanonicalName().getBytes() ) ).thenReturn(
+        Mockito.when( dataStore.get( java.security.PublicKey.class.getCanonicalName() ) ).thenReturn(
                 pair.getPublic().getEncoded() );
 
         return pair;
@@ -96,9 +94,9 @@ public class LocalKodexLoaderTests {
     private void makeValidKodex( KeyPair pair ) throws InvalidKeyException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, SignatureException, SecurityConfigurationException, IOException,
             SealedKodexException, KodexException, CorruptKodexException, SingularMatrixException {
-        Kodex<String> kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_PKCS5_128, pair.getPublic() );
+        Kodex<String> kodex = new Kodex<String>( Cypher.RSA_OAEP_SHA1_1024, Cypher.AES_CTR_128, pair.getPublic() );
 
-        kodex.unseal( pair.getPrivate() );
+        kodex.unseal( pair.getPublic(), pair.getPrivate() );
 
         kodex.setKeyWithClassAndJackson( PrivateKey.class, fhePrivateKey );
         kodex.setKeyWithClassAndJackson( PublicKey.class, fhePublicKey );
@@ -106,9 +104,10 @@ public class LocalKodexLoaderTests {
         EncryptedSearchPrivateKey esp = new EncryptedSearchPrivateKey( (int) Math.sqrt( globalHash.getOutputLength() ) );
         Pair<SimplePolynomialFunction, SimplePolynomialFunction> p = esp.getQueryHasherPair( globalHash, fhePrivateKey );
         kodex.setKeyWithClassAndJackson( EncryptedSearchPrivateKey.class, esp );
-        kodex.setKeyWithClassAndJackson(
-                QueryHasherPairRequest.class,
-                new QueryHasherPairRequest( p.getLeft(), p.getRight() ) );
+        kodex.setKeyWithJackson(
+                QueryHasherPairRequest.class.getCanonicalName(),
+                new QueryHasherPairRequest( p.getLeft(), p.getRight() ).computeChecksum(),
+                String.class );
 
         byte[] kodexBytes = mapper.writeValueAsBytes( kodex );
 
@@ -116,6 +115,6 @@ public class LocalKodexLoaderTests {
 
         actual.verify( pair.getPublic() );
 
-        Mockito.when( dataStore.get( Kodex.class.getCanonicalName().getBytes() ) ).thenReturn( kodexBytes );
+        Mockito.when( dataStore.get( Kodex.class.getCanonicalName() ) ).thenReturn( kodexBytes );
     }
 }

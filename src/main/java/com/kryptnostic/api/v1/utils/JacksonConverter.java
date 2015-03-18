@@ -5,18 +5,20 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Type;
 
+import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import retrofit.converter.ConversionException;
 import retrofit.converter.Converter;
 import retrofit.mime.TypedByteArray;
 import retrofit.mime.TypedInput;
 import retrofit.mime.TypedOutput;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kryptnostic.crypto.v1.keys.Kodex;
+import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 
 /**
@@ -26,14 +28,14 @@ import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
  */
 public class JacksonConverter implements Converter {
     private static final String MIME_TYPE = "application/json; charset=UTF-8";
-
+    private static final Logger logger = LoggerFactory.getLogger( JacksonConverter.class );
     private final ObjectMapper  objectMapper;
 
     public JacksonConverter() {
         this.objectMapper = KodexObjectMapperFactory.getObjectMapper();
     }
     
-    public JacksonConverter( Kodex<String> securityConfig ) {
+    public JacksonConverter( CryptoServiceLoader securityConfig ) {
         this.objectMapper = KodexObjectMapperFactory.getObjectMapper( securityConfig );
     }
 
@@ -46,11 +48,13 @@ public class JacksonConverter implements Converter {
                 return null;
             }
             return objectMapper.readValue( body.in(), javaType );
-        } catch ( JsonParseException e ) {
-            throw new ConversionException( e );
-        } catch ( JsonMappingException e ) {
-            throw new ConversionException( e );
         } catch ( IOException e ) {
+            logger.error( "Unable to deserialize object of type {}", type );
+            try {
+                logger.error("Representation: {}" , IOUtils.toString( body.in() ) );
+            } catch ( IOException e1 ) {
+                throw new ConversionException( e1 );
+            }
             throw new ConversionException( e );
         }
     }

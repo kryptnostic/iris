@@ -4,122 +4,168 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.codec.binary.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
+import com.kryptnostic.api.v1.utils.DocumentFragmentFormatter;
+import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
+import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
-import com.kryptnostic.crypto.v1.keys.Kodex;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
+import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
 import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
-import com.kryptnostic.kodex.v1.models.AesEncryptable;
-import com.kryptnostic.kodex.v1.models.Encryptable;
-import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils;
-import com.kryptnostic.kodex.v1.models.utils.AesEncryptableUtils.VerifiedString;
-import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
-import com.kryptnostic.sharing.v1.DocumentId;
+import com.kryptnostic.kodex.v1.serialization.crypto.DefaultChunkingStrategy;
+import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
+import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
+import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.StorageClient;
-import com.kryptnostic.storage.v1.client.DocumentApi;
-import com.kryptnostic.storage.v1.client.MetadataApi;
-import com.kryptnostic.storage.v1.models.Document;
-import com.kryptnostic.storage.v1.models.DocumentBlock;
-import com.kryptnostic.storage.v1.models.request.DocumentCreationRequest;
-import com.kryptnostic.storage.v1.models.request.DocumentFragmentRequest;
-import com.kryptnostic.storage.v1.models.request.IndexedMetadata;
+import com.kryptnostic.storage.v1.http.MetadataApi;
+import com.kryptnostic.storage.v1.http.ObjectApi;
+import com.kryptnostic.storage.v1.models.EncryptableBlock;
+import com.kryptnostic.storage.v1.models.IndexedMetadata;
+import com.kryptnostic.storage.v1.models.KryptnosticObject;
+import com.kryptnostic.storage.v1.models.ObjectMetadata;
+import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
+import com.kryptnostic.storage.v1.models.request.PendingObjectRequest;
+import com.kryptnostic.storage.v1.models.request.StorageRequest;
 
+/**
+ * @author sinaiman
+ *
+ */
 public class DefaultStorageClient implements StorageClient {
-    private static final Logger         log                      = LoggerFactory.getLogger( StorageClient.class );
-
-    private static final int            PARALLEL_NETWORK_THREADS = 4;
+    private static final Logger       logger                   = LoggerFactory.getLogger( StorageClient.class );
+    private static final int          PARALLEL_NETWORK_THREADS = 4;
+    ListeningExecutorService          exec                     = MoreExecutors.listeningDecorator( Executors
+                                                                       .newFixedThreadPool( PARALLEL_NETWORK_THREADS ) );
 
     /**
      * Server-side
      */
-    private final DocumentApi           documentApi;
-    private final MetadataApi           metadataApi;
+    private final ObjectApi           objectApi;
+    private final MetadataApi         metadataApi;
+    private final SharingApi          sharingApi;
 
     /**
      * Client-side
      */
-    private final KryptnosticContext    context;
-    private final MetadataMapper        metadataMapper;
-    private final Indexer               indexer;
-    private final KryptnosticConnection securityService;
-    private final Kodex<String>         kodex;
+    private final KryptnosticContext  context;
+    private final MetadataMapper      metadataMapper;
+    private final Indexer             indexer;
+    private final CryptoServiceLoader loader;
 
-    public DefaultStorageClient( KryptnosticContext context, DocumentApi documentApi, MetadataApi metadataApi ) {
+    /**
+     * @param context
+     * @param objectApi
+     * @param metadataApi
+     */
+    public DefaultStorageClient(
+            KryptnosticContext context,
+            ObjectApi objectApi,
+            MetadataApi metadataApi,
+            SharingApi sharingApi ) {
         this.context = context;
-        this.documentApi = documentApi;
+        this.objectApi = objectApi;
         this.metadataApi = metadataApi;
-        this.securityService = context.getSecurityService();
+        this.sharingApi = sharingApi;
         this.metadataMapper = new PaddedMetadataMapper( context );
-        this.indexer = new SimpleIndexer( securityService.getUserKey() );
-        this.kodex = context.getSecurityService().getKodex();
+        this.indexer = new SimpleIndexer();
+        this.loader = context.getConnection().getCryptoServiceLoader();
     }
 
     @Override
-    public String uploadDocumentWithMetadata( String documentBody ) throws SecurityConfigurationException,
-            IrisException, BadRequestException {
-        // Figure out the number of blocks we're sending
-        List<VerifiedString> verified = createVerifiedBlocks( documentBody );
+    public String uploadObject( StorageRequest req ) throws BadRequestException, SecurityConfigurationException,
+            IrisException, ResourceLockedException, ResourceNotFoundException {
+        String id = req.getObjectId();
 
-        // Create a new pending document on the server
-        DocumentCreationRequest documentRequest = new DocumentCreationRequest( verified.size() );
-        DocumentId documentId = documentApi.createPendingDocument( documentRequest ).getData();
+        if ( id == null ) {
+            id = objectApi.createPendingObject( new PendingObjectRequest( req.getType() ) ).getData();
+        } else {
+            objectApi.createPendingObjectFromExisting( id );
+        }
 
-        // Update this pending document with the necessary blocks to complete the upload
-        // Also make sure metadata is uploaded
-        return updateDocumentWithMetadata( documentId, documentBody );
+        KryptnosticObject obj = KryptnosticObject.fromIdAndBody( id, req.getObjectBody() );
+
+        Preconditions.checkArgument( !obj.getBody().isEncrypted() );
+        String objId = obj.getMetadata().getId();
+        // upload the object blocks
+        if ( req.isStoreable() ) {
+            storeObject( obj );
+        }
+
+        if ( req.isSearchable() ) {
+            makeObjectSearchable( obj );
+        }
+
+        return objId;
+    }
+
+    private void makeObjectSearchable( KryptnosticObject object ) throws IrisException, BadRequestException {
+        // index + map tokens for metadata
+        Stopwatch watch = Stopwatch.createStarted();
+        Set<Metadata> metadata = indexer.index( object.getMetadata().getId(), object.getBody().getData() );
+        logger.debug( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+        // generate nonce
+        EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
+        logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+        watch.reset().start();
+        context.submitBridgeKeyWithSearchNonce( object.getMetadata().getId(), sharingKey );
+
+        logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        watch.reset().start();
+        MetadataRequest metadataRequest = prepareMetadata( metadata, sharingKey );
+        uploadMetadata( metadataRequest );
+        logger.debug( "[PROFILE] preparing metadata and upload took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+    }
+
+    private void storeObject( KryptnosticObject object ) throws SecurityConfigurationException, IrisException {
+        try {
+            object = object.encrypt( loader );
+        } catch ( ClassNotFoundException | IOException e ) {
+            throw new SecurityConfigurationException( e );
+        }
+        submitBlocksToServer( object );
     }
 
     @Override
-    public String uploadDocumentWithoutMetadata( String documentBody ) throws BadRequestException,
-            SecurityConfigurationException, IrisException {
-        List<VerifiedString> verified = createVerifiedBlocks( documentBody );
-        DocumentCreationRequest documentRequest = new DocumentCreationRequest( verified.size() );
-        String documentId = documentApi.createPendingDocument( documentRequest ).getData().getDocumentId();
-        return updateDocumentWithoutMetadata( documentId, documentBody, verified );
-    }
-
-    @Override
-    public String updateDocumentWithMetadata( String documentId, String documentBody )
-            throws ResourceNotFoundException, BadRequestException, SecurityConfigurationException, IrisException {
-        return updateDocumentWithMetadata( forCurrentUser( documentId ), documentBody );
-    }
-
-    @Override
-    public String updateDocumentWithoutMetadata( String documentId, String documentBody ) throws BadRequestException,
-            SecurityConfigurationException, IrisException {
-        List<VerifiedString> verified = createVerifiedBlocks( documentBody );
-        return updateDocumentWithoutMetadata( documentId, documentBody, verified );
-    }
-
-    @Override
-    public Document getDocument( DocumentId id ) throws ResourceNotFoundException {
-        return documentApi.getDocument( id.toString() ).getData();
+    public KryptnosticObject getObject( String id ) throws ResourceNotFoundException {
+        return objectApi.getObject( id );
     }
 
     @Override
@@ -128,101 +174,23 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public Collection<DocumentId> getDocumentIds() {
-        return documentApi.getDocumentIds().getData();
+    public Collection<String> getObjectIds() {
+        return objectApi.getObjectIds().getData();
     }
 
     @Override
-    public Map<Integer, String> getDocumentFragments( DocumentId id, List<Integer> offsets, int characterWindow )
-            throws ResourceNotFoundException, SecurityConfigurationException, IrisException {
-        Map<Integer, String> plain = Maps.newHashMap();
-
-        DocumentFragmentRequest fragmentRequest = new DocumentFragmentRequest( offsets, characterWindow );
-
-        Map<Integer, List<DocumentBlock>> encrypted = documentApi.getDocumentFragments( id.toString(), fragmentRequest )
-                .getData();
-
-        for ( Entry<Integer, List<DocumentBlock>> e : encrypted.entrySet() ) {
-            String preview = "";
-            for ( DocumentBlock block : e.getValue() ) {
-                try {
-                    preview += block.getBlock().decrypt( kodex ).getData();
-                } catch ( JsonParseException e1 ) {
-                    throw new IrisException( e1 );
-                } catch ( JsonMappingException e1 ) {
-                    throw new IrisException( e1 );
-                } catch ( IOException e1 ) {
-                    throw new IrisException( e1 );
-                } catch ( ClassNotFoundException e1 ) {
-                    throw new IrisException( e1 );
-                }
-            }
-            plain.put( e.getKey(), preview );
-        }
-        return plain;
+    public Collection<String> getObjectIds( int offset, int pageSize ) {
+        return objectApi.getObjectIds( offset, pageSize ).getData();
     }
 
-    /**
-     * Utility method to chunk up a document into AES-encryptable blocks and provide some metadata
-     * 
-     * @param documentBody
-     * @return
-     * @throws SecurityConfigurationException
-     * @throws IrisException
-     */
-    private List<VerifiedString> createVerifiedBlocks( String documentBody ) throws SecurityConfigurationException,
-            IrisException {
-        List<VerifiedString> verified = null;
-        try {
-            verified = AesEncryptableUtils.chunkStringWithVerification( documentBody, kodex );
-        } catch ( IOException e ) {
-            throw new IrisException( e );
-        } catch ( ClassNotFoundException e ) {
-            throw new IrisException( e );
-        }
-        return verified;
+    @Override
+    public Collection<String> getObjectIdsByType( String type ) {
+        return objectApi.getObjectIdsByType( type ).getData();
     }
 
-    /**
-     * Utility method to create a DocumentId scoped to the current user
-     * 
-     * @param documentId
-     * @return DocumentId scoped to current user
-     */
-    private DocumentId forCurrentUser( String documentId ) {
-        return new DocumentId( documentId, this.securityService.getUserKey() );
-    }
-
-    /**
-     * Updates the document and also uploads the metadata. All other methods are syntactic sugar that lead to this
-     * method
-     * 
-     * @param documentId
-     * @param documentBody
-     * @param verified
-     * @return
-     * @throws BadRequestException
-     * @throws SecurityConfigurationException
-     * @throws IrisException
-     */
-    private String updateDocumentWithMetadata( DocumentId documentId, String documentBody ) throws BadRequestException,
-            SecurityConfigurationException, IrisException {
-        // upload the document blocks
-        updateDocumentWithoutMetadata( documentId.getDocumentId(), documentBody );
-
-        // index + map tokens for metadata
-        Set<Metadata> metadata = indexer.index( documentId.getDocumentId(), documentBody );
-
-        // generate nonce
-        BitVector searchNonce = context.generateSearchNonce();
-        EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
-
-        context.submitBridgeKeyWithSearchNonce( documentId, sharingKey, searchNonce );
-
-        MetadataRequest metadataRequest = prepareMetadata( metadata, searchNonce, sharingKey );
-        uploadMetadata( metadataRequest );
-
-        return documentId.getDocumentId();
+    @Override
+    public Collection<String> getObjectIdsByType( String type, int offset, int pageSize ) {
+        return objectApi.getObjectIdsByType( type, offset, pageSize ).getData();
     }
 
     /**
@@ -232,14 +200,12 @@ public class DefaultStorageClient implements StorageClient {
      * @return
      * @throws IrisException
      */
-    private MetadataRequest prepareMetadata(
-            Set<Metadata> metadata,
-            BitVector searchNonce,
-            EncryptedSearchSharingKey sharingKey ) throws IrisException {
+    private MetadataRequest prepareMetadata( Set<Metadata> metadata, EncryptedSearchSharingKey sharingKey )
+            throws IrisException {
 
         // create plaintext metadata
-        MappedMetadata keyedMetadata = metadataMapper.mapTokensToKeys( metadata, searchNonce, sharingKey );
-        log.debug( "generated plaintext metadata {}", keyedMetadata );
+        MappedMetadata keyedMetadata = metadataMapper.mapTokensToKeys( metadata, sharingKey );
+        logger.debug( "generated plaintext metadata {}", keyedMetadata );
 
         // encrypt the metadata and format for the server
         Collection<IndexedMetadata> metadataIndex = Lists.newArrayList();
@@ -249,95 +215,128 @@ public class DefaultStorageClient implements StorageClient {
 
             // encrypt the metadata
             for ( Metadata metadatumToEncrypt : metadataForKey ) {
-                Encryptable<Metadata> encryptedMetadatum = new AesEncryptable<Metadata>( metadatumToEncrypt );
-                metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum ) );
+                Encryptable<Metadata> encryptedMetadatum = new Encryptable<Metadata>(
+                        metadatumToEncrypt,
+                        metadatumToEncrypt.getObjectId() );
+                metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
             }
         }
         return new MetadataRequest( metadataIndex );
     }
 
     /**
-     * All the other update/uploadDocument functions are syntactic sugar for this method, which actually does all the
-     * work to update a document
-     * 
-     * This chunks up the blocks and uploads them in parallel
-     * 
-     * @param documentId
-     * @param documentBody
-     * @param verifiedStringBlocks
-     * @return
-     * @throws SecurityConfigurationException
-     * @throws IrisException
-     */
-    private String updateDocumentWithoutMetadata(
-            final String stringDocumentId,
-            String documentBody,
-            List<VerifiedString> verifiedStringBlocks ) throws SecurityConfigurationException, IrisException {
-        DocumentId documentId = forCurrentUser( stringDocumentId );
-        Document doc = generateDocument( documentId, documentBody, verifiedStringBlocks );
-
-        submitBlocksToServer( documentId, doc.getBlocks() );
-
-        return stringDocumentId;
-    }
-
-    /**
-     * Chunk up a document into blocks
-     * 
-     * @param documentId
-     * @param documentBody
-     * @param verifiedStringBlocks
-     * @return
-     * @throws IrisException
-     * @throws SecurityConfigurationException
-     */
-    private Document generateDocument(
-            DocumentId documentId,
-            String documentBody,
-            List<VerifiedString> verifiedStringBlocks ) throws IrisException, SecurityConfigurationException {
-        try {
-            return AesEncryptableUtils.createEncryptedDocument(
-                    documentId.getDocumentId(),
-                    documentBody,
-                    VerifiedString.getEncryptables( verifiedStringBlocks ) );
-        } catch ( ClassNotFoundException e ) {
-            throw new IrisException( e );
-        } catch ( IOException e ) {
-            throw new IrisException( e );
-        }
-    }
-
-    /**
      * Submit blocks in parallel
      * 
-     * @param documentId
+     * @param objectId
      * @param blocks
      * @throws IrisException
      */
-    private void submitBlocksToServer( final DocumentId documentId, final DocumentBlock[] blocks ) throws IrisException {
-        ExecutorService exec = Executors.newFixedThreadPool( PARALLEL_NETWORK_THREADS );
-        List<Future<Void>> jobs = Lists.newArrayList();
-
-        for ( final DocumentBlock block : blocks ) {
-            jobs.add( exec.submit( new Callable<Void>() {
-
-                @Override
-                public Void call() throws Exception {
-                    // push the block to the server
-                    documentApi.updateDocument( documentId.toString(), block );
-                    return null;
-                }
-            } ) );
-        }
-
-        for ( Future<Void> f : jobs ) {
+    private void submitBlocksToServer( final KryptnosticObject obj ) throws IrisException {
+        Preconditions.checkNotNull( obj.getBody().getEncryptedData() );
+        final String objectId = obj.getMetadata().getId();
+        for ( EncryptableBlock input : obj.getBody().getEncryptedData() ) {
             try {
-                log.info( "Document Block Upload completed: " + f.get() );
-            } catch ( InterruptedException e ) {
-                throw new IrisException( e );
-            } catch ( ExecutionException e ) {
-                throw new IrisException( e );
+                objectApi.updateObject( objectId, input );
+            } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
+                logger.error( "Failed to uploaded block. Should probably add a retry here!" );
+            }
+            logger.info( "Object block upload completed for object {} and block {}", objectId, input.getIndex() );
+        }
+    }
+
+    @Override
+    public void deleteMetadata( String id ) {
+        metadataApi.deleteAll( new MetadataDeleteRequest( Lists.newArrayList( id ) ) );
+    }
+
+    @Override
+    public void deleteObject( String id ) {
+        sharingApi.removeIncomingShares( id );
+        objectApi.delete( id );
+    }
+
+    @Override
+    public List<KryptnosticObject> getObjects( List<String> ids ) throws ResourceNotFoundException {
+        return objectApi.getObjects( ids ).getData();
+    }
+
+    @Override
+    public List<EncryptableBlock> getObjectBlocks( String id, List<Integer> indices ) throws ResourceNotFoundException {
+        return objectApi.getObjectBlocks( id, indices ).getData();
+    }
+
+    @Override
+    public Map<Integer, String> getObjectPreview( String objectId, List<Integer> locations, int wordRadius )
+            throws SecurityConfigurationException, ExecutionException, ResourceNotFoundException {
+        Map<Integer, Integer> offsetsToBlockIndex = DefaultChunkingStrategy.getBlockIndexForByteOffset( locations );
+
+        List<EncryptableBlock> blocks = getObjectBlocks(
+                objectId,
+                Lists.newArrayList( Sets.newHashSet( offsetsToBlockIndex.values() ) ) );
+
+        Map<Integer, EncryptableBlock> offsetsToBlock = Maps.newHashMap();
+        for ( Integer offset : offsetsToBlockIndex.keySet() ) {
+            for ( EncryptableBlock block : blocks ) {
+                if ( block.getIndex() == offsetsToBlockIndex.get( offset ) ) {
+                    offsetsToBlock.put( offset, block );
+                    break;
+                }
             }
         }
+
+        Map<Integer, String> offsetsToString = Maps.newHashMap();
+        for ( Map.Entry<Integer, EncryptableBlock> entry : offsetsToBlock.entrySet() ) {
+            offsetsToString.put(
+                    entry.getKey(),
+                    StringUtils.newStringUtf8( loader.get( objectId ).decryptBytes( entry.getValue().getBlock() ) ) );
+        }
+
+        Map<Integer, String> offsetsToPreview = Maps.newHashMap();
+
+        for ( Map.Entry<Integer, String> item : offsetsToString.entrySet() ) {
+            Map.Entry<Integer, String> normalizedOffsetPair = Pair.<Integer, String> of( item.getKey()
+                    % DefaultChunkingStrategy.BLOCK_LENGTH_IN_BYTES, item.getValue() );
+            String preview = DocumentFragmentFormatter.format( normalizedOffsetPair, 2 );
+            offsetsToPreview.put( item.getKey(), preview );
+        }
+
+        return offsetsToPreview;
+    }
+
+    @Override
+    public String appendObject( ObjectMetadata objectMetadata, String body ) throws SecurityConfigurationException,
+            ExecutionException, ResourceNotFoundException, IrisException, BadRequestException {
+        CryptoService crypto = this.context.getConnection().getCryptoServiceLoader().get( objectMetadata.getId() );
+
+        int curNumBlocks = objectMetadata.getNumBlocks();
+        BlockCiphertext ciphertext = crypto.encrypt( body.getBytes() );
+
+        EncryptableBlock blockToAppend = new EncryptableBlock( ciphertext, Encryptable.hashFunction.hashBytes(
+                ciphertext.getContents() ).asBytes(), curNumBlocks, true, crypto.encrypt( String.class
+                .getCanonicalName().getBytes() ), objectMetadata.getChunkingStrategy(), DateTime.now() );
+
+        ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
+        String str = null;
+        try {
+            str = mapper.writeValueAsString( blockToAppend );
+        } catch ( JsonProcessingException e ) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        Set<Metadata> metadata = indexer.index( objectMetadata.getId(), body );
+        EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
+        EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectMetadata.getId() )
+                .getBridgeKey();
+
+        EncryptedSearchSharingKey encryptedSearchSharingKey = privKey.calculateSharingKey( bridgeKey );
+        MetadataRequest mreq = prepareMetadata( metadata, encryptedSearchSharingKey );
+        uploadMetadata( mreq );
+        return objectApi.appendObject( objectMetadata.getId(), blockToAppend ).getData();
+    }
+
+    @Override
+    public ObjectMetadata getObjectMetadata( String id ) throws ResourceNotFoundException {
+        return objectApi.getObjectMetadata( id );
     }
 }

@@ -14,13 +14,13 @@ import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.net.URLEncoder;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
+import java.util.concurrent.ExecutionException;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -38,27 +38,34 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
-import com.kryptnostic.crypto.v1.keys.Kodex.SealedKodexException;
-import com.kryptnostic.directory.v1.KeyApi;
+import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
+import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
+import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
+import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
+import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
+import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
-import com.kryptnostic.kodex.v1.security.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
-import com.kryptnostic.sharing.v1.DocumentId;
-import com.kryptnostic.storage.v1.client.DocumentApi;
-import com.kryptnostic.storage.v1.client.SearchFunctionApi;
-import com.kryptnostic.storage.v1.models.request.AesEncryptableBase;
-import com.kryptnostic.users.v1.UserKey;
+import com.kryptnostic.sharing.v1.http.SharingApi;
+import com.kryptnostic.storage.v1.http.MetadataApi;
+import com.kryptnostic.storage.v1.http.ObjectApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.models.StorageRequestBuilder;
+import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
+import com.kryptnostic.utils.SecurityConfigurationTestUtils;
 
-public class DefaultKryptnosticClientTests extends AesEncryptableBase {
+@SuppressWarnings( "javadoc" )
+public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtils {
 
     private KryptnosticClient          client;
     private KryptnosticServicesFactory factory;
@@ -68,33 +75,108 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
     @Rule
     public WireMockRule                wireMockRule = new WireMockRule( 9990 );
     private UserKey                    userKey;
+    private InMemoryStore              store;
 
     @Before
     public void initClient() throws IrisException, InvalidKeyException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException,
             InvalidKeySpecException, InvalidParameterSpecException, SealedKodexException, IOException,
             ResourceNotFoundException, SignatureException, Exception {
+        if ( store == null ) {
+            store = new InMemoryStore();
+        }
+        store.clear();
         if ( client == null ) {
-            initImplicitEncryption();
-            initFheEncryption();
-
-            userKey = new UserKey( "krypt", "sina" );
-
-            connection = new IrisConnection( pair, kodex, crypto, userKey, "test", "http://localhost:9990" );
-            factory = new DefaultKryptnosticServicesFactory(
-                    KryptnosticRestAdapter.createWithDefaultClient( connection ) );
 
             // set up http stubs for getting global hasher and checking query pair
             expectedGlobalHasher = generateGlobalHasherStub();
+            generateKodex( expectedGlobalHasher );
             generateQueryHasherPairStub();
-            generateKodexStubs();
+            // generateDirectoryStubs();
+            // generateKodexStubs();
+
+            userKey = new UserKey( "krypt", "sina" );
+            connection = new IrisConnection(
+                    "http://localhost:9990",
+                    userKey,
+                    "test",
+                    store,
+                    createHttpClient(),
+                    kodex,
+                    pair );
+
+            generateDocumentStubs();
+            factory = new DefaultKryptnosticServicesFactory(
+                    KryptnosticRestAdapter.createWithDefaultClient( connection ) );
 
             client = new DefaultKryptnosticClient( factory, connection );
         }
     }
 
+    @Test
+    public void testMismatchGlobalHashFunctionChecksum() throws InvalidKeyException, NoSuchAlgorithmException,
+            InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException,
+            InvalidKeySpecException, InvalidParameterSpecException, SignatureException, SealedKodexException, Exception {
+
+        client = null;
+        initClient();
+
+        String docId = "DOCUMENT_0";
+        String documentCreateUrl = ObjectApi.CONTROLLER;
+        String documentUpdateUrl = ObjectApi.CONTROLLER + "/" + docId;
+
+        String docIdResponse = serialize( new BasicResponse<String>( docId, 200, true ) );
+
+        stubFor( put( urlMatching( documentCreateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
+        stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
+
+        store.put( DefaultKryptnosticContext.CHECKSUM_KEY, "abc".getBytes() );
+        store.put( DefaultKryptnosticContext.FUNCTION_KEY, KodexObjectMapperFactory.getObjectMapper()
+                .writeValueAsBytes( SimplePolynomialFunctions.randomFunction( 128, 64 ) ) );
+
+        client.getStorageClient().uploadObject( new StorageRequestBuilder().withBody( "test" ).build() );
+
+    }
+
+    private void generateDocumentStubs() {
+        try {
+            stubFor( get( urlMatching( DirectoryApi.CONTROLLER + DirectoryApi.OBJECT_KEY + "/.*" ) ).willReturn(
+                    aResponse().withBody(
+                            serialize( new BasicResponse<byte[]>( connection.getRsaCryptoService().encrypt(
+                                    new AesCryptoService( Cypher.AES_CTR_128 ) ), 200, true ) ) ) ) );
+            stubFor( post( urlMatching( DirectoryApi.CONTROLLER + DirectoryApi.OBJECT_KEY + "/.*" ) ).willReturn(
+                    aResponse() ) );
+            stubFor( put( urlEqualTo( SharingApi.SHARE + SharingApi.KEYS ) ).willReturn( aResponse() ) );
+            stubFor( post( urlEqualTo( MetadataApi.METADATA ) ).willReturn( jsonResponse( wrap( "\"done\"" ) ) ) );
+        } catch (
+                IOException
+                | SecurityConfigurationException
+                | NoSuchAlgorithmException
+                | InvalidAlgorithmParameterException e ) {
+            e.printStackTrace();
+        }
+    }
+
+    // private void generateDirectoryStubs() {
+    // try {
+    // String privateKey = serialize( crypto.encrypt( mapper.writeValueAsBytes( pair.getPrivate().getEncoded() ) ) );
+    // stubFor( get( urlEqualTo( DirectoryApi.CONTROLLER + DirectoryApi.PRIVATE_KEY ) ).willReturn(
+    // jsonResponse( privateKey ) ) );
+    // stubFor( put( urlEqualTo( DirectoryApi.CONTROLLER + DirectoryApi.PRIVATE_KEY ) ).willReturn( aResponse() ) );
+    // stubFor( get( urlEqualTo( DirectoryApi.CONTROLLER + DirectoryApi.PUBLIC_KEY + "/krypt/sina" ) ).willReturn(
+    // jsonResponse( serialize( new PublicKeyEnvelope( pair.getPublic().getEncoded() ) ) ) ) );
+    //
+    // //
+    // // String kodexStr = serialize( kodex );
+    // // stubFor( get( urlEqualTo( "/directory/kodex" ) ).willReturn( jsonResponse( kodexStr ) ) );
+    // } catch ( IOException | SecurityConfigurationException e ) {
+    // // TODO Auto-generated catch block
+    // e.printStackTrace();
+    // }
+    // }
+
     private void generateKodexStubs() throws JsonGenerationException, JsonMappingException, IOException {
-        stubFor( put( urlMatching( KeyApi.CONTROLLER + KeyApi.KODEX ) ).willReturn(
+        stubFor( put( urlMatching( DirectoryApi.CONTROLLER + DirectoryApi.KODEX ) ).willReturn(
                 jsonResponse( serialize( new BasicResponse<String>( "", 200, true ) ) ) ) );
     }
 
@@ -105,24 +187,26 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
 
         // verify we only request the global hasher once (getGlobalHashFunction was called twice though, because it's
         // called during client init)
-        verify( 1, getRequestedFor( urlMatching( SearchFunctionApi.CONTROLLER ) ) );
+        verify( 2, getRequestedFor( urlMatching( SearchFunctionApi.CONTROLLER ) ) );
 
     }
 
     @Test
     public void updateDocumentWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
-            JsonMappingException, IOException, URISyntaxException {
-        DocumentId docId = DocumentId.fromUserAndId( "DOCUMENT_0", userKey );
-        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + URLEncoder.encode( docId.toString() );
+            JsonMappingException, IOException, URISyntaxException, NoSuchAlgorithmException,
+            InvalidAlgorithmParameterException, ExecutionException {
+        String docId = "DOCUMENT_1";
+        String documentUpdateUrl = ObjectApi.CONTROLLER + "/" + docId;
 
-        String docIdResponse = serialize( new BasicResponse<DocumentId>( docId, 200, true ) );
+        String docIdResponse = serialize( new BasicResponse<String>( docId, 200, true ) );
 
-        stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
+        stubFor( put( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
 
-        String receivedDocId = client.updateDocumentWithoutMetadata( docId.getDocumentId(), "test" );
+        String receivedDocId = client.getStorageClient().uploadObject(
+                new StorageRequestBuilder().withBody( "test" ).withId( docId ).build() );
 
-        Assert.assertEquals( docId.getDocumentId(), receivedDocId );
+        Assert.assertEquals( docId, receivedDocId );
 
         verify( 1, postRequestedFor( urlMatching( documentUpdateUrl ) ) );
     }
@@ -131,17 +215,18 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
     public void uploadDocumentWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException {
-        DocumentId docId = DocumentId.fromUserAndId( "DOCUMENT_0", userKey );
-        String documentCreateUrl = DocumentApi.DOCUMENT;
-        String documentUpdateUrl = DocumentApi.DOCUMENT + "/" + URLEncoder.encode( docId.toString() );
+        String docId = "DOCUMENT_0";
+        String documentCreateUrl = ObjectApi.CONTROLLER;
+        String documentUpdateUrl = ObjectApi.CONTROLLER + "/" + docId;
 
-        String docIdResponse = serialize( new BasicResponse<DocumentId>( docId, 200, true ) );
+        String docIdResponse = serialize( new BasicResponse<String>( docId, 200, true ) );
 
         stubFor( put( urlMatching( documentCreateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
         stubFor( post( urlMatching( documentUpdateUrl ) ).willReturn( jsonResponse( docIdResponse ) ) );
 
-        String receivedDocId = client.uploadDocumentWithoutMetadata( "test" );
-        Assert.assertEquals( docId.getDocumentId(), receivedDocId );
+        String receivedDocId = client.getStorageClient().uploadObject(
+                new StorageRequestBuilder().withBody( "test" ).notSearchable().build() );
+        Assert.assertEquals( docId, receivedDocId );
 
         verify( 1, putRequestedFor( urlMatching( documentCreateUrl ) ) );
         verify( 1, postRequestedFor( urlMatching( documentUpdateUrl ) ) );
@@ -152,7 +237,9 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
     }
 
     private SimplePolynomialFunction generateGlobalHasherStub() throws IrisException, JsonProcessingException {
-        SimplePolynomialFunction expectedGlobalHasher = SimplePolynomialFunctions.randomFunction( 128, 128 );
+        SimplePolynomialFunction expectedGlobalHasher = SimplePolynomialFunctions.denseRandomMultivariateQuadratic(
+                128,
+                64 );
         String globalHasherResponse = null;
         try {
             globalHasherResponse = serialize( expectedGlobalHasher );
@@ -169,11 +256,9 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
 
         stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.CHECKSUM ) ).willReturn(
                 aResponse().withBody(
-                        Hashing
-                                .murmur3_128()
-                                .hashBytes(
-                                        KodexObjectMapperFactory.getObjectMapper().writeValueAsBytes(
-                                                expectedGlobalHasher ) ).toString() ) ) );
+                        wrap( "\""
+                                + Hashing.murmur3_128().hashBytes( mapper.writeValueAsBytes( expectedGlobalHasher ) )
+                                        .toString() + "\"" ) ) ) );
         return expectedGlobalHasher;
     }
 
@@ -182,6 +267,18 @@ public class DefaultKryptnosticClientTests extends AesEncryptableBase {
 
         stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.HASHER ) ).willReturn(
                 aResponse().withBody( response ) ) );
+
+        try {
+            String qhp = kodex.getKeyWithJackson( QueryHasherPairRequest.class.getCanonicalName(), String.class );
+            stubFor( get(
+                    urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.HASHER + SearchFunctionApi.CHECKSUM ) )
+                    .willReturn( jsonResponse( wrap( "\"" + qhp + "\"" ) ) ) );
+        } catch ( KodexException | SecurityConfigurationException | SealedKodexException e ) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        stubFor( post( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.HASHER ) ).willReturn( aResponse() ) );
     }
 
     private String wrap( String serialize ) {
