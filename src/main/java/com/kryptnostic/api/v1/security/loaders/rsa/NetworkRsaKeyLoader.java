@@ -6,22 +6,27 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
-import com.kryptnostic.crypto.v1.ciphers.BlockCiphertext;
-import com.kryptnostic.crypto.v1.ciphers.CryptoService;
-import com.kryptnostic.crypto.v1.keys.Keys;
-import com.kryptnostic.crypto.v1.keys.PublicKeyAlgorithm;
-import com.kryptnostic.directory.v1.KeyApi;
-import com.kryptnostic.directory.v1.response.PublicKeyEnvelope;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
+import com.kryptnostic.directory.v1.principal.UserKey;
+import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
+import com.kryptnostic.kodex.v1.crypto.keys.Keys;
+import com.kryptnostic.kodex.v1.crypto.keys.PublicKeyAlgorithm;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.users.v1.UserKey;
 
 public final class NetworkRsaKeyLoader extends RsaKeyLoader {
-    private final CryptoService crypto;
-    private final KeyApi        keyClient;
-    private final UserKey       userKey;
+    private static final Logger         logger = LoggerFactory.getLogger( NetworkRsaKeyLoader.class );
+    private final PasswordCryptoService crypto;
+    private final DirectoryApi          keyClient;
+    private final UserKey               userKey;
 
-    public NetworkRsaKeyLoader( CryptoService crypto, KeyApi keyClient, UserKey userKey ) throws KodexException {
+    public NetworkRsaKeyLoader( PasswordCryptoService crypto, DirectoryApi keyClient, UserKey userKey ) throws KodexException {
         if ( crypto == null || keyClient == null || userKey == null ) {
             throw new KodexException( "null values" );
         }
@@ -32,8 +37,16 @@ public final class NetworkRsaKeyLoader extends RsaKeyLoader {
 
     @Override
     protected KeyPair tryLoading() throws KodexException {
-        BlockCiphertext rsaPrivateKeyCiphertext = keyClient.getPrivateKey();
-        PublicKeyEnvelope envelope = keyClient.getPublicKey( userKey.getRealm(), userKey.getName() );
+        BlockCiphertext rsaPrivateKeyCiphertext = null;
+        PublicKeyEnvelope envelope = null;
+        try {
+            rsaPrivateKeyCiphertext = keyClient.getPrivateKey();
+            envelope = keyClient.getPublicKey( userKey.getName() );
+        } catch ( ResourceNotFoundException e ) {
+            if ( e.getMessage() != null ) {
+                logger.debug( e.getMessage() );
+            }
+        }
         if ( rsaPrivateKeyCiphertext == null || envelope == null ) {
             throw new KodexException( "Encryption keys could not be retrieved from the network" );
         }

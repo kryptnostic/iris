@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
@@ -33,10 +32,8 @@ public class PaddedMetadataMapper implements MetadataMapper {
     }
 
     @Override
-    public MappedMetadata mapTokensToKeys(
-            Set<Metadata> metadata,
-            BitVector searchNonce,
-            EncryptedSearchSharingKey sharingKey ) throws IrisException {
+    public MappedMetadata mapTokensToKeys( Set<Metadata> metadata, EncryptedSearchSharingKey sharingKey )
+            throws IrisException {
 
         /*
          * Let's balance the metadatum set and generate random nonces. Generally, the list of metadatum should be of
@@ -49,19 +46,19 @@ public class PaddedMetadataMapper implements MetadataMapper {
 
         log.info( "Generating metadatum." );
         for ( Metadata metadatum : metadata ) {
-            String token = metadatum.getToken();
+            String token = metadatum.getToken().toLowerCase();
             List<Integer> locations = metadatum.getLocations();
             int fromIndex = 0, toIndex = Math.min( locations.size(), BUCKET_SIZE );
             do {
 
                 BitVector indexForTerm;
                 try {
-                    indexForTerm = context.generateIndexForToken( token, searchNonce, sharingKey );
+                    indexForTerm = context.generateIndexForToken( token, sharingKey );
                 } catch ( ResourceNotFoundException e ) {
                     throw new IrisException( e );
                 }
 
-                Metadata balancedMetadatum = new Metadata( metadatum.getDocumentId(), token, subListAndPad(
+                Metadata balancedMetadatum = new Metadata( metadatum.getObjectId(), token, subListAndPad(
                         locations,
                         fromIndex,
                         toIndex ) );
@@ -82,7 +79,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
         return MappedMetadata.from( metadataMap );
     }
 
-    private Iterable<Integer> subListAndPad( List<Integer> locations, int fromIndex, int toIndex ) {
+    private List<Integer> subListAndPad( List<Integer> locations, int fromIndex, int toIndex ) {
         int paddingLength = BUCKET_SIZE - toIndex + fromIndex;
         List<Integer> padding = Lists.newArrayListWithCapacity( paddingLength );
         for ( int i = 0; i < paddingLength; ++i ) {
@@ -90,6 +87,10 @@ public class PaddedMetadataMapper implements MetadataMapper {
             padding.add( invalidLocation < 0 ? invalidLocation : -invalidLocation );
         }
 
-        return Iterables.concat( locations.subList( fromIndex, toIndex ), padding );
+        List<Integer> res = Lists.newArrayList();
+        res.addAll( locations.subList( fromIndex, toIndex ) );
+        res.addAll( padding );
+
+        return res;
     }
 }

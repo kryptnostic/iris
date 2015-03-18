@@ -4,6 +4,7 @@ import java.util.Map.Entry;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class DocumentFragmentFormatterTests {
@@ -59,6 +60,57 @@ public class DocumentFragmentFormatterTests {
         Assert.assertEquals(
                 "this word is really cool",
                 DocumentFragmentFormatter.format( makeEntry( 20, "this word is really cool" ), 5 ) );
+    }
+
+    @Test
+    public void testNarrow() {
+        Assert.assertEquals(
+                "I am super cool and I dont care",
+                DocumentFragmentFormatter.format( makeEntry( 11, "I am super cool and I dont care" ), 5 ) );
+    }
+
+    @Test
+    public void testTokenSpecial() {
+
+        Assert.assertEquals(
+                "See phillip@cool.com)",
+                DocumentFragmentFormatter.format( makeEntry( 5, "(See phillip@cool.com)" ), 1 ) );
+    }
+
+    @Test
+    @Ignore
+    public void testMultiple() {
+        Assert.assertEquals(
+                "she is cool he is",
+                DocumentFragmentFormatter.format( makeEntry( 7, "she is cool he is cool" ), 2 ) );
+
+        Assert.assertEquals(
+                "he is cool",
+                DocumentFragmentFormatter.format( makeEntry( 18, "she is cool he is cool" ), 2 ) );
+
+        Assert.assertEquals( "cool cool", DocumentFragmentFormatter.format( makeEntry( 0, "cool cool" ), 2 ) );
+
+        Assert.assertEquals( "cool cool", DocumentFragmentFormatter.format( makeEntry( 5, "cool cool" ), 2 ) );
+
+        Assert.assertEquals(
+                "cool cool buzz cool",
+                DocumentFragmentFormatter.format( makeEntry( 5, "cool cool buzz cool" ), 2 ) );
+
+        Assert.assertEquals(
+                "cool cool buzz",
+                DocumentFragmentFormatter.format( makeEntry( 0, "cool cool buzz cool" ), 2 ) );
+
+        Assert.assertEquals(
+                "cool buzz cool",
+                DocumentFragmentFormatter.format( makeEntry( 15, "cool cool buzz cool" ), 2 ) );
+
+    }
+
+    @Test
+    public void testSymbols() {
+        Assert.assertEquals(
+                "cool_word",
+                DocumentFragmentFormatter.format( makeEntry( 22, "this word is really a_cool_word" ), 0 ) );
     }
 
     @Test(

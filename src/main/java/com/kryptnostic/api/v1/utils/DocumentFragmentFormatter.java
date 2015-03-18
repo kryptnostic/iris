@@ -37,7 +37,8 @@ public class DocumentFragmentFormatter {
 
         String token = block.substring( offset, endOfWord );
 
-        String pattern = token;
+        String pattern = clean( token );
+        block = clean( block );
 
         boolean hasBeginning = false;
         boolean hasEnd = false;
@@ -53,8 +54,12 @@ public class DocumentFragmentFormatter {
         Pattern p = Pattern.compile( pattern, Pattern.CASE_INSENSITIVE );
 
         Matcher m = p.matcher( block );
-        m.find();
-        m.groupCount();
+
+        while ( m.find() ) {
+            if ( m.start( 0 ) <= offset && m.end( 0 ) > offset ) {
+                break;
+            }
+        }
 
         String result = "";
 
@@ -79,5 +84,9 @@ public class DocumentFragmentFormatter {
         }
 
         return result;
+    }
+
+    private static String clean( String token ) {
+        return token.replaceAll( "[\\\\_\\(\\)\\[\\]\\.\\@\\^\\$\\{\\}\\,\\/\\*\\+]", " " );
     }
 }

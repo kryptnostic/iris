@@ -14,7 +14,6 @@ import com.google.common.hash.Hashing;
 import com.google.common.io.Resources;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
-import com.kryptnostic.users.v1.UserKey;
 
 public class IndexingTests {
     private static final Logger logger = LoggerFactory.getLogger( IndexingTests.class );
@@ -23,7 +22,7 @@ public class IndexingTests {
 
     @Test
     public void testIndexing() throws IOException {
-        indexingService = new SimpleIndexer( new UserKey( "kryptnostic", "tester" ) );
+        indexingService = new SimpleIndexer();
 
         String document = Resources.toString( Resources.getResource( "privacy.txt" ), Charsets.UTF_8 );
         logger.info( "Loaded privacy.txt" );
