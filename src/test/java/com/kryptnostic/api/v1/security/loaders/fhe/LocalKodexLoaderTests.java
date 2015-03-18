@@ -39,7 +39,7 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class LocalKodexLoaderTests {
     private static final Logger      logger = LoggerFactory.getLogger( LocalKodexLoaderTests.class );
-    private PasswordCryptoService            cryptoService;
+    private PasswordCryptoService    cryptoService;
     private DataStore                dataStore;
     private ObjectMapper             mapper = KodexObjectMapperFactory.getObjectMapper();
 
@@ -83,9 +83,9 @@ public class LocalKodexLoaderTests {
         KeyPair pair = Keys.generateRsaKeyPair( 1024 );
         Assert.assertEquals( pair.getPublic(), Keys.publicKeyFromPrivateKey( pair.getPrivate() ) );
 
-        Mockito.when( dataStore.get( java.security.PrivateKey.class.getCanonicalName().getBytes() ) ).thenReturn(
+        Mockito.when( dataStore.get( java.security.PrivateKey.class.getCanonicalName() ) ).thenReturn(
                 mapper.writeValueAsBytes( cryptoService.encrypt( pair.getPrivate().getEncoded() ) ) );
-        Mockito.when( dataStore.get( java.security.PublicKey.class.getCanonicalName().getBytes() ) ).thenReturn(
+        Mockito.when( dataStore.get( java.security.PublicKey.class.getCanonicalName() ) ).thenReturn(
                 pair.getPublic().getEncoded() );
 
         return pair;
@@ -115,6 +115,6 @@ public class LocalKodexLoaderTests {
 
         actual.verify( pair.getPublic() );
 
-        Mockito.when( dataStore.get( Kodex.class.getCanonicalName().getBytes() ) ).thenReturn( kodexBytes );
+        Mockito.when( dataStore.get( Kodex.class.getCanonicalName() ) ).thenReturn( kodexBytes );
     }
 }
