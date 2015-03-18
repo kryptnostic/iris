@@ -160,6 +160,11 @@ public class IrisConnection implements KryptnosticConnection {
         BlockCiphertext encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt(
                 userKey.getRealm(),
                 userKey.getName() );
+
+        if ( encryptedSalt == null ) {
+            throw new IrisException( "Salt not found for user. Is this user registered?" );
+        }
+
         try {
             return CredentialFactory.deriveCredential( password, encryptedSalt );
         } catch ( SecurityConfigurationException | InvalidKeySpecException | NoSuchAlgorithmException e ) {

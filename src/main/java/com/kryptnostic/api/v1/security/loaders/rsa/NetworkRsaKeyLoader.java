@@ -6,6 +6,9 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.directory.v1.principal.UserKey;
@@ -18,6 +21,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 
 public final class NetworkRsaKeyLoader extends RsaKeyLoader {
+    private static final Logger         logger = LoggerFactory.getLogger( NetworkRsaKeyLoader.class );
     private final PasswordCryptoService crypto;
     private final DirectoryApi          keyClient;
     private final UserKey               userKey;
@@ -33,12 +37,15 @@ public final class NetworkRsaKeyLoader extends RsaKeyLoader {
 
     @Override
     protected KeyPair tryLoading() throws KodexException {
-        BlockCiphertext rsaPrivateKeyCiphertext = keyClient.getPrivateKey();
+        BlockCiphertext rsaPrivateKeyCiphertext = null;
         PublicKeyEnvelope envelope = null;
         try {
+            rsaPrivateKeyCiphertext = keyClient.getPrivateKey();
             envelope = keyClient.getPublicKey( userKey.getName() );
-        } catch ( ResourceNotFoundException e1 ) {
-            e1.printStackTrace();
+        } catch ( ResourceNotFoundException e ) {
+            if ( e.getMessage() != null ) {
+                logger.debug( e.getMessage() );
+            }
         }
         if ( rsaPrivateKeyCiphertext == null || envelope == null ) {
             throw new KodexException( "Encryption keys could not be retrieved from the network" );

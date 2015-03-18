@@ -27,6 +27,7 @@ import com.kryptnostic.kodex.v1.crypto.keys.Kodex.CorruptKodexException;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
@@ -61,7 +62,7 @@ public class NetworkKodexLoaderTests {
     @Test
     public void initTest() throws IrisException, KodexException, SecurityConfigurationException, SealedKodexException,
             CorruptKodexException, InvalidKeyException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
-            SignatureException, IOException, SingularMatrixException {
+            SignatureException, IOException, SingularMatrixException, ResourceNotFoundException {
 
         Mockito.when( keyClient.getKodex() ).thenReturn( makeValidKodex() );
 
