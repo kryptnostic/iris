@@ -103,7 +103,9 @@ public class DefaultStorageClient implements StorageClient {
         this.sharingApi = sharingApi;
         this.metadataMapper = new PaddedMetadataMapper( context );
         this.indexer = new SimpleIndexer();
-        this.loader = context.getConnection().getCryptoServiceLoader();
+        this.loader = Preconditions.checkNotNull(
+                context.getConnection().getCryptoServiceLoader(),
+                "CryptoServiceLoader from KryptnosticConnection cannot be null." );
     }
 
     @Override
