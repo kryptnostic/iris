@@ -157,9 +157,10 @@ public class IrisConnection implements KryptnosticConnection {
     private static String bootstrapCredential( UserKey userKey, String url, String password, Client client )
             throws IrisException {
         RestAdapter bootstrap = KryptnosticRestAdapter.createWithNoAuthAndDefaultJacksonConverter( url, client );
-        BlockCiphertext encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt(
-                userKey.getRealm(),
-                userKey.getName() );
+        BlockCiphertext encryptedSalt = null;
+        try {
+            encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt( userKey.getRealm(), userKey.getName() );
+        } catch ( ResourceNotFoundException e1 ) {}
 
         if ( encryptedSalt == null ) {
             throw new IrisException( "Salt not found for user. Is this user registered?" );
