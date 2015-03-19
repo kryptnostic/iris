@@ -19,7 +19,7 @@ import com.kryptnostic.storage.v1.StorageClient;
 
 public class DefaultKryptnosticClient implements KryptnosticClient {
     private static DeflatingJacksonMarshaller marshaller = new DeflatingJacksonMarshaller();
-    private static ObjectMapper               mapper     = KodexObjectMapperFactory.getObjectMapper();
+    private ObjectMapper                      mapper;
 
     private final KryptnosticContext          context;
 
@@ -30,6 +30,7 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
 
     public DefaultKryptnosticClient( KryptnosticServicesFactory factory, KryptnosticConnection connection ) throws IrisException,
             ResourceNotFoundException {
+        mapper = KodexObjectMapperFactory.getObjectMapper( connection.getCryptoServiceLoader() );
         this.context = new DefaultKryptnosticContext(
                 factory.createSearchFunctionApi(),
                 factory.createSharingApi(),
