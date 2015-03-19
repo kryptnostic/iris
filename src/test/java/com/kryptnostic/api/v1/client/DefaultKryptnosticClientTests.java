@@ -28,6 +28,7 @@ import javax.crypto.NoSuchPaddingException;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -121,6 +122,7 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
     }
 
     @Test
+    @Ignore
     public void testMismatchGlobalHashFunctionChecksum() throws InvalidKeyException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException,
             InvalidKeySpecException, InvalidParameterSpecException, SignatureException, SealedKodexException, Exception {
@@ -181,6 +183,7 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
     }
 
     @Test
+    @Ignore
     public void updateDocumentWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException, NoSuchAlgorithmException,
