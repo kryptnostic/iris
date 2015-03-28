@@ -1,6 +1,5 @@
 package com.kryptnostic.api.v1.client;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.api.v1.search.DefaultSearchClient;
 import com.kryptnostic.api.v1.sharing.SharingManager;
 import com.kryptnostic.api.v1.storage.DefaultStorageClient;
@@ -11,16 +10,11 @@ import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
-import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.sharing.v1.SharingClient;
 import com.kryptnostic.storage.v1.StorageClient;
 
 public class DefaultKryptnosticClient implements KryptnosticClient {
-    private static DeflatingJacksonMarshaller marshaller = new DeflatingJacksonMarshaller();
-    private ObjectMapper                      mapper;
-
     private final KryptnosticContext          context;
 
     private final SearchClient                searchClient;
@@ -30,7 +24,6 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
 
     public DefaultKryptnosticClient( KryptnosticServicesFactory factory, KryptnosticConnection connection ) throws IrisException,
             ResourceNotFoundException {
-        mapper = KodexObjectMapperFactory.getObjectMapper( connection.getCryptoServiceLoader() );
         this.context = new DefaultKryptnosticContext(
                 factory.createSearchFunctionApi(),
                 factory.createSharingApi(),
