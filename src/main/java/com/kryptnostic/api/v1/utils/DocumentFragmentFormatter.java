@@ -41,11 +41,8 @@ public class DocumentFragmentFormatter {
 
         String result = "";
 
-        // System.out.println( offset + " - " + token + " - window: " + wordWindow + " - " + block );
-
         int targetIndex = -1;
         for ( int i = 0; i < blockSplit.length; i++ ) {
-            System.out.println( blockSplit[ i ] );
             if ( blockSplit[ i ].equals( token ) ) {
                 targetIndex = i;
                 break;
