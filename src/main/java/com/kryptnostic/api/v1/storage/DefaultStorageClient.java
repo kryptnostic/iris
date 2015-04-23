@@ -294,7 +294,7 @@ public class DefaultStorageClient implements StorageClient {
                     frontSpaces++;
                     if ( frontSpaces > wordRadius ) {
                         if ( frontIndex < body.length() ) {
-                            frontIndex--;
+                            // frontIndex--;
                         }
                         break;
                     }

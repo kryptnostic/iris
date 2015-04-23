@@ -26,7 +26,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
-import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.sharing.v1.SharingClient;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.sharing.v1.models.IncomingShares;
@@ -50,7 +49,6 @@ public class SharingManager implements SharingClient {
     @Override
     public void shareObjectWithUsers( String objectId, Set<UserKey> users ) throws ResourceNotFoundException {
         CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
-        DataStore dataStore = context.getConnection().getDataStore();
         EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
         EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectId ).getBridgeKey();
 
