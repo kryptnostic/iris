@@ -109,7 +109,6 @@ public class FreshKodexLoader extends KodexLoader {
                 QueryHasherPairRequest.class.getCanonicalName(),
                 queryHasher.computeChecksum(),
                 String.class );
-
     }
 
     protected QueryHasherPairRequest getQueryHasher(
