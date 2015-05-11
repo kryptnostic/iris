@@ -22,10 +22,11 @@ import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 
 public class PaddedMetadataMapper implements MetadataMapper {
-    private static final Random      r           = new SecureRandom();
-    private static final Logger      log         = LoggerFactory.getLogger( PaddedMetadataMapper.class );
+    private static final Random      r                    = new SecureRandom();
+    private static final Logger      log                  = LoggerFactory.getLogger( PaddedMetadataMapper.class );
     private final KryptnosticContext context;
-    private static final int         BUCKET_SIZE = 100;
+    private static final int         BUCKET_SIZE          = 10;
+    private static final int         MINIMUM_TOKEN_LENGTH = 2;
 
     public PaddedMetadataMapper( KryptnosticContext context ) {
         this.context = context;
@@ -47,6 +48,9 @@ public class PaddedMetadataMapper implements MetadataMapper {
         log.info( "Generating metadatum." );
         for ( Metadata metadatum : metadata ) {
             String token = metadatum.getToken().toLowerCase();
+            if ( token.length() <= MINIMUM_TOKEN_LENGTH ) {
+                continue;
+            }
             List<Integer> locations = metadatum.getLocations();
             int fromIndex = 0, toIndex = Math.min( locations.size(), BUCKET_SIZE );
             do {
