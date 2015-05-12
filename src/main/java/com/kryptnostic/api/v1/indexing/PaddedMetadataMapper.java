@@ -26,7 +26,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
     private static final Logger      log                  = LoggerFactory.getLogger( PaddedMetadataMapper.class );
     private final KryptnosticContext context;
     private static final int         BUCKET_SIZE          = 10;
-    private static final int         MINIMUM_TOKEN_LENGTH = 2;
+    private static final int         MINIMUM_TOKEN_LENGTH = 1;
 
     public PaddedMetadataMapper( KryptnosticContext context ) {
         this.context = context;
