@@ -13,31 +13,33 @@ import com.kryptnostic.kodex.v1.indexing.QueryAnalyzer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 
 /**
- * Basic tokenizer that uses a regular expression to parse a source string. 
+ * Basic tokenizer that uses a regular expression to parse a source string.
+ * 
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  */
-public class TokenizingWhitespaceAnalyzer implements Analyzer,QueryAnalyzer {
-	private static final Pattern onlyWords = Pattern.compile("([a-zA-Z0-9]+)");
-	//TODO: Make a generic analyzer that takes in a pattern and indexes on resulting tokens.
-	public Map<String, List<Integer>> analyze( String source ) {
-		Matcher m = onlyWords.matcher( source );
-		Map<String, List<Integer>> hits = Maps.newHashMap();
-		while( m.find() ) {
-			int location = m.start();
-			String s = m.group();
-			List<Integer> locations = hits.get( s );
-			if( locations == null ) {
-				locations = Lists.newArrayList();
-				hits.put( s.toLowerCase() ,  locations );
-			} 
-			locations.add( location );
-		}
-		
-		return hits;
-	}
-    
-	@Override
-    public Set<String> analyzeQuery(String query) {
+public class TokenizingWhitespaceAnalyzer implements Analyzer, QueryAnalyzer {
+    private static final Pattern onlyWords = Pattern.compile( "([a-zA-Z0-9]+)" );
+
+    // TODO: Make a generic analyzer that takes in a pattern and indexes on resulting tokens.
+    public Map<String, List<Integer>> analyze( String source ) {
+        Matcher m = onlyWords.matcher( source );
+        Map<String, List<Integer>> hits = Maps.newHashMap();
+        while ( m.find() ) {
+            int location = m.start();
+            String s = m.group().toLowerCase();
+            List<Integer> locations = hits.get( s );
+            if ( locations == null ) {
+                locations = Lists.newArrayList();
+                hits.put( s, locations );
+            }
+            locations.add( location );
+        }
+
+        return hits;
+    }
+
+    @Override
+    public Set<String> analyzeQuery( String query ) {
         return ImmutableSet.copyOf( analyze( query ).keySet() );
-    }	
+    }
 }
