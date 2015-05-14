@@ -50,7 +50,7 @@ repositories {
 
 ext.hazelcast_version='3.2.4'
 ext.fhe_core_version='0.1.2-SNAPSHOT'
-ext.kodex_version="0.0.1-SNAPSHOT"
+ext.kodex_version="1.0.0-SNAPSHOT"
 ext.retrofit_version='1.9.0'
 ext.spring_framework_version='4.0.6.RELEASE'
 ext.jackson_version='2.4.4'
