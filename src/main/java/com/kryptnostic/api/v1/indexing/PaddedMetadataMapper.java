@@ -43,48 +43,49 @@ public class PaddedMetadataMapper implements MetadataMapper {
          * a collision. In theory this shouldn't be a security risk, because its hard for an attacker to force stuff
          * into the same bucket, unless they compromise the random number generator.
          */
+
+        int bucketSize = 0;
+        for ( Metadata m : metadata ) {
+            bucketSize = Math.max( bucketSize, m.getLocations().size() );
+        }
+
         Map<BitVector, List<Metadata>> metadataMap = Maps.newHashMapWithExpectedSize( metadata.size() );
 
         log.info( "Generating metadatum." );
         for ( Metadata metadatum : metadata ) {
-            String token = metadatum.getToken().toLowerCase();
+            String token = metadatum.getToken();
             if ( token.length() <= MINIMUM_TOKEN_LENGTH ) {
                 continue;
             }
             List<Integer> locations = metadatum.getLocations();
-            int fromIndex = 0, toIndex = Math.min( locations.size(), BUCKET_SIZE );
-            do {
+            int fromIndex = 0, toIndex = Math.min( locations.size(), bucketSize );
 
-                BitVector indexForTerm;
-                try {
-                    indexForTerm = context.generateIndexForToken( token, sharingKey );
-                } catch ( ResourceNotFoundException e ) {
-                    throw new IrisException( e );
-                }
+            BitVector indexForTerm;
+            try {
+                indexForTerm = context.generateIndexForToken( token, sharingKey );
+            } catch ( ResourceNotFoundException e ) {
+                throw new IrisException( e );
+            }
 
-                Metadata balancedMetadatum = new Metadata( metadatum.getObjectId(), token, subListAndPad(
-                        locations,
-                        fromIndex,
-                        toIndex ) );
-                List<Metadata> metadatumList = metadataMap.get( indexForTerm );
+            Metadata balancedMetadatum = new Metadata( metadatum.getObjectId(), token, subListAndPad(
+                    locations,
+                    fromIndex,
+                    toIndex,
+                    bucketSize ) );
+            List<Metadata> metadatumList = metadataMap.get( indexForTerm );
 
-                if ( metadatumList == null ) {
-                    metadatumList = Lists.newArrayListWithExpectedSize( 1 );
-                    metadataMap.put( indexForTerm, metadatumList );
-                }
-                metadatumList.add( balancedMetadatum );
-                fromIndex += BUCKET_SIZE;
-                toIndex += BUCKET_SIZE;
-                if ( toIndex > locations.size() ) {
-                    toIndex = locations.size();
-                }
-            } while ( fromIndex < toIndex );
+            if ( metadatumList == null ) {
+                metadatumList = Lists.newArrayListWithExpectedSize( 1 );
+                metadataMap.put( indexForTerm, metadatumList );
+            }
+
+            metadatumList.add( balancedMetadatum );
         }
         return MappedMetadata.from( metadataMap );
     }
 
-    private List<Integer> subListAndPad( List<Integer> locations, int fromIndex, int toIndex ) {
-        int paddingLength = BUCKET_SIZE - toIndex + fromIndex;
+    private List<Integer> subListAndPad( List<Integer> locations, int fromIndex, int toIndex, int bucketSize ) {
+        int paddingLength = bucketSize - toIndex + fromIndex;
         List<Integer> padding = Lists.newArrayListWithCapacity( paddingLength );
         for ( int i = 0; i < paddingLength; ++i ) {
             int invalidLocation = r.nextInt();

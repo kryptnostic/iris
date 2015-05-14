@@ -28,7 +28,7 @@ public class TokenizingWhitespaceAnalyzer implements Analyzer,QueryAnalyzer {
 			List<Integer> locations = hits.get( s );
 			if( locations == null ) {
 				locations = Lists.newArrayList();
-				hits.put( s ,  locations );
+				hits.put( s.toLowerCase() ,  locations );
 			} 
 			locations.add( location );
 		}
