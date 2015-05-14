@@ -62,8 +62,8 @@ import com.kryptnostic.storage.v1.models.request.StorageRequest;
  */
 public class DefaultStorageClient implements StorageClient {
     private static final Logger       logger                   = LoggerFactory.getLogger( StorageClient.class );
-    private static final int          PARALLEL_NETWORK_THREADS = Runtime.getRuntime().availableProcessors() / 2 + 1;
-    private static final int          METADATA_BATCH_SIZE      = 10;
+    private static final int          PARALLEL_NETWORK_THREADS = 16;
+    private static final int          METADATA_BATCH_SIZE      = 25;
     ExecutorService                   exec                     = Executors
                                                                        .newFixedThreadPool( PARALLEL_NETWORK_THREADS );
 
@@ -253,12 +253,12 @@ public class DefaultStorageClient implements StorageClient {
                         metadatumToEncrypt,
                         metadatumToEncrypt.getObjectId() );
                 metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
+                if ( metadataIndex.size() == METADATA_BATCH_SIZE ) {
+                    requests.add( new MetadataRequest( metadataIndex ) );
+                    metadataIndex = Lists.newArrayList();
+                }
             }
 
-            if ( metadataIndex.size() == METADATA_BATCH_SIZE ) {
-                requests.add( new MetadataRequest( metadataIndex ) );
-                metadataIndex = Lists.newArrayList();
-            }
         }
         if ( !metadataIndex.isEmpty() ) {
             requests.add( new MetadataRequest( metadataIndex ) );

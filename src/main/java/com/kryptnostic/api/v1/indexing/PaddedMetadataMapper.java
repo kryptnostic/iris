@@ -25,7 +25,6 @@ public class PaddedMetadataMapper implements MetadataMapper {
     private static final Random      r                    = new SecureRandom();
     private static final Logger      log                  = LoggerFactory.getLogger( PaddedMetadataMapper.class );
     private final KryptnosticContext context;
-    private static final int         BUCKET_SIZE          = 10;
     private static final int         MINIMUM_TOKEN_LENGTH = 1;
 
     public PaddedMetadataMapper( KryptnosticContext context ) {
@@ -45,56 +44,48 @@ public class PaddedMetadataMapper implements MetadataMapper {
          */
         Map<BitVector, List<Metadata>> metadataMap = Maps.newHashMapWithExpectedSize( metadata.size() );
 
+        int maxLocations = Integer.MIN_VALUE;
+        int minLocations = Integer.MAX_VALUE;
+        int numAcceptedTokens = 0;
+
         log.info( "Generating metadatum." );
         for ( Metadata metadatum : metadata ) {
             String token = metadatum.getToken().toLowerCase();
             if ( token.length() <= MINIMUM_TOKEN_LENGTH ) {
                 continue;
             }
+            numAcceptedTokens++;
             List<Integer> locations = metadatum.getLocations();
-            int fromIndex = 0, toIndex = Math.min( locations.size(), BUCKET_SIZE );
-            do {
+            if ( locations.size() < minLocations ) {
+                minLocations = locations.size();
+            }
+            if ( locations.size() > maxLocations ) {
+                maxLocations = locations.size();
+            }
+            BitVector indexForTerm;
+            try {
+                indexForTerm = context.generateIndexForToken( token, sharingKey );
+            } catch ( ResourceNotFoundException e ) {
+                throw new IrisException( e );
+            }
 
-                BitVector indexForTerm;
-                try {
-                    indexForTerm = context.generateIndexForToken( token, sharingKey );
-                } catch ( ResourceNotFoundException e ) {
-                    throw new IrisException( e );
-                }
+            Metadata balancedMetadatum = new Metadata( metadatum.getObjectId(), token, locations );
+            List<Metadata> metadatumList = metadataMap.get( indexForTerm );
 
-                Metadata balancedMetadatum = new Metadata( metadatum.getObjectId(), token, subListAndPad(
-                        locations,
-                        fromIndex,
-                        toIndex ) );
-                List<Metadata> metadatumList = metadataMap.get( indexForTerm );
+            if ( metadatumList == null ) {
+                metadatumList = Lists.newArrayListWithExpectedSize( 1 );
+                metadataMap.put( indexForTerm, metadatumList );
+            }
+            metadatumList.add( balancedMetadatum );
 
-                if ( metadatumList == null ) {
-                    metadatumList = Lists.newArrayListWithExpectedSize( 1 );
-                    metadataMap.put( indexForTerm, metadatumList );
-                }
-                metadatumList.add( balancedMetadatum );
-                fromIndex += BUCKET_SIZE;
-                toIndex += BUCKET_SIZE;
-                if ( toIndex > locations.size() ) {
-                    toIndex = locations.size();
-                }
-            } while ( fromIndex < toIndex );
         }
+        log.info(
+                "[PROFILE] MinLocations: {} MaxLocations: {} RawMetadataSize: {} ProcessedMetadataSize: {} AcceptedTokens: {}",
+                minLocations,
+                maxLocations,
+                metadata.size(),
+                metadataMap.values().size(),
+                numAcceptedTokens );
         return MappedMetadata.from( metadataMap );
-    }
-
-    private List<Integer> subListAndPad( List<Integer> locations, int fromIndex, int toIndex ) {
-        int paddingLength = BUCKET_SIZE - toIndex + fromIndex;
-        List<Integer> padding = Lists.newArrayListWithCapacity( paddingLength );
-        for ( int i = 0; i < paddingLength; ++i ) {
-            int invalidLocation = r.nextInt();
-            padding.add( invalidLocation < 0 ? invalidLocation : -invalidLocation );
-        }
-
-        List<Integer> res = Lists.newArrayList();
-        res.addAll( locations.subList( fromIndex, toIndex ) );
-        res.addAll( padding );
-
-        return res;
     }
 }
