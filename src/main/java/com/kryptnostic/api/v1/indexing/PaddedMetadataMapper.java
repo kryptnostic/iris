@@ -25,7 +25,6 @@ public class PaddedMetadataMapper implements MetadataMapper {
     private static final Random      r                    = new SecureRandom();
     private static final Logger      log                  = LoggerFactory.getLogger( PaddedMetadataMapper.class );
     private final KryptnosticContext context;
-    private static final int         BUCKET_SIZE          = 10;
     private static final int         MINIMUM_TOKEN_LENGTH = 1;
 
     public PaddedMetadataMapper( KryptnosticContext context ) {
@@ -51,12 +50,17 @@ public class PaddedMetadataMapper implements MetadataMapper {
 
         Map<BitVector, List<Metadata>> metadataMap = Maps.newHashMapWithExpectedSize( metadata.size() );
 
+        int maxLocations = Integer.MIN_VALUE;
+        int minLocations = Integer.MAX_VALUE;
+        int numAcceptedTokens = 0;
+
         log.info( "Generating metadatum." );
         for ( Metadata metadatum : metadata ) {
             String token = metadatum.getToken();
             if ( token.length() <= MINIMUM_TOKEN_LENGTH ) {
                 continue;
             }
+            numAcceptedTokens++;
             List<Integer> locations = metadatum.getLocations();
             int fromIndex = 0, toIndex = Math.min( locations.size(), bucketSize );
 
@@ -80,7 +84,15 @@ public class PaddedMetadataMapper implements MetadataMapper {
             }
 
             metadatumList.add( balancedMetadatum );
+
         }
+        log.info(
+                "[PROFILE] MinLocations: {} MaxLocations: {} RawMetadataSize: {} ProcessedMetadataSize: {} AcceptedTokens: {}",
+                minLocations,
+                maxLocations,
+                metadata.size(),
+                metadataMap.values().size(),
+                numAcceptedTokens );
         return MappedMetadata.from( metadataMap );
     }
 
