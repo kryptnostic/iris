@@ -31,6 +31,7 @@ import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.sharing.v1.models.IncomingShares;
 import com.kryptnostic.sharing.v1.models.Share;
 import com.kryptnostic.sharing.v1.models.request.KeyRegistrationRequest;
+import com.kryptnostic.sharing.v1.models.request.RevocationRequest;
 import com.kryptnostic.sharing.v1.models.request.SharingRequest;
 import com.kryptnostic.storage.v1.models.EncryptedSearchObjectKey;
 
@@ -122,7 +123,8 @@ public class SharingManager implements SharingClient {
 
     @Override
     public void unshareObjectWithUsers( String objectId, Set<UserKey> users ) {
-
+        RevocationRequest revocation = new RevocationRequest(objectId, users);
+        sharingApi.revokeAccess(revocation);
     }
 
     @Override
