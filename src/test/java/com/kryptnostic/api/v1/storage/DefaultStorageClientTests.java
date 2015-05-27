@@ -14,7 +14,6 @@ import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -49,7 +48,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
-import com.kryptnostic.kodex.v1.serialization.crypto.DefaultChunkingStrategy;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.sharing.v1.http.SharingApi;
@@ -168,29 +166,22 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
 
         String word = "word";
         String intermediate = " cool cool ";
-        String docBody = word
-                + intermediate
-                + new String( new char[ DefaultChunkingStrategy.BLOCK_LENGTH_IN_BYTES - word.length()
-                        - ( intermediate.length() * 2 ) ] ) + intermediate + word;
+        String docBody = word + intermediate + intermediate + word;
         String docId = "doc1";
         loader.put( docId, crypto );
         KryptnosticObject doc = new KryptnosticObject( new ObjectMetadata( docId ), docBody ).encrypt( loader );
-        List<EncryptableBlock> blocks = Arrays.asList( doc.getBody().getEncryptedData() );
-        Mockito.when( documentApi.getObjectBlocks( Mockito.anyString(), Mockito.anyList() ) ).thenReturn(
-                new BasicResponse<List<EncryptableBlock>>( blocks, 200, true ) );
+        Mockito.when( documentApi.getObject( Mockito.anyString() ) ).thenReturn( doc );
 
         Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
         Mockito.when( context.getConnection().getCryptoServiceLoader() ).thenReturn( loader );
 
         storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
 
-        Map<Integer, String> preview = storageService.getObjectPreview(
-                docId,
-                Arrays.asList( 0, DefaultChunkingStrategy.BLOCK_LENGTH_IN_BYTES ),
-                2 );
+        int secondIndex = ( word + intermediate + intermediate ).length() + 1;
+        Map<Integer, String> preview = storageService.getObjectPreview( docId, Arrays.asList( 0, secondIndex ), 2 );
         Assert.assertEquals( 2, preview.size() );
         Assert.assertEquals( ( word + intermediate ).trim(), preview.get( 0 ) );
-        Assert.assertEquals( word, preview.get( DefaultChunkingStrategy.BLOCK_LENGTH_IN_BYTES ) );
+        Assert.assertEquals( ( intermediate + word ).substring( 1 ), preview.get( secondIndex ) );
     }
 
     // FIXME duped from DefaultKryptnosticClientTests

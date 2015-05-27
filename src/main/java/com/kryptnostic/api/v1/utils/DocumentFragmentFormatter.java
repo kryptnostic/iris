@@ -1,8 +1,6 @@
 package com.kryptnostic.api.v1.utils;
 
 import java.util.Map.Entry;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class DocumentFragmentFormatter {
 
@@ -16,6 +14,8 @@ public class DocumentFragmentFormatter {
     public static String format( Entry<Integer, String> item, int wordWindow ) {
         int offset = item.getKey();
         String block = item.getValue();
+
+        block = block.replaceAll( "\\n", " " );
 
         if ( offset > block.length() ) {
             throw new IllegalArgumentException( "Offset (" + offset + ") is greater than block length ("
@@ -37,56 +37,33 @@ public class DocumentFragmentFormatter {
 
         String token = block.substring( offset, endOfWord );
 
-        String pattern = clean( token );
-        block = clean( block );
-
-        boolean hasBeginning = false;
-        boolean hasEnd = false;
-        if ( offset > 0 ) {
-            hasBeginning = true;
-            pattern = "((\\w+\\W*){0," + wordWindow + "})\\W" + pattern;
-        }
-        if ( endOfWord < block.length() ) {
-            hasEnd = true;
-            pattern += "\\W((\\W*\\w+){0," + wordWindow + "})";
-        }
-
-        Pattern p = Pattern.compile( pattern, Pattern.CASE_INSENSITIVE );
-
-        Matcher m = p.matcher( block );
-
-        while ( m.find() ) {
-            if ( m.start( 0 ) <= offset && m.end( 0 ) > offset ) {
-                break;
-            }
-        }
+        String[] blockSplit = block.split( "[\\s]" );
 
         String result = "";
 
-        if ( hasBeginning ) {
-            String beginning = m.group( 1 );
-            if ( beginning != null && beginning.length() > 0 ) {
-                result += beginning + " ";
+        int targetIndex = -1;
+        for ( int i = 0; i < blockSplit.length; i++ ) {
+            if ( blockSplit[ i ].equals( token ) ) {
+                targetIndex = i;
+                break;
             }
         }
-
-        result += token;
-
-        if ( hasEnd ) {
-            int endIndex = 3;
-            if ( !hasBeginning ) {
-                endIndex = 1;
-            }
-            String end = m.group( endIndex );
-            if ( end != null && end.length() > 0 ) {
-                result += " " + end;
+        int startIndex = targetIndex - wordWindow;
+        if ( startIndex < 0 ) {
+            startIndex = 0;
+        }
+        int endIndex = targetIndex + wordWindow + 1;
+        if ( endIndex > blockSplit.length ) {
+            endIndex = blockSplit.length;
+        }
+        for ( int i = startIndex; i < endIndex; i++ ) {
+            result += blockSplit[ i ];
+            if ( i < endIndex - 1 ) {
+                result += " ";
             }
         }
 
         return result;
     }
 
-    private static String clean( String token ) {
-        return token.replaceAll( "[\\\\_\\(\\)\\[\\]\\.\\@\\^\\$\\{\\}\\,\\/\\*\\+]", " " );
-    }
 }

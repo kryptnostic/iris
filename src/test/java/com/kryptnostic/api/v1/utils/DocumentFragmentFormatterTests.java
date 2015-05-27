@@ -29,6 +29,16 @@ public class DocumentFragmentFormatterTests {
     }
 
     @Test
+    public void testChat() {
+        String doc = "matt: blah\n" + "matt: yrdy\n" + "sina: test\n" + "sina: test\n" + "matt: yeah buddy\n"
+                + "sina: yeah\n" + "sina: :)\n" + "matt: This is so sick\n" + "sina: yes\\n it is\n";
+        int index = doc.indexOf( "yrdy" );
+        Assert.assertEquals(
+                "blah matt: yrdy sina: test",
+                DocumentFragmentFormatter.format( makeEntry( index, doc ), 2 ) );
+    }
+
+    @Test
     public void testTokenMiddle() {
         Assert.assertEquals( "is", DocumentFragmentFormatter.format( makeEntry( 10, "this word is really cool" ), 0 ) );
         Assert.assertEquals(
@@ -73,7 +83,7 @@ public class DocumentFragmentFormatterTests {
     public void testTokenSpecial() {
 
         Assert.assertEquals(
-                "See phillip@cool.com)",
+                "(See phillip@cool.com)",
                 DocumentFragmentFormatter.format( makeEntry( 5, "(See phillip@cool.com)" ), 1 ) );
     }
 
@@ -109,8 +119,8 @@ public class DocumentFragmentFormatterTests {
     @Test
     public void testSymbols() {
         Assert.assertEquals(
-                "cool_word",
-                DocumentFragmentFormatter.format( makeEntry( 22, "this word is really a_cool_word" ), 0 ) );
+                "a_cool_word",
+                DocumentFragmentFormatter.format( makeEntry( 20, "this word is really a_cool_word" ), 0 ) );
     }
 
     @Test(
