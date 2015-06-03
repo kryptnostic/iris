@@ -50,8 +50,6 @@ public class PaddedMetadataMapper implements MetadataMapper {
 
         Map<BitVector, List<Metadata>> metadataMap = Maps.newHashMapWithExpectedSize( metadata.size() );
 
-        int maxLocations = Integer.MIN_VALUE;
-        int minLocations = Integer.MAX_VALUE;
         int numAcceptedTokens = 0;
 
         log.info( "Generating metadatum." );
@@ -62,7 +60,6 @@ public class PaddedMetadataMapper implements MetadataMapper {
             }
             numAcceptedTokens++;
             List<Integer> locations = metadatum.getLocations();
-            int fromIndex = 0, toIndex = Math.min( locations.size(), bucketSize );
 
             BitVector indexForTerm;
             try {
@@ -73,8 +70,6 @@ public class PaddedMetadataMapper implements MetadataMapper {
 
             Metadata balancedMetadatum = new Metadata( metadatum.getObjectId(), token, subListAndPad(
                     locations,
-                    fromIndex,
-                    toIndex,
                     bucketSize ) );
             List<Metadata> metadatumList = metadataMap.get( indexForTerm );
 
@@ -88,26 +83,20 @@ public class PaddedMetadataMapper implements MetadataMapper {
         }
         log.info(
                 "[PROFILE] MinLocations: {} MaxLocations: {} RawMetadataSize: {} ProcessedMetadataSize: {} AcceptedTokens: {}",
-                minLocations,
-                maxLocations,
                 metadata.size(),
                 metadataMap.values().size(),
                 numAcceptedTokens );
         return MappedMetadata.from( metadataMap );
     }
 
-    private List<Integer> subListAndPad( List<Integer> locations, int fromIndex, int toIndex, int bucketSize ) {
-        int paddingLength = bucketSize - toIndex + fromIndex;
-        List<Integer> padding = Lists.newArrayListWithCapacity( paddingLength );
-        for ( int i = 0; i < paddingLength; ++i ) {
+    private List<Integer> subListAndPad( List<Integer> locations, int bucketSize ) {
+        List<Integer> padding = Lists.newArrayListWithCapacity( bucketSize );
+        padding.addAll( locations );
+        for ( int i = locations.size(); i < bucketSize; ++i ) {
             int invalidLocation = r.nextInt();
             padding.add( invalidLocation < 0 ? invalidLocation : -invalidLocation );
         }
 
-        List<Integer> res = Lists.newArrayList();
-        res.addAll( locations.subList( fromIndex, toIndex ) );
-        res.addAll( padding );
-
-        return res;
+        return padding;
     }
 }

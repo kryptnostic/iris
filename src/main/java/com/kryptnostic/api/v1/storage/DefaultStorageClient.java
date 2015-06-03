@@ -63,7 +63,7 @@ import com.kryptnostic.storage.v1.models.request.StorageRequest;
 public class DefaultStorageClient implements StorageClient {
     private static final Logger       logger                   = LoggerFactory.getLogger( StorageClient.class );
     private static final int          PARALLEL_NETWORK_THREADS = 16;
-    private static final int          METADATA_BATCH_SIZE      = 25;
+    private static final int          METADATA_BATCH_SIZE      = 50;
     ExecutorService                   exec                     = Executors
                                                                        .newFixedThreadPool( PARALLEL_NETWORK_THREADS );
 
@@ -135,6 +135,7 @@ public class DefaultStorageClient implements StorageClient {
         Stopwatch watch = Stopwatch.createStarted();
         Set<Metadata> metadata = indexer.index( object.getMetadata().getId(), object.getBody().getData() );
         logger.debug( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        logger.debug( "[PROFILE] {} metadata indexed", metadata.size() );
 
         // generate nonce
         EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
