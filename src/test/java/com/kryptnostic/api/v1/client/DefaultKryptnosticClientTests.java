@@ -40,6 +40,8 @@ import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.principal.UserKey;
+import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
+import com.kryptnostic.kodex.v1.authentication.CredentialFactory.CredentialPair;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
@@ -92,10 +94,15 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
             expectedGlobalHasher = generateGlobalHasherStub();
             generateKodex( expectedGlobalHasher );
             generateQueryHasherPairStub();
-            // generateDirectoryStubs();
-            // generateKodexStubs();
 
             userKey = new UserKey( "krypt", "sina" );
+
+            CredentialPair p = CredentialFactory.generateCredentialPair( "test" );
+            stubFor( get(
+                    urlEqualTo( DirectoryApi.CONTROLLER + DirectoryApi.SALT_KEY + "/" + userKey.getRealm() + "/"
+                            + userKey.getName() ) ).willReturn(
+                    jsonResponse( mapper.writeValueAsString( p.getEncryptedSalt() ) ) ) );
+
             connection = new IrisConnection(
                     "http://localhost:9990",
                     userKey,
@@ -156,24 +163,6 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
             e.printStackTrace();
         }
     }
-
-    // private void generateDirectoryStubs() {
-    // try {
-    // String privateKey = serialize( crypto.encrypt( mapper.writeValueAsBytes( pair.getPrivate().getEncoded() ) ) );
-    // stubFor( get( urlEqualTo( DirectoryApi.CONTROLLER + DirectoryApi.PRIVATE_KEY ) ).willReturn(
-    // jsonResponse( privateKey ) ) );
-    // stubFor( put( urlEqualTo( DirectoryApi.CONTROLLER + DirectoryApi.PRIVATE_KEY ) ).willReturn( aResponse() ) );
-    // stubFor( get( urlEqualTo( DirectoryApi.CONTROLLER + DirectoryApi.PUBLIC_KEY + "/krypt/sina" ) ).willReturn(
-    // jsonResponse( serialize( new PublicKeyEnvelope( pair.getPublic().getEncoded() ) ) ) ) );
-    //
-    // //
-    // // String kodexStr = serialize( kodex );
-    // // stubFor( get( urlEqualTo( "/directory/kodex" ) ).willReturn( jsonResponse( kodexStr ) ) );
-    // } catch ( IOException | SecurityConfigurationException e ) {
-    // // TODO Auto-generated catch block
-    // e.printStackTrace();
-    // }
-    // }
 
     private void generateKodexStubs() throws JsonGenerationException, JsonMappingException, IOException {
         stubFor( put( urlMatching( DirectoryApi.CONTROLLER + DirectoryApi.KODEX ) ).willReturn(

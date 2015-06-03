@@ -157,9 +157,10 @@ public class IrisConnection implements KryptnosticConnection {
     private static String bootstrapCredential( UserKey userKey, String url, String password, Client client )
             throws IrisException {
         RestAdapter bootstrap = KryptnosticRestAdapter.createWithNoAuthAndDefaultJacksonConverter( url, client );
-        BlockCiphertext encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt(
-                userKey.getRealm(),
-                userKey.getName() );
+        BlockCiphertext encryptedSalt = null;
+        try {
+            encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt( userKey.getRealm(), userKey.getName() );
+        } catch ( ResourceNotFoundException e1 ) {}
 
         if ( encryptedSalt == null ) {
             throw new IrisException( "Salt not found for user. Is this user registered?" );
@@ -205,7 +206,7 @@ public class IrisConnection implements KryptnosticConnection {
             logger.debug( "Loading RSA keys from disk" );
             keyPair = new LocalRsaKeyLoader( crypto, keyClient, dataStore ).load();
         } catch ( KodexException e ) {
-            logger.debug( "Could not load RSA keys from disk, trying network... {}", e );
+            logger.debug( "Could not load RSA keys from disk, trying network... {}", e.getMessage() );
         }
         if ( keyPair == null ) {
             try {
@@ -217,7 +218,7 @@ public class IrisConnection implements KryptnosticConnection {
                     e.printStackTrace();
                 }
             } catch ( KodexException e ) {
-                logger.debug( "Could not load RSA keys from network, trying to generate... {}", e );
+                logger.debug( "Could not load RSA keys from network, trying to generate... {}", e.getMessage() );
             }
         }
         if ( keyPair == null ) {

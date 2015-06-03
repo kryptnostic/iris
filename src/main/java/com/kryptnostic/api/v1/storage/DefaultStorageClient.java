@@ -6,29 +6,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
-import org.apache.commons.codec.binary.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
-import com.kryptnostic.api.v1.utils.DocumentFragmentFormatter;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
@@ -46,9 +42,7 @@ import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
 import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
-import com.kryptnostic.kodex.v1.serialization.crypto.DefaultChunkingStrategy;
 import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
-import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.http.MetadataApi;
@@ -68,9 +62,10 @@ import com.kryptnostic.storage.v1.models.request.StorageRequest;
  */
 public class DefaultStorageClient implements StorageClient {
     private static final Logger       logger                   = LoggerFactory.getLogger( StorageClient.class );
-    private static final int          PARALLEL_NETWORK_THREADS = 4;
-    ListeningExecutorService          exec                     = MoreExecutors.listeningDecorator( Executors
-                                                                       .newFixedThreadPool( PARALLEL_NETWORK_THREADS ) );
+    private static final int          PARALLEL_NETWORK_THREADS = 16;
+    private static final int          METADATA_BATCH_SIZE      = 25;
+    ExecutorService                   exec                     = Executors
+                                                                       .newFixedThreadPool( PARALLEL_NETWORK_THREADS );
 
     /**
      * Server-side
@@ -103,7 +98,9 @@ public class DefaultStorageClient implements StorageClient {
         this.sharingApi = sharingApi;
         this.metadataMapper = new PaddedMetadataMapper( context );
         this.indexer = new SimpleIndexer();
-        this.loader = context.getConnection().getCryptoServiceLoader();
+        this.loader = Preconditions.checkNotNull(
+                context.getConnection().getCryptoServiceLoader(),
+                "CryptoServiceLoader from KryptnosticConnection cannot be null." );
     }
 
     @Override
@@ -148,9 +145,11 @@ public class DefaultStorageClient implements StorageClient {
 
         logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         watch.reset().start();
-        MetadataRequest metadataRequest = prepareMetadata( metadata, sharingKey );
-        uploadMetadata( metadataRequest );
-        logger.debug( "[PROFILE] preparing metadata and upload took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        List<MetadataRequest> metadataRequests = prepareMetadata( metadata, sharingKey );
+        logger.debug( "[PROFILE] preparing took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        watch.reset().start();
+        uploadMetadata( metadataRequests );
+        logger.debug( "[PROFILE] uploading metadata took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
     }
 
@@ -169,8 +168,42 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public String uploadMetadata( MetadataRequest req ) throws BadRequestException {
-        return metadataApi.uploadMetadata( req ).getData();
+    public void uploadMetadata( List<MetadataRequest> requests ) throws BadRequestException {
+        logger.debug( "Starting metadata upload of {} batches of max size {}", requests.size(), METADATA_BATCH_SIZE );
+        List<Future<?>> tasks = Lists.newArrayList();
+        final AtomicInteger remaining = new AtomicInteger( requests.size() );
+        for ( final MetadataRequest request : requests ) {
+            tasks.add( exec.submit( new Runnable() {
+
+                @Override
+                public void run() {
+                    Stopwatch watch = Stopwatch.createStarted();
+                    try {
+                        metadataApi.uploadMetadata( request ).getData();
+                    } catch ( BadRequestException e ) {
+                        logger.error( "Metadata upload failed", e );
+                    }
+                    logger.debug(
+                            "[PROFILE] uploading metadata batch of size {} took {} ms. {} Remaining batches",
+                            request.getMetadata().size(),
+                            watch.elapsed( TimeUnit.MILLISECONDS ),
+                            remaining.decrementAndGet() );
+                }
+
+            } ) );
+        }
+
+        for ( Future<?> task : tasks ) {
+            try {
+                task.get();
+            } catch ( InterruptedException e ) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch ( ExecutionException e ) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -200,7 +233,7 @@ public class DefaultStorageClient implements StorageClient {
      * @return
      * @throws IrisException
      */
-    private MetadataRequest prepareMetadata( Set<Metadata> metadata, EncryptedSearchSharingKey sharingKey )
+    private List<MetadataRequest> prepareMetadata( Set<Metadata> metadata, EncryptedSearchSharingKey sharingKey )
             throws IrisException {
 
         // create plaintext metadata
@@ -209,6 +242,7 @@ public class DefaultStorageClient implements StorageClient {
 
         // encrypt the metadata and format for the server
         Collection<IndexedMetadata> metadataIndex = Lists.newArrayList();
+        List<MetadataRequest> requests = Lists.newArrayList();
         for ( Map.Entry<BitVector, List<Metadata>> m : keyedMetadata.getMetadataMap().entrySet() ) {
             BitVector key = m.getKey();
             List<Metadata> metadataForKey = m.getValue();
@@ -219,9 +253,18 @@ public class DefaultStorageClient implements StorageClient {
                         metadatumToEncrypt,
                         metadatumToEncrypt.getObjectId() );
                 metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
+                if ( metadataIndex.size() == METADATA_BATCH_SIZE ) {
+                    requests.add( new MetadataRequest( metadataIndex ) );
+                    metadataIndex = Lists.newArrayList();
+                }
             }
+
         }
-        return new MetadataRequest( metadataIndex );
+        if ( !metadataIndex.isEmpty() ) {
+            requests.add( new MetadataRequest( metadataIndex ) );
+        }
+
+        return requests;
     }
 
     /**
@@ -267,40 +310,44 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public Map<Integer, String> getObjectPreview( String objectId, List<Integer> locations, int wordRadius )
-            throws SecurityConfigurationException, ExecutionException, ResourceNotFoundException {
-        Map<Integer, Integer> offsetsToBlockIndex = DefaultChunkingStrategy.getBlockIndexForByteOffset( locations );
+            throws SecurityConfigurationException, ExecutionException, ResourceNotFoundException,
+            ClassNotFoundException, IOException {
+        KryptnosticObject obj = getObject( objectId );
 
-        List<EncryptableBlock> blocks = getObjectBlocks(
-                objectId,
-                Lists.newArrayList( Sets.newHashSet( offsetsToBlockIndex.values() ) ) );
-
-        Map<Integer, EncryptableBlock> offsetsToBlock = Maps.newHashMap();
-        for ( Integer offset : offsetsToBlockIndex.keySet() ) {
-            for ( EncryptableBlock block : blocks ) {
-                if ( block.getIndex() == offsetsToBlockIndex.get( offset ) ) {
-                    offsetsToBlock.put( offset, block );
-                    break;
+        String body = obj.getBody().decrypt( this.loader ).getData();
+        Map<Integer, String> frags = Maps.newHashMap();
+        Pattern p = Pattern.compile( "\\s" );
+        for ( Integer index : locations ) {
+            int backSpaces = 0;
+            int backIndex = index;
+            for ( ; backIndex > 0; backIndex-- ) {
+                if ( new String( body.charAt( backIndex ) + "" ).matches( "\\s" ) ) {
+                    backSpaces++;
+                    if ( backSpaces > wordRadius ) {
+                        if ( backIndex > 0 ) {
+                            backIndex++;
+                        }
+                        break;
+                    }
                 }
             }
+
+            int frontSpaces = 0;
+            int frontIndex = index;
+            for ( ; frontIndex < body.length(); frontIndex++ ) {
+                if ( new String( body.charAt( frontIndex ) + "" ).matches( "\\s" ) ) {
+                    frontSpaces++;
+                    if ( frontSpaces > wordRadius ) {
+                        if ( frontIndex < body.length() ) {
+                            // frontIndex--;
+                        }
+                        break;
+                    }
+                }
+            }
+            frags.put( index, body.substring( backIndex, frontIndex ) );
         }
-
-        Map<Integer, String> offsetsToString = Maps.newHashMap();
-        for ( Map.Entry<Integer, EncryptableBlock> entry : offsetsToBlock.entrySet() ) {
-            offsetsToString.put(
-                    entry.getKey(),
-                    StringUtils.newStringUtf8( loader.get( objectId ).decryptBytes( entry.getValue().getBlock() ) ) );
-        }
-
-        Map<Integer, String> offsetsToPreview = Maps.newHashMap();
-
-        for ( Map.Entry<Integer, String> item : offsetsToString.entrySet() ) {
-            Map.Entry<Integer, String> normalizedOffsetPair = Pair.<Integer, String> of( item.getKey()
-                    % DefaultChunkingStrategy.BLOCK_LENGTH_IN_BYTES, item.getValue() );
-            String preview = DocumentFragmentFormatter.format( normalizedOffsetPair, 2 );
-            offsetsToPreview.put( item.getKey(), preview );
-        }
-
-        return offsetsToPreview;
+        return frags;
     }
 
     @Override
@@ -315,22 +362,13 @@ public class DefaultStorageClient implements StorageClient {
                 ciphertext.getContents() ).asBytes(), curNumBlocks, true, crypto.encrypt( String.class
                 .getCanonicalName().getBytes() ), objectMetadata.getChunkingStrategy(), DateTime.now() );
 
-        ObjectMapper mapper = KodexObjectMapperFactory.getObjectMapper();
-        String str = null;
-        try {
-            str = mapper.writeValueAsString( blockToAppend );
-        } catch ( JsonProcessingException e ) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-
         Set<Metadata> metadata = indexer.index( objectMetadata.getId(), body );
         EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
         EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectMetadata.getId() )
                 .getBridgeKey();
 
         EncryptedSearchSharingKey encryptedSearchSharingKey = privKey.calculateSharingKey( bridgeKey );
-        MetadataRequest mreq = prepareMetadata( metadata, encryptedSearchSharingKey );
+        List<MetadataRequest> mreq = prepareMetadata( metadata, encryptedSearchSharingKey );
         uploadMetadata( mreq );
         return objectApi.appendObject( objectMetadata.getId(), blockToAppend ).getData();
     }

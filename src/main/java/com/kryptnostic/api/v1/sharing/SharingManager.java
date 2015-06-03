@@ -26,12 +26,12 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
-import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.sharing.v1.SharingClient;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.sharing.v1.models.IncomingShares;
 import com.kryptnostic.sharing.v1.models.Share;
 import com.kryptnostic.sharing.v1.models.request.KeyRegistrationRequest;
+import com.kryptnostic.sharing.v1.models.request.RevocationRequest;
 import com.kryptnostic.sharing.v1.models.request.SharingRequest;
 import com.kryptnostic.storage.v1.models.EncryptedSearchObjectKey;
 
@@ -50,7 +50,6 @@ public class SharingManager implements SharingClient {
     @Override
     public void shareObjectWithUsers( String objectId, Set<UserKey> users ) throws ResourceNotFoundException {
         CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
-        DataStore dataStore = context.getConnection().getDataStore();
         EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
         EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectId ).getBridgeKey();
 
@@ -124,7 +123,8 @@ public class SharingManager implements SharingClient {
 
     @Override
     public void unshareObjectWithUsers( String objectId, Set<UserKey> users ) {
-
+        RevocationRequest revocation = new RevocationRequest(objectId, users);
+        sharingApi.revokeAccess(revocation);
     }
 
     @Override
