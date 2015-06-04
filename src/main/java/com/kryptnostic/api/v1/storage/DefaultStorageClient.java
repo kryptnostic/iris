@@ -63,7 +63,7 @@ import com.kryptnostic.storage.v1.models.request.StorageRequest;
 public class DefaultStorageClient implements StorageClient {
     private static final Logger       logger                   = LoggerFactory.getLogger( StorageClient.class );
     private static final int          PARALLEL_NETWORK_THREADS = 16;
-    private static final int          METADATA_BATCH_SIZE      = 50;
+    private static final int          METADATA_BATCH_SIZE      = 500;
     ExecutorService                   exec                     = Executors
                                                                        .newFixedThreadPool( PARALLEL_NETWORK_THREADS );
 
