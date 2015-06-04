@@ -123,27 +123,21 @@ public class DefaultStorageClient implements StorageClient {
             storeObject( obj );
         }
 
+        EncryptedSearchSharingKey sharingKey = setupSharing(obj);
+
         if ( req.isSearchable() ) {
-            makeObjectSearchable( obj );
+            makeObjectSearchable( obj, sharingKey );
         }
 
         return objId;
     }
 
-    private void makeObjectSearchable( KryptnosticObject object ) throws IrisException, BadRequestException {
+    private void makeObjectSearchable( KryptnosticObject object, EncryptedSearchSharingKey sharingKey ) throws IrisException, BadRequestException {
         // index + map tokens for metadata
         Stopwatch watch = Stopwatch.createStarted();
         Set<Metadata> metadata = indexer.index( object.getMetadata().getId(), object.getBody().getData() );
         logger.debug( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-        // generate nonce
-        EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
-        logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-
-        watch.reset().start();
-        context.submitBridgeKeyWithSearchNonce( object.getMetadata().getId(), sharingKey );
-
-        logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         watch.reset().start();
         List<MetadataRequest> metadataRequests = prepareMetadata( metadata, sharingKey );
         logger.debug( "[PROFILE] preparing took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
@@ -151,6 +145,19 @@ public class DefaultStorageClient implements StorageClient {
         uploadMetadata( metadataRequests );
         logger.debug( "[PROFILE] uploading metadata took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
+    }
+
+    private EncryptedSearchSharingKey setupSharing(KryptnosticObject object) throws IrisException {
+        Stopwatch watch = Stopwatch.createStarted();
+        // generate nonce
+        EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
+        logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+        watch.reset().start();
+        context.submitBridgeKeyWithSearchNonce( object.getMetadata().getId(), sharingKey );
+        logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+        return sharingKey;
     }
 
     private void storeObject( KryptnosticObject object ) throws SecurityConfigurationException, IrisException {
@@ -228,7 +235,7 @@ public class DefaultStorageClient implements StorageClient {
 
     /**
      * Maps all metadata to an index that the server can compute when searching
-     * 
+     *
      * @param metadata
      * @return
      * @throws IrisException
@@ -269,7 +276,7 @@ public class DefaultStorageClient implements StorageClient {
 
     /**
      * Submit blocks in parallel
-     * 
+     *
      * @param objectId
      * @param blocks
      * @throws IrisException
