@@ -109,7 +109,8 @@ public class DefaultStorageClient implements StorageClient {
         String id = req.getObjectId();
 
         if ( id == null ) {
-            id = objectApi.createPendingObject( new PendingObjectRequest( req.getType() ) ).getData();
+            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId().orNull() );
+            id = objectApi.createPendingObject(pendingRequest).getData();
         } else {
             objectApi.createPendingObjectFromExisting( id );
         }
