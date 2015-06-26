@@ -4,6 +4,8 @@ import com.kryptnostic.api.v1.search.DefaultSearchClient;
 import com.kryptnostic.api.v1.sharing.SharingManager;
 import com.kryptnostic.api.v1.storage.DefaultStorageClient;
 import com.kryptnostic.directory.v1.DirectoryClient;
+import com.kryptnostic.instrumentation.v1.DefaultLoggingClient;
+import com.kryptnostic.instrumentation.v1.MetricsClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
@@ -34,8 +36,7 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
                 context,
                 factory.createDocumentApi(),
                 factory.createMetadataApi(),
-                factory.createSharingApi(),
-                factory.createMetricsApi());
+                factory.createSharingApi());
         this.searchClient = new DefaultSearchClient( context, factory.createSearchApi() );
         this.directoryClient = new DefaultDirectoryClient( context, factory.createDirectoryApi() );
         this.sharingClient = new SharingManager( context, factory.createSharingApi() );
@@ -70,5 +71,6 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     public StorageClient getStorageClient() {
         return this.storageClient;
     }
+    
 
 }

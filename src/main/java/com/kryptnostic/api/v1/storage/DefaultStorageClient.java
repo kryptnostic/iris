@@ -77,7 +77,6 @@ public class DefaultStorageClient implements StorageClient {
     private final ObjectApi           objectApi;
     private final MetadataApi         metadataApi;
     private final SharingApi          sharingApi;
-    private final MetricsApi		  metricsApi;
 
     /**
      * Client-side
@@ -86,7 +85,6 @@ public class DefaultStorageClient implements StorageClient {
     private final MetadataMapper      metadataMapper;
     private final Indexer             indexer;
     private final CryptoServiceLoader loader;
-    private final DefaultLoggingClient		  metricsClient;
 
     /**
      * @param context
@@ -97,19 +95,16 @@ public class DefaultStorageClient implements StorageClient {
             KryptnosticContext context,
             ObjectApi objectApi,
             MetadataApi metadataApi,
-            SharingApi sharingApi,
-            MetricsApi metricsApi) {
+            SharingApi sharingApi) {
         this.context = context;
         this.objectApi = objectApi;
         this.metadataApi = metadataApi;
         this.sharingApi = sharingApi;
-        this.metricsApi = metricsApi;
         this.metadataMapper = new PaddedMetadataMapper( context );
         this.indexer = new SimpleIndexer();
         this.loader = Preconditions.checkNotNull(
                 context.getConnection().getCryptoServiceLoader(),
                 "CryptoServiceLoader from KryptnosticConnection cannot be null." );
-        this.metricsClient = new DefaultLoggingClient(metricsApi);
     }
 
     @Override
@@ -131,17 +126,17 @@ public class DefaultStorageClient implements StorageClient {
         // upload the object blocks
         if ( req.isStoreable() ) {
             storeObject( obj );
-            try {
-				metricsClient.uploadObject(new MetricsRequest("Document " + obj.getMetadata().getId() + " uploaded successfully", "upload", "storage_test", "", this.getClass().getName() ));
-			} catch (
-					ElasticsearchException
-					| com.kryptnostic.instrumentation.v1.exceptions.types.BadRequestException
-					| com.kryptnostic.instrumentation.v1.exceptions.types.SecurityConfigurationException
-					| com.kryptnostic.instrumentation.v1.exceptions.types.ResourceNotFoundException
-					| com.kryptnostic.instrumentation.v1.exceptions.types.ResourceNotLockedException
-					| IOException e) {
-				throw new BadRequestException();
-			}
+//            try {
+//				metricsClient.uploadObject(new MetricsRequest("Document " + obj.getMetadata().getId() + " uploaded successfully", "upload", "storage_test", "", this.getClass().getName() ));
+//			} catch (
+//					ElasticsearchException
+//					| com.kryptnostic.instrumentation.v1.exceptions.types.BadRequestException
+//					| com.kryptnostic.instrumentation.v1.exceptions.types.SecurityConfigurationException
+//					| com.kryptnostic.instrumentation.v1.exceptions.types.ResourceNotFoundException
+//					| com.kryptnostic.instrumentation.v1.exceptions.types.ResourceNotLockedException
+//					| IOException e) {
+//				throw new BadRequestException();
+//			}
         }
 
         EncryptedSearchSharingKey sharingKey = setupSharing(obj);

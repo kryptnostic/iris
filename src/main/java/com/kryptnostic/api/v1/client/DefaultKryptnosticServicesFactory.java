@@ -11,8 +11,8 @@ import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.search.v1.http.SearchApi;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.storage.v1.http.ObjectApi;
 import com.kryptnostic.storage.v1.http.MetadataApi;
+import com.kryptnostic.storage.v1.http.ObjectApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 
 public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFactory {
@@ -24,7 +24,6 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     private final SearchFunctionApi searchFunctionApi;
     private final SharingApi        sharingApi;
     private final DirectoryApi      directoryApi;
-    private final MetricsApi	 	metricsApi;
 
     public DefaultKryptnosticServicesFactory( KryptnosticConnection credentialService ) {
         this( KryptnosticRestAdapter.create( credentialService ) );
@@ -37,7 +36,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
         searchFunctionApi = restAdapter.create( SearchFunctionApi.class );
         sharingApi = restAdapter.create( SharingApi.class );
         directoryApi = restAdapter.create( DirectoryApi.class );
-        metricsApi = restAdapter.create(MetricsApi.class);
+
     }
 
     @Override
@@ -70,9 +69,5 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
         return directoryApi;
     }
     
-    @Override
-    public MetricsApi createMetricsApi() {
-        return metricsApi;
-    }
 
 }

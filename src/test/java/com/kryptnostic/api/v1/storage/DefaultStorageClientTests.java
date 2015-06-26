@@ -113,7 +113,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
         Mockito.when( context.getConnection().getCryptoServiceLoader() ).thenReturn( loader );
 
-        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi, metricsApi );
+        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
 
         Mockito.when( documentApi.createPendingObject( Mockito.<PendingObjectRequest> any() ) ).then(
                 new Answer<BasicResponse<String>>() {
@@ -178,7 +178,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
         Mockito.when( context.getConnection().getCryptoServiceLoader() ).thenReturn( loader );
 
-        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi, metricsApi );
+        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
 
         int secondIndex = ( word + intermediate + intermediate ).length() + 1;
         Map<Integer, String> preview = storageService.getObjectPreview( docId, Arrays.asList( 0, secondIndex ), 2 );
