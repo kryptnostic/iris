@@ -39,6 +39,7 @@ import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.directory.v1.principal.UserKey;
+import com.kryptnostic.instrumentation.v1.MetricsApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
@@ -104,6 +105,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         SharingApi sharingApi = Mockito.mock( SharingApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
+        MetricsApi metricsApi = Mockito.mock( MetricsApi.class );
 
         Mockito.when( sharingApi.removeIncomingShares( Mockito.anyString() ) ).thenReturn(
                 new BasicResponse<String>( "done", 200, true ) );
@@ -111,7 +113,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
         Mockito.when( context.getConnection().getCryptoServiceLoader() ).thenReturn( loader );
 
-        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
+        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi, metricsApi );
 
         Mockito.when( documentApi.createPendingObject( Mockito.<PendingObjectRequest> any() ) ).then(
                 new Answer<BasicResponse<String>>() {
@@ -160,6 +162,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         SharingApi sharingApi = Mockito.mock( SharingApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
+        MetricsApi metricsApi = Mockito.mock( MetricsApi.class );
 
         Mockito.when( sharingApi.removeIncomingShares( Mockito.anyString() ) ).thenReturn(
                 new BasicResponse<String>( "done", 200, true ) );
@@ -175,7 +178,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
         Mockito.when( context.getConnection().getCryptoServiceLoader() ).thenReturn( loader );
 
-        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
+        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi, metricsApi );
 
         int secondIndex = ( word + intermediate + intermediate ).length() + 1;
         Map<Integer, String> preview = storageService.getObjectPreview( docId, Arrays.asList( 0, secondIndex ), 2 );

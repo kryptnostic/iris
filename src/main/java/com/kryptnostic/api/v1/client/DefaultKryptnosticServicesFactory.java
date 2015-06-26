@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import retrofit.RestAdapter;
 
 import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.instrumentation.v1.MetricsApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.search.v1.http.SearchApi;
@@ -23,6 +24,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     private final SearchFunctionApi searchFunctionApi;
     private final SharingApi        sharingApi;
     private final DirectoryApi      directoryApi;
+    private final MetricsApi	 	metricsApi;
 
     public DefaultKryptnosticServicesFactory( KryptnosticConnection credentialService ) {
         this( KryptnosticRestAdapter.create( credentialService ) );
@@ -35,6 +37,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
         searchFunctionApi = restAdapter.create( SearchFunctionApi.class );
         sharingApi = restAdapter.create( SharingApi.class );
         directoryApi = restAdapter.create( DirectoryApi.class );
+        metricsApi = restAdapter.create(MetricsApi.class);
     }
 
     @Override
@@ -65,6 +68,11 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     @Override
     public DirectoryApi createDirectoryApi() {
         return directoryApi;
+    }
+    
+    @Override
+    public MetricsApi createMetricsApi() {
+        return metricsApi;
     }
 
 }

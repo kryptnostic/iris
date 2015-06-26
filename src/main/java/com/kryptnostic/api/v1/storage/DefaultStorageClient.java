@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
+import org.elasticsearch.ElasticsearchException;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,9 @@ import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
+import com.kryptnostic.instrumentation.v1.DefaultLoggingClient;
+import com.kryptnostic.instrumentation.v1.MetricsApi;
+import com.kryptnostic.instrumentation.v1.models.MetricsRequest;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
@@ -73,6 +77,7 @@ public class DefaultStorageClient implements StorageClient {
     private final ObjectApi           objectApi;
     private final MetadataApi         metadataApi;
     private final SharingApi          sharingApi;
+    private final MetricsApi		  metricsApi;
 
     /**
      * Client-side
@@ -81,6 +86,7 @@ public class DefaultStorageClient implements StorageClient {
     private final MetadataMapper      metadataMapper;
     private final Indexer             indexer;
     private final CryptoServiceLoader loader;
+    private final DefaultLoggingClient		  metricsClient;
 
     /**
      * @param context
@@ -91,16 +97,19 @@ public class DefaultStorageClient implements StorageClient {
             KryptnosticContext context,
             ObjectApi objectApi,
             MetadataApi metadataApi,
-            SharingApi sharingApi ) {
+            SharingApi sharingApi,
+            MetricsApi metricsApi) {
         this.context = context;
         this.objectApi = objectApi;
         this.metadataApi = metadataApi;
         this.sharingApi = sharingApi;
+        this.metricsApi = metricsApi;
         this.metadataMapper = new PaddedMetadataMapper( context );
         this.indexer = new SimpleIndexer();
         this.loader = Preconditions.checkNotNull(
                 context.getConnection().getCryptoServiceLoader(),
                 "CryptoServiceLoader from KryptnosticConnection cannot be null." );
+        this.metricsClient = new DefaultLoggingClient(metricsApi);
     }
 
     @Override
@@ -122,6 +131,17 @@ public class DefaultStorageClient implements StorageClient {
         // upload the object blocks
         if ( req.isStoreable() ) {
             storeObject( obj );
+            try {
+				metricsClient.uploadObject(new MetricsRequest("Document " + obj.getMetadata().getId() + " uploaded successfully", "upload", "storage_test", "", this.getClass().getName() ));
+			} catch (
+					ElasticsearchException
+					| com.kryptnostic.instrumentation.v1.exceptions.types.BadRequestException
+					| com.kryptnostic.instrumentation.v1.exceptions.types.SecurityConfigurationException
+					| com.kryptnostic.instrumentation.v1.exceptions.types.ResourceNotFoundException
+					| com.kryptnostic.instrumentation.v1.exceptions.types.ResourceNotLockedException
+					| IOException e) {
+				throw new BadRequestException();
+			}
         }
 
         EncryptedSearchSharingKey sharingKey = setupSharing(obj);
