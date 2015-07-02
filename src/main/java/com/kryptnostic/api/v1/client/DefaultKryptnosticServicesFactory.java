@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import retrofit.RestAdapter;
 
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.instrumentation.v1.MetricsApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.search.v1.http.SearchApi;

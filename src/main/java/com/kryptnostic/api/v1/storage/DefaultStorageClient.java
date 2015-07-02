@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
-import org.elasticsearch.ElasticsearchException;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,9 +28,6 @@ import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
-import com.kryptnostic.instrumentation.v1.DefaultLoggingClient;
-import com.kryptnostic.instrumentation.v1.MetricsApi;
-import com.kryptnostic.instrumentation.v1.models.MetricsRequest;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
@@ -126,17 +122,6 @@ public class DefaultStorageClient implements StorageClient {
         // upload the object blocks
         if ( req.isStoreable() ) {
             storeObject( obj );
-//            try {
-//				metricsClient.uploadObject(new MetricsRequest("Document " + obj.getMetadata().getId() + " uploaded successfully", "upload", "storage_test", "", this.getClass().getName() ));
-//			} catch (
-//					ElasticsearchException
-//					| com.kryptnostic.instrumentation.v1.exceptions.types.BadRequestException
-//					| com.kryptnostic.instrumentation.v1.exceptions.types.SecurityConfigurationException
-//					| com.kryptnostic.instrumentation.v1.exceptions.types.ResourceNotFoundException
-//					| com.kryptnostic.instrumentation.v1.exceptions.types.ResourceNotLockedException
-//					| IOException e) {
-//				throw new BadRequestException();
-//			}
         }
 
         EncryptedSearchSharingKey sharingKey = setupSharing(obj);

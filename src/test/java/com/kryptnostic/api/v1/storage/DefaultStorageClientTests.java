@@ -39,7 +39,6 @@ import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.directory.v1.principal.UserKey;
-import com.kryptnostic.instrumentation.v1.MetricsApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
@@ -105,7 +104,6 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         SharingApi sharingApi = Mockito.mock( SharingApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
-        MetricsApi metricsApi = Mockito.mock( MetricsApi.class );
 
         Mockito.when( sharingApi.removeIncomingShares( Mockito.anyString() ) ).thenReturn(
                 new BasicResponse<String>( "done", 200, true ) );
@@ -162,7 +160,6 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
         SharingApi sharingApi = Mockito.mock( SharingApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
-        MetricsApi metricsApi = Mockito.mock( MetricsApi.class );
 
         Mockito.when( sharingApi.removeIncomingShares( Mockito.anyString() ) ).thenReturn(
                 new BasicResponse<String>( "done", 200, true ) );
