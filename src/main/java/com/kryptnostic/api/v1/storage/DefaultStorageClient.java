@@ -51,6 +51,7 @@ import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
 import com.kryptnostic.storage.v1.models.ObjectMetadata;
+import com.kryptnostic.storage.v1.models.request.AppendObjectRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.storage.v1.models.request.PendingObjectRequest;
@@ -109,7 +110,7 @@ public class DefaultStorageClient implements StorageClient {
         String id = req.getObjectId();
 
         if ( id == null ) {
-            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId().orNull() );
+            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId().orNull(), req.getObjectBody().length() );
             id = objectApi.createPendingObject(pendingRequest).getData();
         } else {
             objectApi.createPendingObjectFromExisting( id );
@@ -379,7 +380,8 @@ public class DefaultStorageClient implements StorageClient {
         EncryptedSearchSharingKey encryptedSearchSharingKey = privKey.calculateSharingKey( bridgeKey );
         List<MetadataRequest> mreq = prepareMetadata( metadata, encryptedSearchSharingKey );
         uploadMetadata( mreq );
-        return objectApi.appendObject( objectMetadata.getId(), blockToAppend ).getData();
+        AppendObjectRequest req = new AppendObjectRequest(body.length(), blockToAppend);
+        return objectApi.appendObject( objectMetadata.getId(), req ).getData();
     }
 
     @Override
