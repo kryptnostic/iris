@@ -10,8 +10,8 @@ import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.search.v1.http.SearchApi;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.storage.v1.http.ObjectApi;
 import com.kryptnostic.storage.v1.http.MetadataApi;
+import com.kryptnostic.storage.v1.http.ObjectApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionApi;
 
 public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFactory {
@@ -35,6 +35,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
         searchFunctionApi = restAdapter.create( SearchFunctionApi.class );
         sharingApi = restAdapter.create( SharingApi.class );
         directoryApi = restAdapter.create( DirectoryApi.class );
+
     }
 
     @Override
@@ -66,5 +67,6 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     public DirectoryApi createDirectoryApi() {
         return directoryApi;
     }
+    
 
 }
