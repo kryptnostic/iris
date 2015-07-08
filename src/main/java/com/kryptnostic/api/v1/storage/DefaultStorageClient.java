@@ -92,7 +92,7 @@ public class DefaultStorageClient implements StorageClient {
             KryptnosticContext context,
             ObjectApi objectApi,
             MetadataApi metadataApi,
-            SharingApi sharingApi) {
+            SharingApi sharingApi ) {
         this.context = context;
         this.objectApi = objectApi;
         this.metadataApi = metadataApi;
@@ -110,8 +110,9 @@ public class DefaultStorageClient implements StorageClient {
         String id = req.getObjectId();
 
         if ( id == null ) {
-            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId().orNull(), req.getObjectBody().length() );
-            id = objectApi.createPendingObject(pendingRequest).getData();
+            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId()
+                    .orNull(), req.getObjectBody().length() );
+            id = objectApi.createPendingObject( pendingRequest ).getData();
         } else {
             objectApi.createPendingObjectFromExisting( id );
         }
@@ -125,7 +126,7 @@ public class DefaultStorageClient implements StorageClient {
             storeObject( obj );
         }
 
-        EncryptedSearchSharingKey sharingKey = setupSharing(obj);
+        EncryptedSearchSharingKey sharingKey = setupSharing( obj );
 
         if ( req.isSearchable() ) {
             makeObjectSearchable( obj, sharingKey );
@@ -134,7 +135,8 @@ public class DefaultStorageClient implements StorageClient {
         return objId;
     }
 
-    private void makeObjectSearchable( KryptnosticObject object, EncryptedSearchSharingKey sharingKey ) throws IrisException, BadRequestException {
+    private void makeObjectSearchable( KryptnosticObject object, EncryptedSearchSharingKey sharingKey )
+            throws IrisException, BadRequestException {
         // index + map tokens for metadata
         Stopwatch watch = Stopwatch.createStarted();
         Set<Metadata> metadata = indexer.index( object.getMetadata().getId(), object.getBody().getData() );
@@ -150,7 +152,7 @@ public class DefaultStorageClient implements StorageClient {
 
     }
 
-    private EncryptedSearchSharingKey setupSharing(KryptnosticObject object) throws IrisException {
+    private EncryptedSearchSharingKey setupSharing( KryptnosticObject object ) throws IrisException {
         Stopwatch watch = Stopwatch.createStarted();
         // generate nonce
         EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
@@ -380,7 +382,7 @@ public class DefaultStorageClient implements StorageClient {
         EncryptedSearchSharingKey encryptedSearchSharingKey = privKey.calculateSharingKey( bridgeKey );
         List<MetadataRequest> mreq = prepareMetadata( metadata, encryptedSearchSharingKey );
         uploadMetadata( mreq );
-        AppendObjectRequest req = new AppendObjectRequest(body.length(), blockToAppend);
+        AppendObjectRequest req = new AppendObjectRequest( body.length(), blockToAppend );
         return objectApi.appendObject( objectMetadata.getId(), req ).getData();
     }
 
