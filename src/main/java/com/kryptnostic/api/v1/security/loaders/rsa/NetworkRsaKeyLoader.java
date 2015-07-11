@@ -5,13 +5,13 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
@@ -24,9 +24,9 @@ public final class NetworkRsaKeyLoader extends RsaKeyLoader {
     private static final Logger         logger = LoggerFactory.getLogger( NetworkRsaKeyLoader.class );
     private final PasswordCryptoService crypto;
     private final DirectoryApi          keyClient;
-    private final UserKey               userKey;
+    private final UUID                  userKey;
 
-    public NetworkRsaKeyLoader( PasswordCryptoService crypto, DirectoryApi keyClient, UserKey userKey ) throws KodexException {
+    public NetworkRsaKeyLoader( PasswordCryptoService crypto, DirectoryApi keyClient, UUID userKey ) throws KodexException {
         if ( crypto == null || keyClient == null || userKey == null ) {
             throw new KodexException( "null values" );
         }
@@ -41,7 +41,7 @@ public final class NetworkRsaKeyLoader extends RsaKeyLoader {
         PublicKeyEnvelope envelope = null;
         try {
             rsaPrivateKeyCiphertext = keyClient.getPrivateKey();
-            envelope = keyClient.getPublicKey( userKey.getName() );
+            envelope = keyClient.getPublicKey( userKey );
         } catch ( ResourceNotFoundException e ) {
             if ( e.getMessage() != null ) {
                 logger.debug( e.getMessage() );

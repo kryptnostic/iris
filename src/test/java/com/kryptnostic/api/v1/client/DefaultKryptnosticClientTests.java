@@ -20,6 +20,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 import javax.crypto.BadPaddingException;
@@ -39,7 +40,6 @@ import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
 import com.kryptnostic.kodex.v1.authentication.CredentialFactory.CredentialPair;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
@@ -76,7 +76,7 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
 
     @Rule
     public WireMockRule                wireMockRule = new WireMockRule( 9990 );
-    private UserKey                    userKey;
+    private UUID                       userKey;
     private InMemoryStore              store;
 
     @Before
@@ -95,12 +95,10 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
             generateKodex( expectedGlobalHasher );
             generateQueryHasherPairStub();
 
-            userKey = new UserKey( "krypt", "sina" );
+            userKey = UUID.randomUUID();
 
             CredentialPair p = CredentialFactory.generateCredentialPair( "test" );
-            stubFor( get(
-                    urlEqualTo( DirectoryApi.CONTROLLER + DirectoryApi.SALT_KEY + "/" + userKey.getRealm() + "/"
-                            + userKey.getName() ) ).willReturn(
+            stubFor( get( urlEqualTo( DirectoryApi.CONTROLLER + DirectoryApi.SALT_KEY + "/" + userKey ) ).willReturn(
                     jsonResponse( mapper.writeValueAsString( p.getEncryptedSalt() ) ) ) );
 
             connection = new IrisConnection(

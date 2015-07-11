@@ -5,6 +5,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import org.apache.commons.codec.binary.StringUtils;
 import org.slf4j.Logger;
@@ -20,7 +21,6 @@ import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
@@ -228,14 +228,14 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public Map<UserKey, RsaCompressingEncryptionService> getEncryptionServiceForUsers( Set<UserKey> users ) {
-        return Maps.asMap( users, new Function<UserKey, RsaCompressingEncryptionService>() {
+    public Map<UUID, RsaCompressingEncryptionService> getEncryptionServiceForUsers( Set<UUID> users ) {
+        return Maps.asMap( users, new Function<UUID, RsaCompressingEncryptionService>() {
 
             @Override
-            public RsaCompressingEncryptionService apply( UserKey input ) {
+            public RsaCompressingEncryptionService apply( UUID input ) {
                 try {
                     return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, directoryClient.getPublicKey(
-                            input.getName() ).asRsaPublicKey() );
+                            input ).asRsaPublicKey() );
                 } catch (
                         InvalidKeySpecException
                         | NoSuchAlgorithmException

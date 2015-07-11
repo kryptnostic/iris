@@ -6,6 +6,7 @@ import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
+import java.util.UUID;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;
@@ -18,7 +19,6 @@ import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
@@ -37,7 +37,7 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class NetworkKodexLoaderTests {
     private DirectoryApi             keyClient;
-    private UserKey                  userKey;
+    private UUID                     userKey;
     private PasswordCryptoService    cryptoService;
     private KeyPair                  keyPair;
     private PrivateKey               fhePrivateKey;
@@ -48,7 +48,7 @@ public class NetworkKodexLoaderTests {
     @Before
     public void init() throws NoSuchAlgorithmException {
         cryptoService = new PasswordCryptoService( Cypher.AES_CTR_128, "test".toCharArray() );
-        userKey = new UserKey( "krypt", "sina" );
+        userKey = UUID.randomUUID();
         keyClient = Mockito.mock( DirectoryApi.class );
 
         keyPair = Keys.generateRsaKeyPair( 1024 );

@@ -1,11 +1,11 @@
 package com.kryptnostic.api.v1.client;
 
 import java.util.Set;
+import java.util.UUID;
 
 import com.kryptnostic.directory.v1.DirectoryClient;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.sharing.v1.models.NotificationPreference;
@@ -21,13 +21,13 @@ public class DefaultDirectoryClient implements DirectoryClient {
     }
 
     @Override
-    public Set<UserKey> listUserInRealm( String realm ) {
+    public Set<UUID> listUserInRealm( String realm ) {
         return directoryApi.listUserInRealm( realm );
     }
 
     @Override
-    public PublicKeyEnvelope getPublicKey( String username ) throws ResourceNotFoundException {
-        return directoryApi.getPublicKey( username );
+    public PublicKeyEnvelope getPublicKey( UUID id ) throws ResourceNotFoundException {
+        return directoryApi.getPublicKey( id );
     }
 
     @Override

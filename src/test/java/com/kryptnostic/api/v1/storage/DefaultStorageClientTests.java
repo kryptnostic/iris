@@ -15,6 +15,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 import javax.crypto.BadPaddingException;
@@ -38,7 +39,6 @@ import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
@@ -67,7 +67,7 @@ import com.kryptnostic.utils.SecurityConfigurationTestUtils;
 public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
 
     private StorageClient            storageService;
-    private UserKey                  userKey;
+    private UUID                  userKey;
 
     @Rule
     public WireMockRule              wireMockRule = new WireMockRule( 9990 );
@@ -77,7 +77,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     public void setup() throws InvalidKeyException, IllegalBlockSizeException, BadPaddingException,
             NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException, InvalidParameterSpecException,
             InvalidAlgorithmParameterException, SealedKodexException, IOException, SignatureException, Exception {
-        userKey = new UserKey( "krypt", "sina" );
+        userKey = UUID.randomUUID();
 
         generateGlobalHasherStub();
         generateQueryHasherPairStub();
