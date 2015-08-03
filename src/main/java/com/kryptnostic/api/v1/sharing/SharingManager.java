@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 import org.slf4j.Logger;
@@ -15,7 +16,6 @@ import com.google.common.collect.Sets;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
@@ -48,7 +48,7 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public void shareObjectWithUsers( String objectId, Set<UserKey> users ) throws ResourceNotFoundException {
+    public void shareObjectWithUsers( String objectId, Set<UUID> users ) throws ResourceNotFoundException {
         CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
         EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
         EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectId ).getBridgeKey();
@@ -58,9 +58,9 @@ public class SharingManager implements SharingClient {
         AesCryptoService service;
         try {
             service = (AesCryptoService) loader.get( objectId );
-            Map<UserKey, RsaCompressingEncryptionService> services = context.getEncryptionServiceForUsers( users );
-            Map<UserKey, byte[]> seals = Maps.newHashMap();
-            for ( Entry<UserKey, RsaCompressingEncryptionService> serviceEntry : services.entrySet() ) {
+            Map<UUID, RsaCompressingEncryptionService> services = context.getEncryptionServiceForUsers( users );
+            Map<UUID, byte[]> seals = Maps.newHashMap();
+            for ( Entry<UUID, RsaCompressingEncryptionService> serviceEntry : services.entrySet() ) {
                 seals.put( serviceEntry.getKey(), serviceEntry.getValue().encrypt( service ) );
             }
 
@@ -122,7 +122,7 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public void unshareObjectWithUsers( String objectId, Set<UserKey> users ) {
+    public void unshareObjectWithUsers( String objectId, Set<UUID> users ) {
         RevocationRequest revocation = new RevocationRequest(objectId, users);
         sharingApi.revokeAccess(revocation);
     }

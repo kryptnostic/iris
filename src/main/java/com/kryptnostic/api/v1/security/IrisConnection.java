@@ -9,6 +9,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -39,7 +40,6 @@ import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
@@ -68,7 +68,7 @@ public class IrisConnection implements KryptnosticConnection {
     private static final String                   GLOBAL_HASHER_CHECKSUM_KEY = "global_hasher_checksum";
     private Kodex<String>                         kodex;
     private transient final PasswordCryptoService cryptoService;
-    private final UserKey                         userKey;
+    private final UUID                         userKey;
     private final String                          userCredential;
     private final String                          url;
     private final DirectoryApi                    keyService;
@@ -87,13 +87,13 @@ public class IrisConnection implements KryptnosticConnection {
 
     private Future<SimplePolynomialFunction>      hashGetter;
 
-    public IrisConnection( String url, UserKey userKey, String password, DataStore dataStore, Client client ) throws IrisException {
+    public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client ) throws IrisException {
         this( url, userKey, password, dataStore, client, null, null );
     }
 
     public IrisConnection(
             String url,
-            UserKey userKey,
+            UUID userKey,
             String password,
             DataStore dataStore,
             Client client,
@@ -154,12 +154,12 @@ public class IrisConnection implements KryptnosticConnection {
         } );
     }
 
-    private static String bootstrapCredential( UserKey userKey, String url, String password, Client client )
+    private static String bootstrapCredential( UUID userKey, String url, String password, Client client )
             throws IrisException {
         RestAdapter bootstrap = KryptnosticRestAdapter.createWithNoAuthAndDefaultJacksonConverter( url, client );
         BlockCiphertext encryptedSalt = null;
         try {
-            encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt( userKey.getRealm(), userKey.getName() );
+            encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt( userKey );
         } catch ( ResourceNotFoundException e1 ) {}
 
         if ( encryptedSalt == null ) {
@@ -197,7 +197,7 @@ public class IrisConnection implements KryptnosticConnection {
 
     private KeyPair loadRsaKeys(
             PasswordCryptoService crypto,
-            UserKey userKey,
+            UUID userKey,
             DataStore dataStore,
             DirectoryApi keyClient ) throws IrisException {
         KeyPair keyPair = null;
@@ -343,7 +343,7 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     @Override
-    public UserKey getUserKey() {
+    public UUID getUserId() {
         return userKey;
     }
 
