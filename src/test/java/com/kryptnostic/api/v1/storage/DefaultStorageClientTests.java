@@ -67,7 +67,7 @@ import com.kryptnostic.utils.SecurityConfigurationTestUtils;
 public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
 
     private StorageClient            storageService;
-    private UUID                  userKey;
+    private UUID                     userKey;
 
     @Rule
     public WireMockRule              wireMockRule = new WireMockRule( 9990 );
@@ -169,7 +169,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         String docBody = word + intermediate + intermediate + word;
         String docId = "doc1";
         loader.put( docId, crypto );
-        KryptnosticObject doc = new KryptnosticObject( new ObjectMetadata( docId ), docBody ).encrypt( loader );
+        KryptnosticObject doc = new KryptnosticObject( new ObjectMetadata( docId, null ), docBody ).encrypt( loader );
         Mockito.when( documentApi.getObject( Mockito.anyString() ) ).thenReturn( doc );
 
         Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
