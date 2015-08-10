@@ -23,6 +23,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.base.Optional;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
@@ -109,8 +110,9 @@ public class DefaultStorageClient implements StorageClient {
         String id = req.getObjectId();
 
         if ( id == null ) {
-            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId().orNull() );
-            id = objectApi.createPendingObject(pendingRequest).getData();
+            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId()
+                    .orNull(), Optional.<Boolean> absent() );
+            id = objectApi.createPendingObject( pendingRequest ).getData();
         } else {
             objectApi.createPendingObjectFromExisting( id );
         }
@@ -124,7 +126,7 @@ public class DefaultStorageClient implements StorageClient {
             storeObject( obj );
         }
 
-        EncryptedSearchSharingKey sharingKey = setupSharing(obj);
+        EncryptedSearchSharingKey sharingKey = setupSharing( obj );
 
         if ( req.isSearchable() ) {
             makeObjectSearchable( obj, sharingKey );
@@ -133,7 +135,8 @@ public class DefaultStorageClient implements StorageClient {
         return objId;
     }
 
-    private void makeObjectSearchable( KryptnosticObject object, EncryptedSearchSharingKey sharingKey ) throws IrisException, BadRequestException {
+    private void makeObjectSearchable( KryptnosticObject object, EncryptedSearchSharingKey sharingKey )
+            throws IrisException, BadRequestException {
         // index + map tokens for metadata
         Stopwatch watch = Stopwatch.createStarted();
         Set<Metadata> metadata = indexer.index( object.getMetadata().getId(), object.getBody().getData() );
@@ -149,7 +152,7 @@ public class DefaultStorageClient implements StorageClient {
 
     }
 
-    private EncryptedSearchSharingKey setupSharing(KryptnosticObject object) throws IrisException {
+    private EncryptedSearchSharingKey setupSharing( KryptnosticObject object ) throws IrisException {
         Stopwatch watch = Stopwatch.createStarted();
         // generate nonce
         EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
