@@ -21,7 +21,7 @@ public class DefaultDirectoryClient implements DirectoryClient {
     }
 
     @Override
-    public Set<UUID> listUserInRealm( String realm ) {
+    public Set<UUID> listUsersInRealm( String realm ) {
         return directoryApi.listUserInRealm( realm );
     }
 
