@@ -19,11 +19,11 @@ import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.base.Optional;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
@@ -110,8 +110,10 @@ public class DefaultStorageClient implements StorageClient {
         String id = req.getObjectId();
 
         if ( id == null ) {
-            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId()
-                    .orNull(), Optional.<Boolean> absent() );
+            PendingObjectRequest pendingRequest = new PendingObjectRequest(
+                    req.getType(),
+                    req.getParentObjectId().orNull(),
+                    Optional.of( false ) );
             id = objectApi.createPendingObject( pendingRequest ).getData();
         } else {
             objectApi.createPendingObjectFromExisting( id );
