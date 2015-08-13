@@ -11,14 +11,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
-import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -55,22 +56,31 @@ public class SharingManager implements SharingClient {
 
         EncryptedSearchSharingKey sharingKey = privKey.calculateSharingKey( bridgeKey );
 
-        AesCryptoService service;
+        CryptoService service;
         try {
-            service = (AesCryptoService) loader.get( objectId );
-            Map<UUID, RsaCompressingEncryptionService> services = context.getEncryptionServiceForUsers( users );
-            Map<UUID, byte[]> seals = Maps.newHashMap();
-            for ( Entry<UUID, RsaCompressingEncryptionService> serviceEntry : services.entrySet() ) {
-                seals.put( serviceEntry.getKey(), serviceEntry.getValue().encrypt( service ) );
+            Optional<CryptoService> maybeService = loader.get( objectId );
+            if ( maybeService.isPresent() ) {
+                service = maybeService.get();
+                Map<UUID, RsaCompressingEncryptionService> services = context.getEncryptionServiceForUsers( users );
+                Map<UUID, byte[]> seals = Maps.newHashMap();
+                for ( Entry<UUID, RsaCompressingEncryptionService> serviceEntry : services.entrySet() ) {
+                    seals.put( serviceEntry.getKey(), serviceEntry.getValue().encrypt( service ) );
+                }
+
+                byte[] encryptedSharingKey = mapper
+                        .writeValueAsBytes( service.encrypt( marshaller.toBytes( sharingKey ) ) );
+
+                SharingRequest request = new SharingRequest( objectId, seals, encryptedSharingKey );
+                sharingApi.share( request );
+
+            } else {
+                logger.error( "Unable to load crypto service for object {}", objectId );
+                throw new SecurityConfigurationException( "Failed to load crypto service for object " + objectId );
             }
 
-            byte[] encryptedSharingKey = mapper.writeValueAsBytes( service.encrypt( marshaller.toBytes( sharingKey ) ) );
-
-            SharingRequest request = new SharingRequest( objectId, seals, encryptedSharingKey );
-            sharingApi.share( request );
-
         } catch ( SecurityConfigurationException | IOException | ExecutionException e ) {
-            e.printStackTrace();
+            logger.error( "Failured while sharing object {} with users {}", objectId, users );
+
         }
     }
 
@@ -85,10 +95,17 @@ public class SharingManager implements SharingClient {
 
         for ( Share share : incomingShares ) {
             String id = share.getObjectId();
-            AesCryptoService decryptor;
+            CryptoService decryptor;
             try {
                 logger.info( "Processing share for {}", id );
-                decryptor = (AesCryptoService) loader.get( id );
+                Optional<CryptoService> maybeService = loader.get( id );
+                if ( maybeService.isPresent() ) {
+                    decryptor = maybeService.get();
+                } else {
+                    logger.error( "Unable to retrieve crypto service for object {}", share.getObjectId() );
+                    throw new SecurityConfigurationException( "Unable to retrieve crypto service for object {}"
+                            + share.getObjectId() );
+                }
             } catch ( ExecutionException e ) {
                 throw new IOException( e );
             }
@@ -123,8 +140,8 @@ public class SharingManager implements SharingClient {
 
     @Override
     public void unshareObjectWithUsers( String objectId, Set<UUID> users ) {
-        RevocationRequest revocation = new RevocationRequest(objectId, users);
-        sharingApi.revokeAccess(revocation);
+        RevocationRequest revocation = new RevocationRequest( objectId, users );
+        sharingApi.revokeAccess( revocation );
     }
 
     @Override

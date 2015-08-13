@@ -363,24 +363,33 @@ public class DefaultStorageClient implements StorageClient {
     @Override
     public String appendObject( ObjectMetadata objectMetadata, String body ) throws SecurityConfigurationException,
             ExecutionException, ResourceNotFoundException, IrisException, BadRequestException {
-        CryptoService crypto = this.context.getConnection().getCryptoServiceLoader().get( objectMetadata.getId() );
+        Optional<CryptoService> maybeCS = this.context.getConnection().getCryptoServiceLoader()
+                .get( objectMetadata.getId() );
+        if ( maybeCS.isPresent() ) {
+            CryptoService crypto = maybeCS.get();
 
-        int curNumBlocks = objectMetadata.getNumBlocks();
-        BlockCiphertext ciphertext = crypto.encrypt( body.getBytes() );
+            int curNumBlocks = objectMetadata.getNumBlocks();
+            BlockCiphertext ciphertext = crypto.encrypt( body.getBytes() );
 
-        EncryptableBlock blockToAppend = new EncryptableBlock( ciphertext, Encryptable.hashFunction.hashBytes(
-                ciphertext.getContents() ).asBytes(), curNumBlocks, true, crypto.encrypt( String.class
-                .getCanonicalName().getBytes() ), objectMetadata.getChunkingStrategy(), DateTime.now() );
+            EncryptableBlock blockToAppend = new EncryptableBlock( ciphertext, Encryptable.hashFunction.hashBytes(
+                    ciphertext.getContents() ).asBytes(), curNumBlocks, true, crypto.encrypt( String.class
+                    .getCanonicalName().getBytes() ), objectMetadata.getChunkingStrategy(), DateTime.now() );
 
-        Set<Metadata> metadata = indexer.index( objectMetadata.getId(), body );
-        EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
-        EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectMetadata.getId() )
-                .getBridgeKey();
+            Set<Metadata> metadata = indexer.index( objectMetadata.getId(), body );
+            EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
+            EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectMetadata.getId() )
+                    .getBridgeKey();
 
-        EncryptedSearchSharingKey encryptedSearchSharingKey = privKey.calculateSharingKey( bridgeKey );
-        List<MetadataRequest> mreq = prepareMetadata( metadata, encryptedSearchSharingKey );
-        uploadMetadata( mreq );
-        return objectApi.appendObject( objectMetadata.getId(), blockToAppend ).getData();
+            EncryptedSearchSharingKey encryptedSearchSharingKey = privKey.calculateSharingKey( bridgeKey );
+            List<MetadataRequest> mreq = prepareMetadata( metadata, encryptedSearchSharingKey );
+            uploadMetadata( mreq );
+            return objectApi.appendObject( objectMetadata.getId(), blockToAppend ).getData();
+        } else {
+            logger.error( "Unable to retrieve crypto service for object {}", objectMetadata.getId() );
+            throw new SecurityConfigurationException( "Unable to retrieve crypto service for object {}"
+                    + objectMetadata.getId() );
+        }
+
     }
 
     @Override
