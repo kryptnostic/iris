@@ -38,6 +38,7 @@ import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class LocalKodexLoaderTests {
+    @SuppressWarnings( "unused" )
     private static final Logger      logger = LoggerFactory.getLogger( LocalKodexLoaderTests.class );
     private PasswordCryptoService    cryptoService;
     private DataStore                dataStore;

@@ -162,11 +162,6 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
         }
     }
 
-    private void generateKodexStubs() throws JsonGenerationException, JsonMappingException, IOException {
-        stubFor( put( urlMatching( DirectoryApi.CONTROLLER + DirectoryApi.KODEX ) ).willReturn(
-                jsonResponse( serialize( new BasicResponse<String>( "", 200, true ) ) ) ) );
-    }
-
     @Test
     public void getGlobalHasherTest() throws ResourceNotFoundException, IrisException {
         SimplePolynomialFunction actualGlobalHasher = client.getContext().getGlobalHashFunction();
