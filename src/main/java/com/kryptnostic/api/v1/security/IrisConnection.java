@@ -30,7 +30,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Stopwatch;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.fhe.FreshKodexLoader;
-import com.kryptnostic.api.v1.security.loaders.fhe.KodexLoader;
 import com.kryptnostic.api.v1.security.loaders.fhe.LocalKodexLoader;
 import com.kryptnostic.api.v1.security.loaders.fhe.NetworkKodexLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
@@ -55,7 +54,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.models.utils.SimplePolynomialFunctionValidator;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
@@ -428,23 +426,6 @@ public class IrisConnection implements KryptnosticConnection {
     @Override
     public PublicKey getRsaPublicKey() {
         return rsaPublicKey;
-    }
-
-    private SimplePolynomialFunctionValidator[] getValidators() throws IrisException {
-        try {
-            byte[] leftValidator = dataStore.get( KodexLoader.LEFT_VALIDATOR );
-            byte[] rightValidator = dataStore.get( KodexLoader.RIGHT_VALIDATOR );
-
-            if ( leftValidator == null || rightValidator == null ) {
-                return null;
-            }
-
-            return new SimplePolynomialFunctionValidator[] {
-                    SimplePolynomialFunctionValidator.fromBytes( leftValidator ),
-                    SimplePolynomialFunctionValidator.fromBytes( rightValidator ) };
-        } catch ( IOException e ) {
-            throw new IrisException( e );
-        }
     }
 
     @Override

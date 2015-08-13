@@ -11,7 +11,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Pattern;
 
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
@@ -19,11 +18,11 @@ import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.base.Optional;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
@@ -328,7 +327,6 @@ public class DefaultStorageClient implements StorageClient {
 
         String body = obj.getBody().decrypt( this.loader ).getData();
         Map<Integer, String> frags = Maps.newHashMap();
-        Pattern p = Pattern.compile( "\\s" );
         for ( Integer index : locations ) {
             int backSpaces = 0;
             int backIndex = index;
