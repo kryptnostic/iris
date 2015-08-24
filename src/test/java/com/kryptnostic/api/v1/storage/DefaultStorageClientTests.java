@@ -52,9 +52,9 @@ import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.StorageClient;
-import com.kryptnostic.storage.v1.http.MetadataApi;
-import com.kryptnostic.storage.v1.http.ObjectApi;
-import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.http.MetadataStorageApi;
+import com.kryptnostic.storage.v1.http.ObjectStorageApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
 import com.kryptnostic.storage.v1.models.ObjectMetadata;
@@ -100,8 +100,8 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     public void uploadingWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
             NoSuchAlgorithmException, JsonProcessingException, ExecutionException {
-        ObjectApi documentApi = Mockito.mock( ObjectApi.class );
-        MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
+        ObjectStorageApi documentApi = Mockito.mock( ObjectStorageApi.class );
+        MetadataStorageApi metadataApi = Mockito.mock( MetadataStorageApi.class );
         SharingApi sharingApi = Mockito.mock( SharingApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
 
@@ -156,8 +156,8 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     public void documentFragmentTest() throws BadRequestException, ResourceNotFoundException,
             ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
             NoSuchAlgorithmException, ExecutionException, ClassNotFoundException, IOException {
-        ObjectApi documentApi = Mockito.mock( ObjectApi.class );
-        MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
+        ObjectStorageApi documentApi = Mockito.mock( ObjectStorageApi.class );
+        MetadataStorageApi metadataApi = Mockito.mock( MetadataStorageApi.class );
         SharingApi sharingApi = Mockito.mock( SharingApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
 
@@ -198,10 +198,10 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
             throw new IrisException( e );
         }
 
-        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER ) ).willReturn(
+        stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER ) ).willReturn(
                 aResponse().withBody( globalHasherResponse ) ) );
 
-        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.CHECKSUM ) ).willReturn(
+        stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER + SearchFunctionStorageApi.CHECKSUM ) ).willReturn(
                 aResponse().withBody(
                         wrap( "\""
                                 + Hashing.murmur3_128().hashBytes( mapper.writeValueAsBytes( globalHasher ) )
@@ -212,7 +212,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     private void generateQueryHasherPairStub() {
         String response = wrap( "true" );
 
-        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.HASHER ) ).willReturn(
+        stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER + SearchFunctionStorageApi.HASHER ) ).willReturn(
                 aResponse().withBody( response ) ) );
     }
 

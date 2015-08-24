@@ -10,40 +10,40 @@ import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.search.v1.http.SearchApi;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.storage.v1.http.ObjectApi;
-import com.kryptnostic.storage.v1.http.MetadataApi;
-import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.http.MetadataStorageApi;
+import com.kryptnostic.storage.v1.http.ObjectStorageApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 
 public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFactory {
     private final static Logger     logger = LoggerFactory.getLogger( DefaultKryptnosticServicesFactory.class );
 
-    private final MetadataApi       metadataApi;
-    private final ObjectApi       documentApi;
-    private final SearchApi         searchApi;
-    private final SearchFunctionApi searchFunctionApi;
-    private final SharingApi        sharingApi;
-    private final DirectoryApi      directoryApi;
+    private final MetadataStorageApi              metadataApi;
+    private final ObjectStorageApi                documentApi;
+    private final SearchApi                searchApi;
+    private final SearchFunctionStorageApi searchFunctionApi;
+    private final SharingApi               sharingApi;
+    private final DirectoryApi             directoryApi;
 
     public DefaultKryptnosticServicesFactory( KryptnosticConnection credentialService ) {
         this( KryptnosticRestAdapter.create( credentialService ) );
     }
 
     public DefaultKryptnosticServicesFactory( RestAdapter restAdapter ) {
-        documentApi = restAdapter.create( ObjectApi.class );
-        metadataApi = restAdapter.create( MetadataApi.class );
+        documentApi = restAdapter.create( ObjectStorageApi.class );
+        metadataApi = restAdapter.create( MetadataStorageApi.class );
         searchApi = restAdapter.create( SearchApi.class );
-        searchFunctionApi = restAdapter.create( SearchFunctionApi.class );
+        searchFunctionApi = restAdapter.create( SearchFunctionStorageApi.class );
         sharingApi = restAdapter.create( SharingApi.class );
         directoryApi = restAdapter.create( DirectoryApi.class );
     }
 
     @Override
-    public MetadataApi createMetadataApi() {
+    public MetadataStorageApi createMetadataApi() {
         return metadataApi;
     }
 
     @Override
-    public ObjectApi createDocumentApi() {
+    public ObjectStorageApi createDocumentApi() {
         return documentApi;
     }
 
@@ -53,7 +53,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     }
 
     @Override
-    public SearchFunctionApi createSearchFunctionApi() {
+    public SearchFunctionStorageApi createSearchFunctionApi() {
         return searchFunctionApi;
     }
 

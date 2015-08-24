@@ -45,8 +45,8 @@ import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.StorageClient;
-import com.kryptnostic.storage.v1.http.MetadataApi;
-import com.kryptnostic.storage.v1.http.ObjectApi;
+import com.kryptnostic.storage.v1.http.MetadataStorageApi;
+import com.kryptnostic.storage.v1.http.ObjectStorageApi;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
@@ -70,8 +70,8 @@ public class DefaultStorageClient implements StorageClient {
     /**
      * Server-side
      */
-    private final ObjectApi           objectApi;
-    private final MetadataApi         metadataApi;
+    private final ObjectStorageApi           objectApi;
+    private final MetadataStorageApi         metadataApi;
     private final SharingApi          sharingApi;
 
     /**
@@ -89,8 +89,8 @@ public class DefaultStorageClient implements StorageClient {
      */
     public DefaultStorageClient(
             KryptnosticContext context,
-            ObjectApi objectApi,
-            MetadataApi metadataApi,
+            ObjectStorageApi objectApi,
+            MetadataStorageApi metadataApi,
             SharingApi sharingApi ) {
         this.context = context;
         this.objectApi = objectApi;

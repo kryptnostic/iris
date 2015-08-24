@@ -57,7 +57,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
-import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class IrisConnection implements KryptnosticConnection {
@@ -78,7 +78,7 @@ public class IrisConnection implements KryptnosticConnection {
     private final PrivateKey                      rsaPrivateKey;
     private final CryptoServiceLoader             loader;
     boolean                                       doFresh                    = false;
-    private final SearchFunctionApi               searchFunctionService;
+    private final SearchFunctionStorageApi               searchFunctionService;
     private SimplePolynomialFunction              globalHashFunction;
     private final AtomicBoolean                   isKodexLoaded              = new AtomicBoolean( false );
     private final AtomicBoolean                   isKodexLoading             = new AtomicBoolean( false );
@@ -106,7 +106,7 @@ public class IrisConnection implements KryptnosticConnection {
                 credential,
                 client );
         this.keyService = adapter.create( DirectoryApi.class );
-        this.searchFunctionService = adapter.create( SearchFunctionApi.class );
+        this.searchFunctionService = adapter.create( SearchFunctionStorageApi.class );
 
         ensureLocalDataBelongsToCurrentServer( searchFunctionService, dataStore );
         requestGlobalHasherAsync();
@@ -172,7 +172,7 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     private static void ensureLocalDataBelongsToCurrentServer(
-            SearchFunctionApi searchFunctionService,
+            SearchFunctionStorageApi searchFunctionService,
             DataStore dataStore ) {
         // check if we are hitting the right server, else clear
         byte[] checksumBytes = null;
@@ -278,7 +278,7 @@ public class IrisConnection implements KryptnosticConnection {
             DataStore dataStore,
             KeyPair keyPair,
             DirectoryApi keyService,
-            SearchFunctionApi searchFunctionService,
+            SearchFunctionStorageApi searchFunctionService,
             SimplePolynomialFunction globalHashFunction ) throws IrisException {
 
         Kodex<String> searchKodex = null;
