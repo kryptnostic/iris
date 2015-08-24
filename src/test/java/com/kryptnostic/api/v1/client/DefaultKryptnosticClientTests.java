@@ -59,9 +59,9 @@ import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.storage.v1.http.MetadataApi;
-import com.kryptnostic.storage.v1.http.ObjectApi;
-import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.http.MetadataStorageApi;
+import com.kryptnostic.storage.v1.http.ObjectStorageApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 import com.kryptnostic.storage.v1.models.StorageRequestBuilder;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 import com.kryptnostic.utils.SecurityConfigurationTestUtils;
@@ -127,8 +127,8 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
         initClient();
 
         String docId = "DOCUMENT_0";
-        String documentCreateUrl = ObjectApi.CONTROLLER;
-        String documentUpdateUrl = ObjectApi.CONTROLLER + "/" + docId;
+        String documentCreateUrl = ObjectStorageApi.CONTROLLER;
+        String documentUpdateUrl = ObjectStorageApi.CONTROLLER + "/" + docId;
 
         String docIdResponse = serialize( new BasicResponse<String>( docId, 200, true ) );
 
@@ -152,7 +152,7 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
             stubFor( post( urlMatching( DirectoryApi.CONTROLLER + DirectoryApi.OBJECT_KEY + "/.*" ) ).willReturn(
                     aResponse() ) );
             stubFor( put( urlEqualTo( SharingApi.SHARE + SharingApi.KEYS ) ).willReturn( aResponse() ) );
-            stubFor( post( urlEqualTo( MetadataApi.METADATA ) ).willReturn( jsonResponse( wrap( "\"done\"" ) ) ) );
+            stubFor( post( urlEqualTo( MetadataStorageApi.METADATA ) ).willReturn( jsonResponse( wrap( "\"done\"" ) ) ) );
         } catch (
                 IOException
                 | SecurityConfigurationException
@@ -169,7 +169,7 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
 
         // verify we only request the global hasher once (getGlobalHashFunction was called twice though, because it's
         // called during client init)
-        verify( 2, getRequestedFor( urlMatching( SearchFunctionApi.CONTROLLER ) ) );
+        verify( 2, getRequestedFor( urlMatching( SearchFunctionStorageApi.CONTROLLER ) ) );
 
     }
 
@@ -179,7 +179,7 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
             JsonMappingException, IOException, URISyntaxException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, ExecutionException {
         String docId = "DOCUMENT_1";
-        String documentUpdateUrl = ObjectApi.CONTROLLER + "/" + docId;
+        String documentUpdateUrl = ObjectStorageApi.CONTROLLER + "/" + docId;
 
         String docIdResponse = serialize( new BasicResponse<String>( docId, 200, true ) );
 
@@ -198,8 +198,8 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
             ResourceLockedException, SecurityConfigurationException, IrisException, JsonGenerationException,
             JsonMappingException, IOException, URISyntaxException {
         String docId = "DOCUMENT_0";
-        String documentCreateUrl = ObjectApi.CONTROLLER;
-        String documentUpdateUrl = ObjectApi.CONTROLLER + "/" + docId;
+        String documentCreateUrl = ObjectStorageApi.CONTROLLER;
+        String documentUpdateUrl = ObjectStorageApi.CONTROLLER + "/" + docId;
 
         String docIdResponse = serialize( new BasicResponse<String>( docId, 200, true ) );
 
@@ -233,10 +233,10 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
             throw new IrisException( e );
         }
 
-        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER ) ).willReturn(
+        stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER ) ).willReturn(
                 aResponse().withBody( globalHasherResponse ) ) );
 
-        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.CHECKSUM ) ).willReturn(
+        stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER + SearchFunctionStorageApi.CHECKSUM ) ).willReturn(
                 aResponse().withBody(
                         wrap( "\""
                                 + Hashing.murmur3_128().hashBytes( mapper.writeValueAsBytes( expectedGlobalHasher ) )
@@ -247,20 +247,20 @@ public class DefaultKryptnosticClientTests extends SecurityConfigurationTestUtil
     private void generateQueryHasherPairStub() {
         String response = wrap( "true" );
 
-        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.HASHER ) ).willReturn(
+        stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER + SearchFunctionStorageApi.HASHER ) ).willReturn(
                 aResponse().withBody( response ) ) );
 
         try {
             String qhp = kodex.getKeyWithJackson( QueryHasherPairRequest.class.getCanonicalName(), String.class );
             stubFor( get(
-                    urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.HASHER + SearchFunctionApi.CHECKSUM ) )
+                    urlEqualTo( SearchFunctionStorageApi.CONTROLLER + SearchFunctionStorageApi.HASHER + SearchFunctionStorageApi.CHECKSUM ) )
                     .willReturn( jsonResponse( wrap( "\"" + qhp + "\"" ) ) ) );
         } catch ( KodexException | SecurityConfigurationException | SealedKodexException e ) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
 
-        stubFor( post( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.HASHER ) ).willReturn( aResponse() ) );
+        stubFor( post( urlEqualTo( SearchFunctionStorageApi.CONTROLLER + SearchFunctionStorageApi.HASHER ) ).willReturn( aResponse() ) );
     }
 
     private String wrap( String serialize ) {

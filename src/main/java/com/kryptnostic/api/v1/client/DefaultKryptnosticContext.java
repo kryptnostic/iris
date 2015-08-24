@@ -36,13 +36,13 @@ import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchObjectKey;
 
 /**
- * 
+ *
  * The default kryptnostic context is instantiated from an
- * 
+ *
  * @author Sina Iman &lt;sina@kryptnostic.com&gt;
  * @author Nick Hewitt &lt;nick@kryptnostic.com&gt;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
@@ -52,7 +52,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private static DeflatingJacksonMarshaller marshaller      = new DeflatingJacksonMarshaller();
     private final SharingApi                  sharingClient;
     private final DirectoryApi                directoryClient;
-    private final SearchFunctionApi           searchFunctionClient;
+    private final SearchFunctionStorageApi           searchFunctionClient;
     private SimplePolynomialFunction          globalHashFunction;
     private final KryptnosticConnection       connection;
 
@@ -67,11 +67,11 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private static final int                  NONCE_LENGTH    = 64;
 
     public DefaultKryptnosticContext(
-            SearchFunctionApi searchFunctionClient,
+            SearchFunctionStorageApi searchFunctionStorageApiClient,
             SharingApi sharingClient,
             DirectoryApi directoryClient,
             KryptnosticConnection connection ) throws IrisException {
-        this.searchFunctionClient = searchFunctionClient;
+        this.searchFunctionClient = searchFunctionStorageApiClient;
         this.sharingClient = sharingClient;
         this.directoryClient = directoryClient;
         this.connection = connection;

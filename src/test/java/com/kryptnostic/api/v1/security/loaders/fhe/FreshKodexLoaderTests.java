@@ -20,7 +20,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.models.response.BasicResponse;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
-import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class FreshKodexLoaderTests {
@@ -37,7 +37,7 @@ public class FreshKodexLoaderTests {
     @Test
     public void initTest() throws IrisException, KodexException, SecurityConfigurationException, SealedKodexException,
             CorruptKodexException {
-        SearchFunctionApi searchFunctionService = Mockito.mock( SearchFunctionApi.class );
+        SearchFunctionStorageApi searchFunctionService = Mockito.mock( SearchFunctionStorageApi.class );
         Mockito.when( searchFunctionService.setQueryHasherPair( Mockito.any( QueryHasherPairRequest.class ) ) )
                 .thenReturn( new BasicResponse<String>( "", 200, true ) );
 
@@ -57,7 +57,7 @@ public class FreshKodexLoaderTests {
     @Test(
         expected = NullPointerException.class )
     public void nullTest() throws KodexException {
-        new FreshKodexLoader( keyPair, null, Mockito.mock( SearchFunctionApi.class ), new InMemoryStore() ).load();
+        new FreshKodexLoader( keyPair, null, Mockito.mock( SearchFunctionStorageApi.class ), new InMemoryStore() ).load();
     }
 
 }
