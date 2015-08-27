@@ -15,6 +15,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 import javax.crypto.BadPaddingException;
@@ -38,7 +39,6 @@ import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
@@ -52,9 +52,9 @@ import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.StorageClient;
-import com.kryptnostic.storage.v1.http.MetadataApi;
-import com.kryptnostic.storage.v1.http.ObjectApi;
-import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.http.MetadataStorageApi;
+import com.kryptnostic.storage.v1.http.ObjectStorageApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
 import com.kryptnostic.storage.v1.models.ObjectMetadata;
@@ -67,7 +67,7 @@ import com.kryptnostic.utils.SecurityConfigurationTestUtils;
 public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
 
     private StorageClient            storageService;
-    private UserKey                  userKey;
+    private UUID                     userKey;
 
     @Rule
     public WireMockRule              wireMockRule = new WireMockRule( 9990 );
@@ -77,7 +77,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     public void setup() throws InvalidKeyException, IllegalBlockSizeException, BadPaddingException,
             NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException, InvalidParameterSpecException,
             InvalidAlgorithmParameterException, SealedKodexException, IOException, SignatureException, Exception {
-        userKey = new UserKey( "krypt", "sina" );
+        userKey = UUID.randomUUID();
 
         generateGlobalHasherStub();
         generateQueryHasherPairStub();
@@ -100,8 +100,8 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     public void uploadingWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
             ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
             NoSuchAlgorithmException, JsonProcessingException, ExecutionException {
-        ObjectApi documentApi = Mockito.mock( ObjectApi.class );
-        MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
+        ObjectStorageApi documentApi = Mockito.mock( ObjectStorageApi.class );
+        MetadataStorageApi metadataApi = Mockito.mock( MetadataStorageApi.class );
         SharingApi sharingApi = Mockito.mock( SharingApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
 
@@ -156,8 +156,8 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     public void documentFragmentTest() throws BadRequestException, ResourceNotFoundException,
             ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
             NoSuchAlgorithmException, ExecutionException, ClassNotFoundException, IOException {
-        ObjectApi documentApi = Mockito.mock( ObjectApi.class );
-        MetadataApi metadataApi = Mockito.mock( MetadataApi.class );
+        ObjectStorageApi documentApi = Mockito.mock( ObjectStorageApi.class );
+        MetadataStorageApi metadataApi = Mockito.mock( MetadataStorageApi.class );
         SharingApi sharingApi = Mockito.mock( SharingApi.class );
         KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
 
@@ -169,7 +169,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         String docBody = word + intermediate + intermediate + word;
         String docId = "doc1";
         loader.put( docId, crypto );
-        KryptnosticObject doc = new KryptnosticObject( new ObjectMetadata( docId ), docBody ).encrypt( loader );
+        KryptnosticObject doc = new KryptnosticObject( new ObjectMetadata( docId, null ), docBody ).encrypt( loader );
         Mockito.when( documentApi.getObject( Mockito.anyString() ) ).thenReturn( doc );
 
         Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
@@ -198,10 +198,10 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
             throw new IrisException( e );
         }
 
-        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER ) ).willReturn(
+        stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER ) ).willReturn(
                 aResponse().withBody( globalHasherResponse ) ) );
 
-        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.CHECKSUM ) ).willReturn(
+        stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER + SearchFunctionStorageApi.CHECKSUM ) ).willReturn(
                 aResponse().withBody(
                         wrap( "\""
                                 + Hashing.murmur3_128().hashBytes( mapper.writeValueAsBytes( globalHasher ) )
@@ -212,7 +212,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     private void generateQueryHasherPairStub() {
         String response = wrap( "true" );
 
-        stubFor( get( urlEqualTo( SearchFunctionApi.CONTROLLER + SearchFunctionApi.HASHER ) ).willReturn(
+        stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER + SearchFunctionStorageApi.HASHER ) ).willReturn(
                 aResponse().withBody( response ) ) );
     }
 

@@ -11,7 +11,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Pattern;
 
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
@@ -19,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import cern.colt.bitvector.BitVector;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
@@ -45,8 +45,8 @@ import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.StorageClient;
-import com.kryptnostic.storage.v1.http.MetadataApi;
-import com.kryptnostic.storage.v1.http.ObjectApi;
+import com.kryptnostic.storage.v1.http.MetadataStorageApi;
+import com.kryptnostic.storage.v1.http.ObjectStorageApi;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
@@ -70,8 +70,8 @@ public class DefaultStorageClient implements StorageClient {
     /**
      * Server-side
      */
-    private final ObjectApi           objectApi;
-    private final MetadataApi         metadataApi;
+    private final ObjectStorageApi           objectApi;
+    private final MetadataStorageApi         metadataApi;
     private final SharingApi          sharingApi;
 
     /**
@@ -89,8 +89,8 @@ public class DefaultStorageClient implements StorageClient {
      */
     public DefaultStorageClient(
             KryptnosticContext context,
-            ObjectApi objectApi,
-            MetadataApi metadataApi,
+            ObjectStorageApi objectApi,
+            MetadataStorageApi metadataApi,
             SharingApi sharingApi ) {
         this.context = context;
         this.objectApi = objectApi;
@@ -109,8 +109,9 @@ public class DefaultStorageClient implements StorageClient {
         String id = req.getObjectId();
 
         if ( id == null ) {
-            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId().orNull() );
-            id = objectApi.createPendingObject(pendingRequest).getData();
+            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId()
+                    .orNull(), Optional.<Boolean> absent() );
+            id = objectApi.createPendingObject( pendingRequest ).getData();
         } else {
             objectApi.createPendingObjectFromExisting( id );
         }
@@ -124,7 +125,7 @@ public class DefaultStorageClient implements StorageClient {
             storeObject( obj );
         }
 
-        EncryptedSearchSharingKey sharingKey = setupSharing(obj);
+        EncryptedSearchSharingKey sharingKey = setupSharing( obj );
 
         if ( req.isSearchable() ) {
             makeObjectSearchable( obj, sharingKey );
@@ -133,7 +134,8 @@ public class DefaultStorageClient implements StorageClient {
         return objId;
     }
 
-    private void makeObjectSearchable( KryptnosticObject object, EncryptedSearchSharingKey sharingKey ) throws IrisException, BadRequestException {
+    private void makeObjectSearchable( KryptnosticObject object, EncryptedSearchSharingKey sharingKey )
+            throws IrisException, BadRequestException {
         // index + map tokens for metadata
         Stopwatch watch = Stopwatch.createStarted();
         Set<Metadata> metadata = indexer.index( object.getMetadata().getId(), object.getBody().getData() );
@@ -149,7 +151,7 @@ public class DefaultStorageClient implements StorageClient {
 
     }
 
-    private EncryptedSearchSharingKey setupSharing(KryptnosticObject object) throws IrisException {
+    private EncryptedSearchSharingKey setupSharing( KryptnosticObject object ) throws IrisException {
         Stopwatch watch = Stopwatch.createStarted();
         // generate nonce
         EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
@@ -325,7 +327,6 @@ public class DefaultStorageClient implements StorageClient {
 
         String body = obj.getBody().decrypt( this.loader ).getData();
         Map<Integer, String> frags = Maps.newHashMap();
-        Pattern p = Pattern.compile( "\\s" );
         for ( Integer index : locations ) {
             int backSpaces = 0;
             int backIndex = index;
@@ -362,24 +363,33 @@ public class DefaultStorageClient implements StorageClient {
     @Override
     public String appendObject( ObjectMetadata objectMetadata, String body ) throws SecurityConfigurationException,
             ExecutionException, ResourceNotFoundException, IrisException, BadRequestException {
-        CryptoService crypto = this.context.getConnection().getCryptoServiceLoader().get( objectMetadata.getId() );
+        Optional<CryptoService> maybeCS = this.context.getConnection().getCryptoServiceLoader()
+                .get( objectMetadata.getId() );
+        if ( maybeCS.isPresent() ) {
+            CryptoService crypto = maybeCS.get();
 
-        int curNumBlocks = objectMetadata.getNumBlocks();
-        BlockCiphertext ciphertext = crypto.encrypt( body.getBytes() );
+            int curNumBlocks = objectMetadata.getNumBlocks();
+            BlockCiphertext ciphertext = crypto.encrypt( body.getBytes() );
 
-        EncryptableBlock blockToAppend = new EncryptableBlock( ciphertext, Encryptable.hashFunction.hashBytes(
-                ciphertext.getContents() ).asBytes(), curNumBlocks, true, crypto.encrypt( String.class
-                .getCanonicalName().getBytes() ), objectMetadata.getChunkingStrategy(), DateTime.now() );
+            EncryptableBlock blockToAppend = new EncryptableBlock( ciphertext, Encryptable.hashFunction.hashBytes(
+                    ciphertext.getContents() ).asBytes(), curNumBlocks, true, crypto.encrypt( String.class
+                    .getCanonicalName().getBytes() ), objectMetadata.getChunkingStrategy(), DateTime.now() );
 
-        Set<Metadata> metadata = indexer.index( objectMetadata.getId(), body );
-        EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
-        EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectMetadata.getId() )
-                .getBridgeKey();
+            Set<Metadata> metadata = indexer.index( objectMetadata.getId(), body );
+            EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
+            EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectMetadata.getId() )
+                    .getBridgeKey();
 
-        EncryptedSearchSharingKey encryptedSearchSharingKey = privKey.calculateSharingKey( bridgeKey );
-        List<MetadataRequest> mreq = prepareMetadata( metadata, encryptedSearchSharingKey );
-        uploadMetadata( mreq );
-        return objectApi.appendObject( objectMetadata.getId(), blockToAppend ).getData();
+            EncryptedSearchSharingKey encryptedSearchSharingKey = privKey.calculateSharingKey( bridgeKey );
+            List<MetadataRequest> mreq = prepareMetadata( metadata, encryptedSearchSharingKey );
+            uploadMetadata( mreq );
+            return objectApi.appendObject( objectMetadata.getId(), blockToAppend ).getData();
+        } else {
+            logger.error( "Unable to retrieve crypto service for object {}", objectMetadata.getId() );
+            throw new SecurityConfigurationException( "Unable to retrieve crypto service for object {}"
+                    + objectMetadata.getId() );
+        }
+
     }
 
     @Override

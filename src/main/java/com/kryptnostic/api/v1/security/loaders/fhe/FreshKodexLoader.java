@@ -22,7 +22,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
-import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class FreshKodexLoader extends KodexLoader {
@@ -31,14 +31,14 @@ public class FreshKodexLoader extends KodexLoader {
     protected final KeyPair                  keyPair;
     protected final SimplePolynomialFunction globalHashFunction;
     protected final DataStore                dataStore;
-    protected final SearchFunctionApi        searchFunctionApi;
+    protected final SearchFunctionStorageApi searchFunctionStorageApi;
     protected final int                      keySize;
     protected static final int               DEFAULT_KEY_SIZE = 128;
 
     public FreshKodexLoader(
             KeyPair keyPair,
             SimplePolynomialFunction globalHashFunction,
-            SearchFunctionApi searchFunctionApi,
+            SearchFunctionStorageApi searchFunctionStorageApi,
             DataStore dataStore,
             int keySize ) {
         Preconditions.checkNotNull( globalHashFunction );
@@ -46,21 +46,21 @@ public class FreshKodexLoader extends KodexLoader {
         this.keyPair = keyPair;
         this.globalHashFunction = globalHashFunction;
         this.dataStore = dataStore;
-        this.searchFunctionApi = searchFunctionApi;
+        this.searchFunctionStorageApi = searchFunctionStorageApi;
         this.keySize = keySize;
     }
 
     public FreshKodexLoader(
             KeyPair keyPair,
             SimplePolynomialFunction globalHashFunction,
-            SearchFunctionApi searchFunctionApi,
+            SearchFunctionStorageApi searchFunctionStorageApi,
             DataStore dataStore ) {
-        this( keyPair, globalHashFunction, searchFunctionApi, dataStore, DEFAULT_KEY_SIZE );
+        this( keyPair, globalHashFunction, searchFunctionStorageApi, dataStore, DEFAULT_KEY_SIZE );
     }
 
     /**
      * Attempt to generate a brand new Kodex
-     * 
+     *
      * @throws KodexException
      */
     @Override
@@ -101,7 +101,7 @@ public class FreshKodexLoader extends KodexLoader {
 
         // Update the query hasher pair request
         logger.debug( "Flushing QHP to web..." );
-        searchFunctionApi.setQueryHasherPair( queryHasher );
+        searchFunctionStorageApi.setQueryHasherPair( queryHasher );
         logger.debug( "Done flushing QHP to web." );
 
         kodex.setKeyWithClassAndJackson( EncryptedSearchPrivateKey.class, encryptedSearchPrivateKey );

@@ -13,14 +13,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.crypto.PrivateKey;
 import com.kryptnostic.crypto.PublicKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
-import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex;
 import com.kryptnostic.kodex.v1.crypto.keys.Kodex.CorruptKodexException;
@@ -29,7 +26,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.multivariate.util.SimplePolynomialFunctions;
@@ -37,18 +33,13 @@ import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class NetworkKodexLoaderTests {
     private DirectoryApi             keyClient;
-    private UserKey                  userKey;
-    private PasswordCryptoService    cryptoService;
     private KeyPair                  keyPair;
     private PrivateKey               fhePrivateKey;
     private PublicKey                fhePublicKey;
     private SimplePolynomialFunction globalHash;
-    private ObjectMapper             mapper = KodexObjectMapperFactory.getObjectMapper();
 
     @Before
     public void init() throws NoSuchAlgorithmException {
-        cryptoService = new PasswordCryptoService( Cypher.AES_CTR_128, "test".toCharArray() );
-        userKey = new UserKey( "krypt", "sina" );
         keyClient = Mockito.mock( DirectoryApi.class );
 
         keyPair = Keys.generateRsaKeyPair( 1024 );

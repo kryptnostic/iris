@@ -3,7 +3,6 @@ package com.kryptnostic.utils;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.codec.binary.StringUtils;
@@ -11,8 +10,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 
 /**
@@ -23,9 +20,6 @@ import com.kryptnostic.kodex.v1.storage.DataStore;
  */
 public abstract class DataStoreTestsBase {
     protected static DataStore         store;
-    private static HashFunction        hf               = Hashing.murmur3_128();
-    private static final int           DATA_BYTE_LENGTH = 50;
-    private static final Random        r                = new Random();
     private static final AtomicInteger counter          = new AtomicInteger();
 
     @Test

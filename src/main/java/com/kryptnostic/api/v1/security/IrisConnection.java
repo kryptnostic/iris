@@ -9,6 +9,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -29,7 +30,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Stopwatch;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.fhe.FreshKodexLoader;
-import com.kryptnostic.api.v1.security.loaders.fhe.KodexLoader;
 import com.kryptnostic.api.v1.security.loaders.fhe.LocalKodexLoader;
 import com.kryptnostic.api.v1.security.loaders.fhe.NetworkKodexLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
@@ -39,7 +39,6 @@ import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
@@ -55,11 +54,10 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.models.utils.SimplePolynomialFunctionValidator;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
-import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 import com.kryptnostic.storage.v1.models.request.QueryHasherPairRequest;
 
 public class IrisConnection implements KryptnosticConnection {
@@ -68,7 +66,7 @@ public class IrisConnection implements KryptnosticConnection {
     private static final String                   GLOBAL_HASHER_CHECKSUM_KEY = "global_hasher_checksum";
     private Kodex<String>                         kodex;
     private transient final PasswordCryptoService cryptoService;
-    private final UserKey                         userKey;
+    private final UUID                         userKey;
     private final String                          userCredential;
     private final String                          url;
     private final DirectoryApi                    keyService;
@@ -80,20 +78,20 @@ public class IrisConnection implements KryptnosticConnection {
     private final PrivateKey                      rsaPrivateKey;
     private final CryptoServiceLoader             loader;
     boolean                                       doFresh                    = false;
-    private final SearchFunctionApi               searchFunctionService;
+    private final SearchFunctionStorageApi               searchFunctionService;
     private SimplePolynomialFunction              globalHashFunction;
     private final AtomicBoolean                   isKodexLoaded              = new AtomicBoolean( false );
     private final AtomicBoolean                   isKodexLoading             = new AtomicBoolean( false );
 
     private Future<SimplePolynomialFunction>      hashGetter;
 
-    public IrisConnection( String url, UserKey userKey, String password, DataStore dataStore, Client client ) throws IrisException {
+    public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client ) throws IrisException {
         this( url, userKey, password, dataStore, client, null, null );
     }
 
     public IrisConnection(
             String url,
-            UserKey userKey,
+            UUID userKey,
             String password,
             DataStore dataStore,
             Client client,
@@ -108,7 +106,7 @@ public class IrisConnection implements KryptnosticConnection {
                 credential,
                 client );
         this.keyService = adapter.create( DirectoryApi.class );
-        this.searchFunctionService = adapter.create( SearchFunctionApi.class );
+        this.searchFunctionService = adapter.create( SearchFunctionStorageApi.class );
 
         ensureLocalDataBelongsToCurrentServer( searchFunctionService, dataStore );
         requestGlobalHasherAsync();
@@ -154,12 +152,12 @@ public class IrisConnection implements KryptnosticConnection {
         } );
     }
 
-    private static String bootstrapCredential( UserKey userKey, String url, String password, Client client )
+    private static String bootstrapCredential( UUID userKey, String url, String password, Client client )
             throws IrisException {
         RestAdapter bootstrap = KryptnosticRestAdapter.createWithNoAuthAndDefaultJacksonConverter( url, client );
         BlockCiphertext encryptedSalt = null;
         try {
-            encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt( userKey.getRealm(), userKey.getName() );
+            encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt( userKey );
         } catch ( ResourceNotFoundException e1 ) {}
 
         if ( encryptedSalt == null ) {
@@ -174,7 +172,7 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     private static void ensureLocalDataBelongsToCurrentServer(
-            SearchFunctionApi searchFunctionService,
+            SearchFunctionStorageApi searchFunctionService,
             DataStore dataStore ) {
         // check if we are hitting the right server, else clear
         byte[] checksumBytes = null;
@@ -197,7 +195,7 @@ public class IrisConnection implements KryptnosticConnection {
 
     private KeyPair loadRsaKeys(
             PasswordCryptoService crypto,
-            UserKey userKey,
+            UUID userKey,
             DataStore dataStore,
             DirectoryApi keyClient ) throws IrisException {
         KeyPair keyPair = null;
@@ -280,7 +278,7 @@ public class IrisConnection implements KryptnosticConnection {
             DataStore dataStore,
             KeyPair keyPair,
             DirectoryApi keyService,
-            SearchFunctionApi searchFunctionService,
+            SearchFunctionStorageApi searchFunctionService,
             SimplePolynomialFunction globalHashFunction ) throws IrisException {
 
         Kodex<String> searchKodex = null;
@@ -343,7 +341,7 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     @Override
-    public UserKey getUserKey() {
+    public UUID getUserId() {
         return userKey;
     }
 
@@ -428,23 +426,6 @@ public class IrisConnection implements KryptnosticConnection {
     @Override
     public PublicKey getRsaPublicKey() {
         return rsaPublicKey;
-    }
-
-    private SimplePolynomialFunctionValidator[] getValidators() throws IrisException {
-        try {
-            byte[] leftValidator = dataStore.get( KodexLoader.LEFT_VALIDATOR );
-            byte[] rightValidator = dataStore.get( KodexLoader.RIGHT_VALIDATOR );
-
-            if ( leftValidator == null || rightValidator == null ) {
-                return null;
-            }
-
-            return new SimplePolynomialFunctionValidator[] {
-                    SimplePolynomialFunctionValidator.fromBytes( leftValidator ),
-                    SimplePolynomialFunctionValidator.fromBytes( rightValidator ) };
-        } catch ( IOException e ) {
-            throw new IrisException( e );
-        }
     }
 
     @Override

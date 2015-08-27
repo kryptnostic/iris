@@ -5,6 +5,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import org.apache.commons.codec.binary.StringUtils;
 import org.slf4j.Logger;
@@ -20,7 +21,6 @@ import com.kryptnostic.bitwise.BitVectors;
 import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
 import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.principal.UserKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
@@ -36,13 +36,13 @@ import com.kryptnostic.linear.EnhancedBitMatrix;
 import com.kryptnostic.linear.EnhancedBitMatrix.SingularMatrixException;
 import com.kryptnostic.multivariate.gf2.SimplePolynomialFunction;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.storage.v1.http.SearchFunctionApi;
+import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 import com.kryptnostic.storage.v1.models.EncryptedSearchObjectKey;
 
 /**
- * 
+ *
  * The default kryptnostic context is instantiated from an
- * 
+ *
  * @author Sina Iman &lt;sina@kryptnostic.com&gt;
  * @author Nick Hewitt &lt;nick@kryptnostic.com&gt;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
@@ -52,7 +52,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private static DeflatingJacksonMarshaller marshaller      = new DeflatingJacksonMarshaller();
     private final SharingApi                  sharingClient;
     private final DirectoryApi                directoryClient;
-    private final SearchFunctionApi           searchFunctionClient;
+    private final SearchFunctionStorageApi           searchFunctionClient;
     private SimplePolynomialFunction          globalHashFunction;
     private final KryptnosticConnection       connection;
 
@@ -67,11 +67,11 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     private static final int                  NONCE_LENGTH    = 64;
 
     public DefaultKryptnosticContext(
-            SearchFunctionApi searchFunctionClient,
+            SearchFunctionStorageApi searchFunctionStorageApiClient,
             SharingApi sharingClient,
             DirectoryApi directoryClient,
             KryptnosticConnection connection ) throws IrisException {
-        this.searchFunctionClient = searchFunctionClient;
+        this.searchFunctionClient = searchFunctionStorageApiClient;
         this.sharingClient = sharingClient;
         this.directoryClient = directoryClient;
         this.connection = connection;
@@ -228,14 +228,14 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public Map<UserKey, RsaCompressingEncryptionService> getEncryptionServiceForUsers( Set<UserKey> users ) {
-        return Maps.asMap( users, new Function<UserKey, RsaCompressingEncryptionService>() {
+    public Map<UUID, RsaCompressingEncryptionService> getEncryptionServiceForUsers( Set<UUID> users ) {
+        return Maps.asMap( users, new Function<UUID, RsaCompressingEncryptionService>() {
 
             @Override
-            public RsaCompressingEncryptionService apply( UserKey input ) {
+            public RsaCompressingEncryptionService apply( UUID input ) {
                 try {
                     return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, directoryClient.getPublicKey(
-                            input.getName() ).asRsaPublicKey() );
+                            input ).asRsaPublicKey() );
                 } catch (
                         InvalidKeySpecException
                         | NoSuchAlgorithmException
