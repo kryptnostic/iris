@@ -14,24 +14,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
-import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
-import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
-import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.sharing.v1.SharingClient;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.sharing.v1.models.IncomingShares;
 import com.kryptnostic.sharing.v1.models.Share;
-import com.kryptnostic.sharing.v1.models.request.KeyRegistrationRequest;
 import com.kryptnostic.sharing.v1.models.request.RevocationRequest;
 import com.kryptnostic.sharing.v1.models.request.SharingRequest;
 import com.kryptnostic.storage.v1.models.EncryptedSearchObjectKey;
@@ -39,7 +33,6 @@ import com.kryptnostic.storage.v1.models.EncryptedSearchObjectKey;
 public class SharingManager implements SharingClient {
     private static final Logger               logger     = LoggerFactory.getLogger( SharingManager.class );
     private static ObjectMapper               mapper     = KodexObjectMapperFactory.getObjectMapper();
-    private static DeflatingJacksonMarshaller marshaller = new DeflatingJacksonMarshaller();
     private final KryptnosticContext          context;
     private final SharingApi                  sharingApi;
 
@@ -49,12 +42,8 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public void shareObjectWithUsers( String objectId, Set<UUID> users ) throws ResourceNotFoundException {
+    public void shareObjectWithUsers( String objectId, Set<UUID> users , byte[] sharingPair ) throws ResourceNotFoundException {
         CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
-        EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
-        EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectId ).getBridgeKey();
-
-        EncryptedSearchSharingKey sharingKey = privKey.calculateSharingKey( bridgeKey );
 
         CryptoService service;
         try {
@@ -68,7 +57,7 @@ public class SharingManager implements SharingClient {
                 }
 
                 byte[] encryptedSharingKey = mapper
-                        .writeValueAsBytes( service.encrypt( marshaller.toBytes( sharingKey ) ) );
+                        .writeValueAsBytes( service.encrypt( sharingPair ) );
 
                 SharingRequest request = new SharingRequest( objectId, seals, encryptedSharingKey );
                 sharingApi.share( request );
@@ -91,7 +80,7 @@ public class SharingManager implements SharingClient {
         if ( incomingShares == null || incomingShares.isEmpty() ) {
             return 0;
         }
-        Set<EncryptedSearchObjectKey> keys = Sets.newHashSet();
+        Set<byte[]> keys = Sets.newHashSet();
 
         for ( Share share : incomingShares ) {
             String id = share.getObjectId();
@@ -109,32 +98,19 @@ public class SharingManager implements SharingClient {
             } catch ( ExecutionException e ) {
                 throw new IOException( e );
             }
-            EncryptedSearchSharingKey sharingKey = null;
+            byte[] sharingPair = null;
             try {
-                sharingKey = marshaller.fromBytes( decryptor.decryptBytes( mapper.readValue(
+                sharingPair = decryptor.decryptBytes( mapper.readValue(
                         share.getEncryptedSharingKey(),
-                        BlockCiphertext.class ) ), EncryptedSearchSharingKey.class );
+                        BlockCiphertext.class ) );
             } catch ( NegativeArraySizeException e ) {
                 e.printStackTrace();
             }
 
-            if ( sharingKey == null ) {
-                logger.error( "Null sharing key for object {}", id );
-                continue;
-            }
-
-            EncryptedSearchObjectKey searchKey = null;
-
-            try {
-                searchKey = new EncryptedSearchObjectKey( context.fromSharingKey( sharingKey ), share.getObjectId() );
-            } catch ( IrisException e ) {
-                logger.error( "Unable to create encrypted search key for object: {}", share.getObjectId(), e );
-            }
-
-            keys.add( searchKey );
+            keys.add( sharingPair );
         }
-        KeyRegistrationRequest request = new KeyRegistrationRequest( keys );
-        sharingApi.registerKeys( request );
+//        KeyRegistrationRequest request = new KeyRegistrationRequest( keys );
+        sharingApi.addSharingPairs( keys );
         return incomingShares.size();
     }
 
@@ -157,4 +133,6 @@ public class SharingManager implements SharingClient {
     public EncryptedSearchObjectKey getObjectKey( String objectId ) throws ResourceNotFoundException {
         return sharingApi.getEncryptedSearchObjectKey( objectId );
     }
+
+
 }

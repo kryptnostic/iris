@@ -47,12 +47,11 @@ repositories {
 
 }
 
-ext.hazelcast_version='3.2.4'
 ext.fhe_core_version='0.1.2-SNAPSHOT'
 ext.kodex_version="3.0.0-SNAPSHOT"
 ext.retrofit_version='1.9.0'
 ext.spring_framework_version='4.0.6.RELEASE'
-ext.jackson_version='2.4.4'
+ext.jackson_version='2.5.1'
 dependencies {
     /*
      * SL4J + LOG4J
@@ -144,15 +143,15 @@ artifacts {
 	archives jar,sourcesJar,javadocJar
 }
 
-sourceCompatibility=JavaVersion.VERSION_1_7
+sourceCompatibility=JavaVersion.VERSION_1_8
 
 eclipse {
     ext.downloadSources = true
     ext.downloadJavadoc = true
-    ext.sourceCompatibility=JavaVersion.VERSION_1_7
+    ext.sourceCompatibility=JavaVersion.VERSION_1_8
     classpath {
          containers.remove('org.eclipse.jdt.launching.JRE_CONTAINER')
-         containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7'
+         containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8'
     }
 }
 

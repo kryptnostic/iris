@@ -10,6 +10,7 @@ import retrofit.RestAdapter.LogLevel;
 import retrofit.client.Client;
 import retrofit.converter.Converter;
 
+import com.kryptnostic.api.v1.utils.ByteArrayConverter;
 import com.kryptnostic.api.v1.utils.JacksonConverter;
 import com.kryptnostic.kodex.v1.authentication.PreauthenticationRequestInterceptor;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
@@ -41,6 +42,14 @@ public final class KryptnosticRestAdapter {
         return builder( url, user, userCredential, new JacksonConverter() ).build();
     }
 
+    public static RestAdapter createWithByteArrayJacksonConverter(
+            String url,
+            UUID user,
+            String userCredential,
+            Client client ) {
+        return builder( url, user, userCredential, new ByteArrayConverter() ).setClient( client ).build();
+    }
+    
     public static RestAdapter createWithDefaultJacksonConverter(
             String url,
             UUID user,

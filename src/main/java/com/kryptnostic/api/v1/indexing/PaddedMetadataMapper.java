@@ -1,5 +1,6 @@
 package com.kryptnostic.api.v1.indexing;
 
+import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
@@ -9,14 +10,10 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cern.colt.bitvector.BitVector;
-
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.kryptnostic.crypto.EncryptedSearchSharingKey;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
-import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
 import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
@@ -32,7 +29,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
     }
 
     @Override
-    public MappedMetadata mapTokensToKeys( Set<Metadata> metadata, EncryptedSearchSharingKey sharingKey )
+    public MappedMetadata mapTokensToKeys( Set<Metadata> metadata, byte[] objectSearchKey, byte[] objectAddressMatrix )
             throws IrisException {
 
         /*
@@ -48,7 +45,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
             bucketSize = Math.max( bucketSize, m.getLocations().size() );
         }
 
-        Map<BitVector, List<Metadata>> metadataMap = Maps.newHashMapWithExpectedSize( metadata.size() );
+        Map<ByteBuffer, List<Metadata>> metadataMap = Maps.newHashMapWithExpectedSize( metadata.size() );
 
         int numAcceptedTokens = 0;
 
@@ -61,12 +58,8 @@ public class PaddedMetadataMapper implements MetadataMapper {
             numAcceptedTokens++;
             List<Integer> locations = metadatum.getLocations();
 
-            BitVector indexForTerm;
-            try {
-                indexForTerm = context.generateIndexForToken( token, sharingKey );
-            } catch ( ResourceNotFoundException e ) {
-                throw new IrisException( e );
-            }
+            byte[] indexForTerm;
+            indexForTerm = context.generateIndexForToken( token, objectSearchKey, objectAddressMatrix );
 
             Metadata balancedMetadatum = new Metadata( metadatum.getObjectId(), token, subListAndPad(
                     locations,
@@ -75,17 +68,18 @@ public class PaddedMetadataMapper implements MetadataMapper {
 
             if ( metadatumList == null ) {
                 metadatumList = Lists.newArrayListWithExpectedSize( 1 );
-                metadataMap.put( indexForTerm, metadatumList );
+                metadataMap.put( ByteBuffer.wrap( indexForTerm ), metadatumList );
             }
 
             metadatumList.add( balancedMetadatum );
 
         }
-        log.info(
-                "[PROFILE] MinLocations: {} MaxLocations: {} RawMetadataSize: {} ProcessedMetadataSize: {} AcceptedTokens: {}",
-                metadata.size(),
-                metadataMap.values().size(),
-                numAcceptedTokens );
+        log
+                .info(
+                        "[PROFILE] MinLocations: {} MaxLocations: {} RawMetadataSize: {} ProcessedMetadataSize: {} AcceptedTokens: {}",
+                        metadata.size(),
+                        metadataMap.values().size(),
+                        numAcceptedTokens );
         return MappedMetadata.from( metadataMap );
     }
 
