@@ -15,7 +15,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 import javax.crypto.BadPaddingException;
@@ -40,7 +39,6 @@ import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.IrisConnection;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
-import com.kryptnostic.kodex.v1.crypto.keys.Kodex.SealedKodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
@@ -67,7 +65,6 @@ import com.kryptnostic.utils.SecurityConfigurationTestUtils;
 public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
 
     private StorageClient            storageService;
-    private UUID                     userKey;
 
     @Rule
     public WireMockRule              wireMockRule = new WireMockRule( 9990 );
@@ -76,8 +73,7 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
     @Before
     public void setup() throws InvalidKeyException, IllegalBlockSizeException, BadPaddingException,
             NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException, InvalidParameterSpecException,
-            InvalidAlgorithmParameterException, SealedKodexException, IOException, SignatureException, Exception {
-        userKey = UUID.randomUUID();
+            InvalidAlgorithmParameterException, IOException, SignatureException, Exception {
 
         generateGlobalHasherStub();
         generateQueryHasherPairStub();
@@ -88,100 +84,10 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         stubFor( get( urlEqualTo( "/directory/public/krypt/sina" ) ).willReturn(
                 jsonResponse( serialize( new PublicKeyEnvelope( pair.getPublic().getEncoded() ) ) ) ) );
         stubFor( put( urlEqualTo( "/directory/public" ) ).willReturn( aResponse() ) );
-        String kodexStr = serialize( kodex );
-        stubFor( get( urlEqualTo( "/directory/kodex" ) ).willReturn( jsonResponse( kodexStr ) ) );
     }
 
     private ResponseDefinitionBuilder jsonResponse( String s ) {
         return aResponse().withHeader( "Content-Type", "application/json" ).withBody( s );
-    }
-
-    @Test
-    public void uploadingWithoutMetadataTest() throws BadRequestException, ResourceNotFoundException,
-            ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
-            NoSuchAlgorithmException, JsonProcessingException, ExecutionException {
-        ObjectStorageApi documentApi = Mockito.mock( ObjectStorageApi.class );
-        MetadataStorageApi metadataApi = Mockito.mock( MetadataStorageApi.class );
-        SharingApi sharingApi = Mockito.mock( SharingApi.class );
-        KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
-
-        Mockito.when( sharingApi.removeIncomingShares( Mockito.anyString() ) ).thenReturn(
-                new BasicResponse<String>( "done", 200, true ) );
-
-        Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
-        Mockito.when( context.getConnection().getCryptoServiceLoader() ).thenReturn( loader );
-
-        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
-
-        Mockito.when( documentApi.createPendingObject( Mockito.<PendingObjectRequest> any() ) ).then(
-                new Answer<BasicResponse<String>>() {
-
-                    @Override
-                    public BasicResponse<String> answer( InvocationOnMock invocation ) throws Throwable {
-                        return new BasicResponse<String>( "document1", HttpStatus.SC_OK, true );
-                    }
-
-                } );
-
-        Mockito.when( documentApi.updateObject( Mockito.anyString(), Mockito.any( EncryptableBlock.class ) ) ).then(
-                new Answer<BasicResponse<String>>() {
-
-                    @Override
-                    public BasicResponse<String> answer( InvocationOnMock invocation ) throws Throwable {
-                        return new BasicResponse<String>( "document1", HttpStatus.SC_OK, true );
-                    }
-
-                } );
-
-        Mockito.when( metadataApi.uploadMetadata( Mockito.any( MetadataRequest.class ) ) ).then( new Answer<String>() {
-
-            @Override
-            public String answer( InvocationOnMock invocation ) throws Throwable {
-                Assert.fail( "No metadata should be uploaded" );
-                return null;
-            }
-
-        } );
-
-        loader.put( "document1", crypto );
-        loader.put( "test", crypto );
-
-        storageService.uploadObject( new StorageRequestBuilder().withBody( "test" ).notSearchable().build() );
-
-        storageService.uploadObject( new StorageRequestBuilder().withBody( "test" ).withId( "test" ).notSearchable()
-                .build() );
-    }
-
-    @Test
-    public void documentFragmentTest() throws BadRequestException, ResourceNotFoundException,
-            ResourceNotLockedException, IrisException, SecurityConfigurationException, ResourceLockedException,
-            NoSuchAlgorithmException, ExecutionException, ClassNotFoundException, IOException {
-        ObjectStorageApi documentApi = Mockito.mock( ObjectStorageApi.class );
-        MetadataStorageApi metadataApi = Mockito.mock( MetadataStorageApi.class );
-        SharingApi sharingApi = Mockito.mock( SharingApi.class );
-        KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
-
-        Mockito.when( sharingApi.removeIncomingShares( Mockito.anyString() ) ).thenReturn(
-                new BasicResponse<String>( "done", 200, true ) );
-
-        String word = "word";
-        String intermediate = " cool cool ";
-        String docBody = word + intermediate + intermediate + word;
-        String docId = "doc1";
-        loader.put( docId, crypto );
-        KryptnosticObject doc = new KryptnosticObject( new ObjectMetadata( docId, null ), docBody ).encrypt( loader );
-        Mockito.when( documentApi.getObject( Mockito.anyString() ) ).thenReturn( doc );
-
-        Mockito.when( context.getConnection() ).thenReturn( Mockito.mock( IrisConnection.class ) );
-        Mockito.when( context.getConnection().getCryptoServiceLoader() ).thenReturn( loader );
-
-        storageService = new DefaultStorageClient( context, documentApi, metadataApi, sharingApi );
-
-        int secondIndex = ( word + intermediate + intermediate ).length() + 1;
-        Map<Integer, String> preview = storageService.getObjectPreview( docId, Arrays.asList( 0, secondIndex ), 2 );
-        Assert.assertEquals( 2, preview.size() );
-        Assert.assertEquals( ( word + intermediate ).trim(), preview.get( 0 ) );
-        Assert.assertEquals( ( intermediate + word ).substring( 1 ), preview.get( secondIndex ) );
     }
 
     // FIXME duped from DefaultKryptnosticClientTests
@@ -201,11 +107,12 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER ) ).willReturn(
                 aResponse().withBody( globalHasherResponse ) ) );
 
-        stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER + SearchFunctionStorageApi.CHECKSUM ) ).willReturn(
-                aResponse().withBody(
-                        wrap( "\""
-                                + Hashing.murmur3_128().hashBytes( mapper.writeValueAsBytes( globalHasher ) )
-                                        .toString() + "\"" ) ) ) );
+        stubFor( get( urlEqualTo( SearchFunctionStorageApi.CONTROLLER + SearchFunctionStorageApi.CHECKSUM ) )
+                .willReturn(
+                        aResponse().withBody(
+                                wrap( "\""
+                                        + Hashing.murmur3_128().hashBytes( mapper.writeValueAsBytes( globalHasher ) )
+                                                .toString() + "\"" ) ) ) );
         return globalHasher;
     }
 
@@ -220,3 +127,4 @@ public class DefaultStorageClientTests extends SecurityConfigurationTestUtils {
         return "{\"data\":" + serialize + ",\"status\":200,\"success\":\"true\"}";
     }
 }
+ 
