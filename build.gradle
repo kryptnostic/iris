@@ -50,8 +50,8 @@ repositories {
 ext.fhe_core_version='0.1.2-SNAPSHOT'
 ext.kodex_version="3.0.0-SNAPSHOT"
 ext.retrofit_version='1.9.0'
-ext.spring_framework_version='4.0.6.RELEASE'
-ext.jackson_version='2.5.1'
+ext.spring_framework_version='4.2.0.RC3'
+ext.jackson_version='2.6.1'
 dependencies {
     /*
      * SL4J + LOG4J
@@ -72,7 +72,7 @@ dependencies {
     /*
      JODA TIME - A better datetime class.
      */
-    compile 'joda-time:joda-time:2.3'
+    compile 'joda-time:joda-time:2.8.2'
 
 
     compile "com.fasterxml.jackson.core:jackson-databind:${jackson_version}"
@@ -81,7 +81,7 @@ dependencies {
     compile "com.fasterxml.jackson.module:jackson-module-afterburner:${jackson_version}"
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-smile:${jackson_version}"
     compile "com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:${jackson_version}"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:2.4.0"
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:${jackson_version}"
 
     /*
      * APACHE COMMONS
@@ -126,7 +126,6 @@ dependencies {
      */
     testCompile "junit:junit:4.11"
     testCompile "org.mockito:mockito-all:1.9.5"
-    testCompile "com.github.tomakehurst:wiremock:1.51"
 }
 
 task sourcesJar(type : Jar) {
