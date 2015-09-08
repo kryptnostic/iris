@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
@@ -25,7 +25,6 @@ import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 
@@ -37,16 +36,15 @@ import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
  *
  */
 public class DefaultKryptnosticContext implements KryptnosticContext {
-    private static DeflatingJacksonMarshaller marshaller   = new DeflatingJacksonMarshaller();
-    private final SharingApi                  sharingClient;
-    private final DirectoryApi                directoryClient;
-    private final KryptnosticConnection       connection;
+    private final SharingApi            sharingClient;
+    private final DirectoryApi          directoryClient;
+    private final KryptnosticConnection connection;
 
-    public static final String                CHECKSUM_KEY = "global.hash.checksum";
-    public static final String                FUNCTION_KEY = "global.hash.function";
+    public static final String          CHECKSUM_KEY = "global.hash.checksum";
+    public static final String          FUNCTION_KEY = "global.hash.function";
 
-    private static final Logger               logger       = LoggerFactory
-                                                                   .getLogger( DefaultKryptnosticContext.class );
+    private static final Logger         logger       = LoggerFactory
+                                                             .getLogger( DefaultKryptnosticContext.class );
 
     public DefaultKryptnosticContext(
             SearchFunctionStorageApi searchFunctionStorageApiClient,
@@ -66,7 +64,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public void addSharingPair( String objectId, byte[] sharingPair ) {
-        sharingClient.addSharingPairs( ImmutableSet.of( sharingPair ) );
+        sharingClient.addSharingPairs( ImmutableMap.of( objectId, sharingPair ) );
     }
 
     @Override
@@ -78,11 +76,11 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
         return indexForTerm;
     }
 
-    public byte[] getHashedToken( String token ) {
+    public static byte[] getHashedToken( String token ) {
         return foldByteArray( Hashing.sha256().hashBytes( token.getBytes( Charsets.UTF_16 ) ).asBytes() );
     }
 
-    private byte[] foldByteArray( byte[] input ) {
+    public static byte[] foldByteArray( byte[] input ) {
         Preconditions.checkState( ( input.length & 1 ) == 0, "Length of input must be divisible by 2." );
         byte[] folded = new byte[ input.length >>> 1 ];
         for ( int i = 0; i < folded.length; ++i ) {

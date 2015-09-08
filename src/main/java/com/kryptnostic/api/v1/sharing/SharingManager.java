@@ -56,10 +56,10 @@ public class SharingManager implements SharingClient {
                     seals.put( serviceEntry.getKey(), serviceEntry.getValue().encrypt( service ) );
                 }
 
-                byte[] encryptedSharingKey = mapper
+                byte[] encryptedSharingPair = mapper
                         .writeValueAsBytes( service.encrypt( sharingPair ) );
 
-                SharingRequest request = new SharingRequest( objectId, seals, encryptedSharingKey );
+                SharingRequest request = new SharingRequest( objectId, seals, encryptedSharingPair );
                 sharingApi.share( request );
 
             } else {
@@ -80,7 +80,7 @@ public class SharingManager implements SharingClient {
         if ( incomingShares == null || incomingShares.isEmpty() ) {
             return 0;
         }
-        Set<byte[]> keys = Sets.newHashSet();
+        Map<String,byte[]> keys = Maps.newHashMap();
 
         for ( Share share : incomingShares ) {
             String id = share.getObjectId();
@@ -106,10 +106,11 @@ public class SharingManager implements SharingClient {
             } catch ( NegativeArraySizeException e ) {
                 e.printStackTrace();
             }
-
-            keys.add( sharingPair );
+            
+            keys.put( id,  sharingPair );
         }
 //        KeyRegistrationRequest request = new KeyRegistrationRequest( keys );
+        
         sharingApi.addSharingPairs( keys );
         return incomingShares.size();
     }
@@ -128,11 +129,5 @@ public class SharingManager implements SharingClient {
         }
         return incomingShares.size();
     }
-
-    @Override
-    public EncryptedSearchObjectKey getObjectKey( String objectId ) throws ResourceNotFoundException {
-        return sharingApi.getEncryptedSearchObjectKey( objectId );
-    }
-
 
 }

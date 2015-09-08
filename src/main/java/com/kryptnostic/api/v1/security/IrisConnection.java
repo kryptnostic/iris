@@ -309,7 +309,7 @@ public class IrisConnection implements KryptnosticConnection {
             byte[] searchPrivateKey;
             try {
                 privateKey = cryptoKeyStorageApi.getFHEPrivateKeyForCurrentUser();
-                searchPrivateKey = cryptoKeyStorageApi.getFHESearchPriatveKeyForUser();
+                searchPrivateKey = cryptoKeyStorageApi.getFHESearchPrivateKeyForUser();
                 if ( privateKey.length == 0 || searchPrivateKey.length == 0 ) {
                     throw new BadRequestException( "Missing byte arrays retrieved from server." );
                 }
