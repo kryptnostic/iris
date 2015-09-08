@@ -143,15 +143,15 @@ artifacts {
 	archives jar,sourcesJar,javadocJar
 }
 
-sourceCompatibility=JavaVersion.VERSION_1_8
+sourceCompatibility=JavaVersion.VERSION_1_7
 
 eclipse {
     ext.downloadSources = true
     ext.downloadJavadoc = true
-    ext.sourceCompatibility=JavaVersion.VERSION_1_8
+    ext.sourceCompatibility=JavaVersion.VERSION_1_7
     classpath {
          containers.remove('org.eclipse.jdt.launching.JRE_CONTAINER')
-         containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8'
+         containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7'
     }
 }
 
