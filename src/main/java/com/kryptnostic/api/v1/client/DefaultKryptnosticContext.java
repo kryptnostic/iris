@@ -64,7 +64,7 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public void addSharingPair( String objectId, byte[] sharingPair ) {
-        sharingClient.addSharingPairs( ImmutableMap.of( objectId, sharingPair ) );
+        sharingClient.addIndexPairs( ImmutableMap.of( objectId, sharingPair ) );
     }
 
     @Override

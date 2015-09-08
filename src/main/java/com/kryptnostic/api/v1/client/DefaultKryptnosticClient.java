@@ -37,7 +37,7 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
                 factory.createSharingApi() );
         this.searchClient = new DefaultSearchClient( context, factory.createSearchApi() );
         this.directoryClient = new DefaultDirectoryClient( context, factory.createDirectoryApi() );
-        this.sharingClient = new SharingManager( context, factory.createSharingApi() );
+        this.sharingClient = new SharingManager( context, factory.createSharingApi() , connection.getKryptnosticEngine() );
     }
 
     @Override

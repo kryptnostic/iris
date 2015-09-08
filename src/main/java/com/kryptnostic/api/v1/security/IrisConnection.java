@@ -18,6 +18,7 @@ import retrofit.client.Client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
@@ -279,65 +280,82 @@ public class IrisConnection implements KryptnosticConnection {
     public CryptoKeyStorageApi getCryptoKeyStorageApi() {
         return cryptoKeyStorageApi;
     }
-    
+
     @Override
     public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
         return new RsaCompressingCryptoService( RsaKeyLoader.CIPHER, getRsaPrivateKey(), getRsaPublicKey() );
     }
 
     private KryptnosticEngine loadEngine() {
-        KryptnosticEngine engine = new KryptnosticEngine();
+        /*
+         * First let's make sure we can encrypt/decrypt.
+         */
+        CryptoService privateKeyCryptoService;
         try {
-            Optional<byte[]> privateKey = Optional.fromNullable( dataStore.get( KryptnosticEngine.PRIVATE_KEY ) );
-            Optional<byte[]> searchPrivateKey = Optional.fromNullable( dataStore
+            privateKeyCryptoService = loader.get( KryptnosticEngine.PRIVATE_KEY ).get();
+        } catch ( Exception e1 ) {
+            // This should only happen when the server return bad data. Fail.
+            throw new Error( "Unable to get or generate AES keys." );
+        }
+
+        KryptnosticEngine engine = new KryptnosticEngine();
+        ObjectMapper mapper = KodexObjectMapperFactory.getSmileMapper();
+        byte[] privateKey = null;
+        byte[] searchPrivateKey = null;
+        try {
+            /*
+             * First we try loading keys from data store.
+             */
+            Optional<byte[]> maybePrivateKeyBytes = Optional.fromNullable( dataStore
+                    .get( KryptnosticEngine.PRIVATE_KEY ) );
+            Optional<byte[]> maybeSearchPrivateKeyBytes = Optional.fromNullable( dataStore
                     .get( KryptnosticEngine.SEARCH_PRIVATE_KEY ) );
-            if ( privateKey.isPresent() && searchPrivateKey.isPresent() ) {
-                engine.initClient( privateKey.get(), searchPrivateKey.get() );
+            if ( maybePrivateKeyBytes.isPresent() && maybeSearchPrivateKeyBytes.isPresent() ) {
+                privateKey = privateKeyCryptoService.decryptBytes( mapper.readValue( maybePrivateKeyBytes.get(),
+                        BlockCiphertext.class ) );
+                searchPrivateKey = privateKeyCryptoService.decryptBytes( mapper.readValue( maybeSearchPrivateKeyBytes
+                        .get(),
+                        BlockCiphertext.class ) );
+                engine.initClient( privateKey, searchPrivateKey );
             } else {
+                // If some keys are absent locally let's try and pull from the network.
                 throw new IOException( "Unable to load kryptnostic engine keys." );
             }
-        } catch ( IOException e ) {
-            CryptoService privateKeyCryptoService;
+        } catch ( SecurityConfigurationException | IOException e ) {
             try {
-                privateKeyCryptoService = loader.get( KryptnosticEngine.PRIVATE_KEY ).get();
-            } catch ( Exception e1 ) {
-                // This should only happen when the server return bad data.
-                throw new Error( "Unable to get or generate AES keys." );
-            }
-
-            byte[] privateKey;
-            byte[] searchPrivateKey;
-            try {
-                privateKey = cryptoKeyStorageApi.getFHEPrivateKeyForCurrentUser();
-                searchPrivateKey = cryptoKeyStorageApi.getFHESearchPrivateKeyForUser();
-                if ( privateKey.length == 0 || searchPrivateKey.length == 0 ) {
-                    throw new BadRequestException( "Missing byte arrays retrieved from server." );
+                Optional<BlockCiphertext> encryptedPrivateKey = cryptoKeyStorageApi.getFHEPrivateKeyForCurrentUser();
+                Optional<BlockCiphertext> encryptedSearchPrivateKey = cryptoKeyStorageApi
+                        .getFHESearchPrivateKeyForUser();
+                if ( encryptedPrivateKey.isPresent() && encryptedSearchPrivateKey.isPresent() ) {
+                    privateKey = privateKeyCryptoService.decryptBytes( encryptedPrivateKey.get() );
+                    searchPrivateKey = privateKeyCryptoService.decryptBytes( encryptedSearchPrivateKey.get() );
                 }
-            } catch ( BadRequestException e1 ) {
+            } catch ( BadRequestException | SecurityConfigurationException e1 ) {
+                // If have a problem retrieving data from the server or decrypting keys, we regenerate.
                 engine.initClient();
-                privateKey = engine.getPrivateKey();
-                searchPrivateKey = engine.getSearchPrivateKey();
+                privateKey = Preconditions.checkNotNull( engine.getPrivateKey(),
+                        "Private key from engine cannot be null." );
+                searchPrivateKey = Preconditions.checkNotNull( engine.getSearchPrivateKey(),
+                        "Search private key cannot be null." );
             }
 
             try {
-
-                dataStore.put( KryptnosticEngine.PRIVATE_KEY, engine.getPrivateKey() );
-                dataStore.put( KryptnosticEngine.SEARCH_PRIVATE_KEY, engine.getSearchPrivateKey() );
-
+                // Let's store the keys locally
                 BlockCiphertext encryptedPrivateKey = privateKeyCryptoService.encrypt( privateKey );
                 BlockCiphertext encryptedSearchPrivateKey = privateKeyCryptoService.encrypt( searchPrivateKey );
+                dataStore.put( KryptnosticEngine.PRIVATE_KEY, mapper.writeValueAsBytes( encryptedPrivateKey )
+                        );
+                dataStore.put( KryptnosticEngine.SEARCH_PRIVATE_KEY,
+                        mapper.writeValueAsBytes( encryptedSearchPrivateKey ) );
 
-                cryptoKeyStorageApi.setFHEPrivateKeyForCurrentUser( KodexObjectMapperFactory
-                        .getSmileMapper()
-                        .writeValueAsBytes( encryptedPrivateKey ) );
-                cryptoKeyStorageApi.setFHESearchPrivateKeyForCurrentUser( KodexObjectMapperFactory
-                        .getSmileMapper()
-                        .writeValueAsBytes( encryptedSearchPrivateKey ) );
+                cryptoKeyStorageApi.setFHEPrivateKeyForCurrentUser( encryptedPrivateKey );
+                cryptoKeyStorageApi.setFHESearchPrivateKeyForCurrentUser( encryptedSearchPrivateKey );
             } catch ( IOException | SecurityConfigurationException | BadRequestException e1 ) {
                 logger.error( "Unable to configure FHE keys." );
-                throw new Error( "Sad times." );
+                throw new Error( "Sad times.Freeze? I'm a robot. I'm not a refrigerator. " );
             }
         }
+
         return engine;
     }
 }

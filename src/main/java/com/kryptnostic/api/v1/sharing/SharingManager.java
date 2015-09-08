@@ -10,10 +10,8 @@ import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
@@ -21,28 +19,30 @@ import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
+import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.sharing.v1.SharingClient;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.sharing.v1.models.IncomingShares;
 import com.kryptnostic.sharing.v1.models.Share;
 import com.kryptnostic.sharing.v1.models.request.RevocationRequest;
 import com.kryptnostic.sharing.v1.models.request.SharingRequest;
-import com.kryptnostic.storage.v1.models.EncryptedSearchObjectKey;
 
 public class SharingManager implements SharingClient {
-    private static final Logger               logger     = LoggerFactory.getLogger( SharingManager.class );
-    private static ObjectMapper               mapper     = KodexObjectMapperFactory.getObjectMapper();
-    private final KryptnosticContext          context;
-    private final SharingApi                  sharingApi;
+    private static final Logger      logger = LoggerFactory.getLogger( SharingManager.class );
+    private final KryptnosticContext context;
+    private final SharingApi         sharingApi;
+    private final KryptnosticEngine engine;
+    
 
-    public SharingManager( KryptnosticContext context, SharingApi sharingClient ) {
+    public SharingManager( KryptnosticContext context, SharingApi sharingClient, KryptnosticEngine engine ) {
         this.context = context;
         this.sharingApi = sharingClient;
+        this.engine = engine;
     }
 
     @Override
-    public void shareObjectWithUsers( String objectId, Set<UUID> users , byte[] sharingPair ) throws ResourceNotFoundException {
+    public void shareObjectWithUsers( String objectId, Set<UUID> users, byte[] sharingPair )
+            throws ResourceNotFoundException {
         CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
 
         CryptoService service;
@@ -56,8 +56,7 @@ public class SharingManager implements SharingClient {
                     seals.put( serviceEntry.getKey(), serviceEntry.getValue().encrypt( service ) );
                 }
 
-                byte[] encryptedSharingPair = mapper
-                        .writeValueAsBytes( service.encrypt( sharingPair ) );
+                BlockCiphertext encryptedSharingPair = service.encrypt( sharingPair );
 
                 SharingRequest request = new SharingRequest( objectId, seals, encryptedSharingPair );
                 sharingApi.share( request );
@@ -80,7 +79,7 @@ public class SharingManager implements SharingClient {
         if ( incomingShares == null || incomingShares.isEmpty() ) {
             return 0;
         }
-        Map<String,byte[]> keys = Maps.newHashMap();
+        Map<String, byte[]> indexPairs = Maps.newHashMap();
 
         for ( Share share : incomingShares ) {
             String id = share.getObjectId();
@@ -100,18 +99,15 @@ public class SharingManager implements SharingClient {
             }
             byte[] sharingPair = null;
             try {
-                sharingPair = decryptor.decryptBytes( mapper.readValue(
-                        share.getEncryptedSharingKey(),
-                        BlockCiphertext.class ) );
+                sharingPair = decryptor.decryptBytes( share.getEncryptedSharingPair() );
             } catch ( NegativeArraySizeException e ) {
                 e.printStackTrace();
             }
             
-            keys.put( id,  sharingPair );
+            indexPairs.put( id, this.engine.getObjectIndexPairFromSharing( sharingPair ) );
         }
-//        KeyRegistrationRequest request = new KeyRegistrationRequest( keys );
         
-        sharingApi.addSharingPairs( keys );
+        sharingApi.addIndexPairs( indexPairs );
         return incomingShares.size();
     }
 
