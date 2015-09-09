@@ -22,7 +22,11 @@ public final class IndexPair {
     public byte[] getObjectAddressMatrix() {
         return objectAddressMatrix;
     }
-    
+
+    public byte[] computeIndexPair( KryptnosticEngine engine ) {
+        return engine.getObjectIndexPair( objectSearchKey, objectAddressMatrix );
+    }
+
     public byte[] computeSharingPair( KryptnosticEngine engine ) {
         return engine.getObjectSharingPair( engine.getObjectIndexPair( objectSearchKey, objectAddressMatrix ) );
     }

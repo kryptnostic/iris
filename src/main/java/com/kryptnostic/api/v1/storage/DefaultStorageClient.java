@@ -149,14 +149,15 @@ public class DefaultStorageClient implements StorageClient {
     private IndexPair setupSharing( KryptnosticObject object ) throws IrisException {
         Stopwatch watch = Stopwatch.createStarted();
         KryptnosticEngine engine = context.getConnection().getKryptnosticEngine();
-        IndexPair indexPair = IndexPair.newFromKryptnosticEngine( engine );
-        byte[] sharingPair = indexPair.computeSharingPair( engine );
+        IndexPair splitIndexPair = IndexPair.newFromKryptnosticEngine( engine );
+        byte[] indexPair = splitIndexPair.computeIndexPair( engine );
+//        byte[] sharingPair = splitIndexPair.computeSharingPair( engine );
         logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         watch.reset().start();
-        context.addIndexPair( object.getMetadata().getId(), sharingPair );
+        context.addIndexPair( object.getMetadata().getId(), indexPair );
         logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-        return indexPair;
+        return splitIndexPair;
     }
 
     private void storeObject( KryptnosticObject object ) throws SecurityConfigurationException, IrisException {
