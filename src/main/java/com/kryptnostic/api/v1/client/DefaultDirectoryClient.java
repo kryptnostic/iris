@@ -13,6 +13,9 @@ import com.kryptnostic.sharing.v1.models.NotificationPreference;
 public class DefaultDirectoryClient implements DirectoryClient {
 
     private final DirectoryApi       directoryApi;
+    // This is here so when things are added in the future, it is possible to use the context to access relevant
+    // classes.
+    @SuppressWarnings( "unused" )
     private final KryptnosticContext context;
 
     public DefaultDirectoryClient( KryptnosticContext context, DirectoryApi directoryApi ) {

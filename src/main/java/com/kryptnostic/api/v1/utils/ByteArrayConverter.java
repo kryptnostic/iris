@@ -1,7 +1,6 @@
 package com.kryptnostic.api.v1.utils;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Type;
 
 import org.apache.commons.io.IOUtils;
@@ -28,11 +27,6 @@ public class ByteArrayConverter implements Converter {
     public Object fromBody( TypedInput body, Type type ) throws ConversionException {
         byte[] readbuf;
         try {
-            InputStream in = body.in();
-
-            // if ( in.available() == 0 ) {
-            // return new byte[ 0 ];
-            // }
 
             readbuf = IOUtils.toByteArray( body.in() );
             return readbuf;

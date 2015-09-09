@@ -1,25 +1,27 @@
 package com.kryptnostic.api.v1.indexing;
 
-import java.nio.ByteBuffer;
 import java.security.SecureRandom;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.kryptnostic.indexing.v1.PaddedMetadata;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
-import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 
 public class PaddedMetadataMapper implements MetadataMapper {
     private static final Random      r                    = new SecureRandom();
+    private static final Base64      encoder              = new Base64();
     private static final Logger      log                  = LoggerFactory.getLogger( PaddedMetadataMapper.class );
     private final KryptnosticContext context;
     private static final int         MINIMUM_TOKEN_LENGTH = 1;
@@ -29,7 +31,10 @@ public class PaddedMetadataMapper implements MetadataMapper {
     }
 
     @Override
-    public MappedMetadata mapTokensToKeys( Set<Metadata> metadata, byte[] objectSearchKey, byte[] objectAddressMatrix )
+    public Collection<PaddedMetadata> mapTokensToKeys(
+            Set<Metadata> metadata,
+            byte[] objectSearchKey,
+            byte[] objectAddressMatrix )
             throws IrisException {
 
         /*
@@ -45,7 +50,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
             bucketSize = Math.max( bucketSize, m.getLocations().size() );
         }
 
-        Map<ByteBuffer, List<Metadata>> metadataMap = Maps.newHashMapWithExpectedSize( metadata.size() );
+        Map<String, PaddedMetadata> metadataMap = Maps.newHashMapWithExpectedSize( metadata.size() );
 
         int numAcceptedTokens = 0;
 
@@ -58,20 +63,22 @@ public class PaddedMetadataMapper implements MetadataMapper {
             numAcceptedTokens++;
             List<Integer> locations = metadatum.getLocations();
 
-            byte[] indexForTerm;
-            indexForTerm = context.generateIndexForToken( token, objectSearchKey, objectAddressMatrix );
+            byte[] indexForTerm = context.generateIndexForToken( token, objectSearchKey, objectAddressMatrix );
+            
+            String key = encoder.encodeAsString( indexForTerm );
 
             Metadata balancedMetadatum = new Metadata( metadatum.getObjectId(), token, subListAndPad(
                     locations,
                     bucketSize ) );
-            List<Metadata> metadatumList = metadataMap.get( indexForTerm );
+            
+            PaddedMetadata pm = metadataMap.get( key );
 
-            if ( metadatumList == null ) {
-                metadatumList = Lists.newArrayListWithExpectedSize( 1 );
-                metadataMap.put( ByteBuffer.wrap( indexForTerm ), metadatumList );
+            if ( pm == null ) {
+                pm = new PaddedMetadata( indexForTerm, Lists.<Metadata> newArrayListWithExpectedSize( 1 ) );
+                metadataMap.put( key, pm );
             }
 
-            metadatumList.add( balancedMetadatum );
+            pm.getMetadata().add( balancedMetadatum );
 
         }
         log
@@ -80,7 +87,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
                         metadata.size(),
                         metadataMap.values().size(),
                         numAcceptedTokens );
-        return MappedMetadata.from( metadataMap );
+        return metadataMap.values();
     }
 
     private List<Integer> subListAndPad( List<Integer> locations, int bucketSize ) {
