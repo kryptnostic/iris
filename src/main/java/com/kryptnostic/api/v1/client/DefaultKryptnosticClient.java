@@ -25,7 +25,6 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     public DefaultKryptnosticClient( KryptnosticServicesFactory factory, KryptnosticConnection connection ) throws IrisException,
             ResourceNotFoundException {
         this.context = new DefaultKryptnosticContext(
-                factory.createSearchFunctionApi(),
                 factory.createSharingApi(),
                 factory.createDirectoryApi(),
                 connection );

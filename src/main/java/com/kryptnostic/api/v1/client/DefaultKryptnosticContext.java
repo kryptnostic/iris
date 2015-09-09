@@ -26,7 +26,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 
 /**
  *
@@ -47,11 +46,9 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
                                                              .getLogger( DefaultKryptnosticContext.class );
 
     public DefaultKryptnosticContext(
-            SearchFunctionStorageApi searchFunctionStorageApiClient,
             SharingApi sharingClient,
             DirectoryApi directoryClient,
             KryptnosticConnection connection ) throws IrisException {
-        // this.searchFunctionClient = searchFunctionStorageApiClient;
         this.sharingClient = sharingClient;
         this.directoryClient = directoryClient;
         this.connection = connection;
@@ -63,8 +60,13 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public void addSharingPair( String objectId, byte[] sharingPair ) {
-        sharingClient.addIndexPairs( ImmutableMap.of( objectId, sharingPair ) );
+    public void addIndexPair( String objectId, byte[] indexPair ) {
+        sharingClient.addIndexPairs( ImmutableMap.of( objectId, indexPair ) );
+    }
+
+    @Override
+    public void addIndexPairs( Map<String, byte[]> indexPairs ) {
+        sharingClient.addIndexPairs( indexPairs );
     }
 
     @Override
@@ -131,5 +133,4 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
         return connection.getRsaCryptoService();
     }
-
 }

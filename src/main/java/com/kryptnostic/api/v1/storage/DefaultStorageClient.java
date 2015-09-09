@@ -153,7 +153,7 @@ public class DefaultStorageClient implements StorageClient {
         byte[] sharingPair = indexPair.computeSharingPair( engine );
         logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         watch.reset().start();
-        context.addSharingPair( object.getMetadata().getId(), sharingPair );
+        context.addIndexPair( object.getMetadata().getId(), sharingPair );
         logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         return indexPair;

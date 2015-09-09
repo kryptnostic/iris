@@ -41,10 +41,25 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public void shareObjectWithUsers( String objectId, Set<UUID> users, byte[] sharingPair )
+    public Optional<byte[]> getIndexPair( String objectId ) {
+        return sharingApi.getIndexPair( objectId );
+    }
+    
+    public byte[] getSharingPair( String objectId ) throws ResourceNotFoundException {
+        Optional<byte[]> maybeIndexPair =  getIndexPair( objectId );
+        if( maybeIndexPair.isPresent() ){
+            return context.getConnection().getKryptnosticEngine().getObjectSharingPair( maybeIndexPair.get() );
+        } else {
+            throw new ResourceNotFoundException( "Unable to retrieve index pair for sharing object." );
+        }
+    }
+    
+    @Override
+    public void shareObjectWithUsers( String objectId, Set<UUID> users )
             throws ResourceNotFoundException {
         CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
-
+        byte [] sharingPair = getSharingPair( objectId );
+        
         CryptoService service;
         try {
             Optional<CryptoService> maybeService = loader.get( objectId );

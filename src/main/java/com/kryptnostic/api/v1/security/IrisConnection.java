@@ -9,7 +9,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,12 +44,10 @@ import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.storage.v1.http.CryptoKeyStorageApi;
-import com.kryptnostic.storage.v1.http.SearchFunctionStorageApi;
 
 public class IrisConnection implements KryptnosticConnection {
     private static final Logger                   logger                     = LoggerFactory
                                                                                      .getLogger( IrisConnection.class );
-    private static final String                   GLOBAL_HASHER_CHECKSUM_KEY = "global_hasher_checksum";
     private transient final PasswordCryptoService cryptoService;
     private final UUID                            userKey;
     private final String                          userCredential;
@@ -62,7 +59,6 @@ public class IrisConnection implements KryptnosticConnection {
     private final PrivateKey                      rsaPrivateKey;
     private final CryptoServiceLoader             loader;
     boolean                                       doFresh                    = false;
-    private final SearchFunctionStorageApi        searchFunctionService;
     private final KryptnosticEngine               engine;
 
     public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client ) throws IrisException {
@@ -86,13 +82,7 @@ public class IrisConnection implements KryptnosticConnection {
                 client );
 
         this.keyService = adapter.create( DirectoryApi.class );
-        this.cryptoKeyStorageApi = KryptnosticRestAdapter.createWithByteArrayJacksonConverter( url,
-                userKey,
-                credential,
-                client ).create( CryptoKeyStorageApi.class );
-        this.searchFunctionService = adapter.create( SearchFunctionStorageApi.class );
-
-        ensureLocalDataBelongsToCurrentServer( searchFunctionService, dataStore );
+        this.cryptoKeyStorageApi = adapter.create( CryptoKeyStorageApi.class );
 
         this.userCredential = credential;
         this.userKey = userKey;
@@ -130,28 +120,6 @@ public class IrisConnection implements KryptnosticConnection {
             return CredentialFactory.deriveCredential( password, encryptedSalt );
         } catch ( SecurityConfigurationException | InvalidKeySpecException | NoSuchAlgorithmException e ) {
             throw new IrisException( e );
-        }
-    }
-
-    private static void ensureLocalDataBelongsToCurrentServer(
-            SearchFunctionStorageApi searchFunctionService,
-            DataStore dataStore ) {
-        // check if we are hitting the right server, else clear
-        byte[] checksumBytes = null;
-        try {
-            checksumBytes = dataStore.get( GLOBAL_HASHER_CHECKSUM_KEY );
-        } catch ( IOException e1 ) {}
-        if ( checksumBytes != null ) {
-            String localCheck = Base64.encodeBase64String( checksumBytes );
-            String check = searchFunctionService.getGlobalHasherChecksum().getData();
-            if ( !localCheck.equals( check ) ) {
-                try {
-                    dataStore.clear();
-                } catch ( IOException e ) {
-                    logger.error( "Failed to clear data when server mismatched" );
-                    e.printStackTrace();
-                }
-            }
         }
     }
 

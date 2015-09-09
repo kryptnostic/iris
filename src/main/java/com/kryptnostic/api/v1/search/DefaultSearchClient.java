@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import cern.colt.bitvector.BitVector;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -15,7 +13,6 @@ import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.search.v1.http.SearchApi;
-import com.kryptnostic.search.v1.models.QueryHasherPairResult;
 import com.kryptnostic.search.v1.models.request.SearchRequest;
 import com.kryptnostic.search.v1.models.response.SearchResultResponse;
 
