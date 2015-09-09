@@ -32,8 +32,7 @@ public class SharingManager implements SharingClient {
     private static final Logger      logger = LoggerFactory.getLogger( SharingManager.class );
     private final KryptnosticContext context;
     private final SharingApi         sharingApi;
-    private final KryptnosticEngine engine;
-    
+    private final KryptnosticEngine  engine;
 
     public SharingManager( KryptnosticContext context, SharingApi sharingClient, KryptnosticEngine engine ) {
         this.context = context;
@@ -45,22 +44,29 @@ public class SharingManager implements SharingClient {
     public Optional<byte[]> getIndexPair( String objectId ) {
         return sharingApi.getIndexPair( objectId );
     }
-    
-    public byte[] getSharingPair( String objectId ) throws ResourceNotFoundException {
-        Optional<byte[]> maybeIndexPair =  getIndexPair( objectId );
-        if( maybeIndexPair.isPresent() ){
-            return context.getConnection().getKryptnosticEngine().getObjectSharingPair( maybeIndexPair.get() );
+
+    public Optional<byte[]> getSharingPair( String objectId ) throws ResourceNotFoundException {
+        Optional<byte[]> maybeIndexPair = getIndexPair( objectId );
+        if ( maybeIndexPair.isPresent() ) {
+            return Optional.of( context
+                    .getConnection()
+                    .getKryptnosticEngine()
+                    .getObjectSharingPair( maybeIndexPair.get() ) );
         } else {
-            throw new ResourceNotFoundException( "Unable to retrieve index pair for sharing object." );
+            return Optional.absent();
         }
     }
-    
+
     @Override
-    public void shareObjectWithUsers( String objectId, Set<UUID> users )
+    public void shareObjectWithUsers( String objectId, Set<UUID> users ) throws ResourceNotFoundException {
+        shareObjectWithUsers( objectId, users, getSharingPair( objectId ) );
+    }
+
+    @Override
+    public void shareObjectWithUsers( String objectId, Set<UUID> users, Optional<byte[]> sharingPair )
             throws ResourceNotFoundException {
         CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
-        byte [] sharingPair = getSharingPair( objectId );
-        
+
         CryptoService service;
         try {
             Optional<CryptoService> maybeService = loader.get( objectId );
@@ -68,15 +74,19 @@ public class SharingManager implements SharingClient {
                 service = maybeService.get();
                 Map<UUID, RsaCompressingEncryptionService> services = context.getEncryptionServiceForUsers( users );
                 Map<UUID, byte[]> seals = Maps.newHashMap();
+
                 for ( Entry<UUID, RsaCompressingEncryptionService> serviceEntry : services.entrySet() ) {
                     seals.put( serviceEntry.getKey(), serviceEntry.getValue().encrypt( service ) );
                 }
 
-                BlockCiphertext encryptedSharingPair = service.encrypt( sharingPair );
-
+                Optional<BlockCiphertext> encryptedSharingPair;
+                if ( sharingPair.isPresent() ) {
+                    encryptedSharingPair = Optional.of( service.encrypt( sharingPair.get() ) );
+                } else {
+                    encryptedSharingPair = Optional.absent();
+                }
                 SharingRequest request = new SharingRequest( objectId, seals, encryptedSharingPair );
                 sharingApi.share( request );
-
             } else {
                 logger.error( "Unable to load crypto service for object {}", objectId );
                 throw new SecurityConfigurationException( "Failed to load crypto service for object " + objectId );
@@ -113,16 +123,14 @@ public class SharingManager implements SharingClient {
             } catch ( ExecutionException e ) {
                 throw new IOException( e );
             }
-            byte[] sharingPair = null;
-            try {
-                sharingPair = decryptor.decryptBytes( share.getEncryptedSharingPair() );
-            } catch ( NegativeArraySizeException e ) {
-                e.printStackTrace();
-            }
             
-            indexPairs.put( id, this.engine.getObjectIndexPairFromSharing( sharingPair ) );
+            Optional<BlockCiphertext> encryptedSharingPair = share.getEncryptedSharingPair();
+            if( encryptedSharingPair.isPresent() ) {
+                byte[] sharingPair = decryptor.decryptBytes( encryptedSharingPair.get() );
+                indexPairs.put( id, this.engine.getObjectIndexPairFromSharing( sharingPair ) );
+            }
         }
-        
+
         sharingApi.addIndexPairs( indexPairs );
         return indexPairs.keySet();
     }

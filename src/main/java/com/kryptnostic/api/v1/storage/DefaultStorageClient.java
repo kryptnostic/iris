@@ -1,7 +1,6 @@
 package com.kryptnostic.api.v1.storage;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +23,7 @@ import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.api.v1.sharing.IndexPair;
+import com.kryptnostic.indexing.v1.PaddedMetadata;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
@@ -34,7 +34,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
-import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
@@ -120,9 +119,9 @@ public class DefaultStorageClient implements StorageClient {
             storeObject( obj );
         }
 
-        IndexPair indexPair = setupSharing( obj );
 
         if ( req.isSearchable() ) {
+            IndexPair indexPair = setupSharing( obj );
             makeObjectSearchable( obj, indexPair.getObjectSearchKey(), indexPair.getObjectAddressMatrix() );
         }
 
@@ -151,7 +150,7 @@ public class DefaultStorageClient implements StorageClient {
         KryptnosticEngine engine = context.getConnection().getKryptnosticEngine();
         IndexPair splitIndexPair = IndexPair.newFromKryptnosticEngine( engine );
         byte[] indexPair = splitIndexPair.computeIndexPair( engine );
-//        byte[] sharingPair = splitIndexPair.computeSharingPair( engine );
+        // byte[] sharingPair = splitIndexPair.computeSharingPair( engine );
         logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         watch.reset().start();
         context.addIndexPair( object.getMetadata().getId(), indexPair );
@@ -247,22 +246,25 @@ public class DefaultStorageClient implements StorageClient {
             throws IrisException {
 
         // create plaintext metadata
-        MappedMetadata keyedMetadata = metadataMapper.mapTokensToKeys( metadata, objectSearchKey, objectAddressMatrix );
-        logger.debug( "generated plaintext metadata {}", keyedMetadata );
+        Collection<PaddedMetadata> keyedMetadata = metadataMapper.mapTokensToKeys( metadata,
+                objectSearchKey,
+                objectAddressMatrix );
+        // logger.debug( "generated plaintext metadata {}", keyedMetadata );
 
         // encrypt the metadata and format for the server
-        Collection<IndexedMetadata> metadataIndex = Lists.newArrayList();
-        List<MetadataRequest> requests = Lists.newArrayList();
-        for ( Map.Entry<ByteBuffer, List<Metadata>> m : keyedMetadata.getMetadataMap().entrySet() ) {
-            ByteBuffer key = m.getKey();
-            List<Metadata> metadataForKey = m.getValue();
+        Collection<IndexedMetadata> metadataIndex = Lists.newArrayListWithExpectedSize( METADATA_BATCH_SIZE );
+        List<MetadataRequest> requests = Lists
+                .newArrayListWithExpectedSize( keyedMetadata.size() / METADATA_BATCH_SIZE );
+        for ( PaddedMetadata pm : keyedMetadata ) {
+            byte[] address = pm.getAddress();
+            List<Metadata> metadataForKey = pm.getMetadata();
 
             // encrypt the metadata
             for ( Metadata metadatumToEncrypt : metadataForKey ) {
                 Encryptable<Metadata> encryptedMetadatum = new Encryptable<Metadata>(
                         metadatumToEncrypt,
                         metadatumToEncrypt.getObjectId() );
-                metadataIndex.add( new IndexedMetadata( key.array() , encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
+                metadataIndex.add( new IndexedMetadata( address, encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
                 if ( metadataIndex.size() == METADATA_BATCH_SIZE ) {
                     requests.add( new MetadataRequest( metadataIndex ) );
                     metadataIndex = Lists.newArrayList();

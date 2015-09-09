@@ -25,6 +25,7 @@ import com.kryptnostic.api.v1.security.loaders.rsa.LocalRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.NetworkRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.model.ByteArrayEnvelope;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
@@ -46,8 +47,8 @@ import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.storage.v1.http.CryptoKeyStorageApi;
 
 public class IrisConnection implements KryptnosticConnection {
-    private static final Logger                   logger                     = LoggerFactory
-                                                                                     .getLogger( IrisConnection.class );
+    private static final Logger                   logger  = LoggerFactory
+                                                                  .getLogger( IrisConnection.class );
     private transient final PasswordCryptoService cryptoService;
     private final UUID                            userKey;
     private final String                          userCredential;
@@ -58,8 +59,9 @@ public class IrisConnection implements KryptnosticConnection {
     private final PublicKey                       rsaPublicKey;
     private final PrivateKey                      rsaPrivateKey;
     private final CryptoServiceLoader             loader;
-    boolean                                       doFresh                    = false;
+    boolean                                       doFresh = false;
     private final KryptnosticEngine               engine;
+    private final byte[]                          clientHashFunction;
 
     public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client ) throws IrisException {
         this( url, userKey, password, dataStore, client, null );
@@ -101,7 +103,9 @@ public class IrisConnection implements KryptnosticConnection {
         logger.debug( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         this.loader = new DefaultCryptoServiceLoader( this, keyService, Cypher.AES_CTR_128 );
-        this.engine = loadEngine();
+        KryptnosticEngineHolder holder = loadEngine();
+        this.engine = holder.engine;
+        this.clientHashFunction = holder.clientHashFunction;
     }
 
     private static String bootstrapCredential( UUID userKey, String url, String password, Client client )
@@ -254,7 +258,13 @@ public class IrisConnection implements KryptnosticConnection {
         return new RsaCompressingCryptoService( RsaKeyLoader.CIPHER, getRsaPrivateKey(), getRsaPublicKey() );
     }
 
-    private KryptnosticEngine loadEngine() throws IrisException {
+    private static class KryptnosticEngineHolder {
+        public KryptnosticEngine engine;
+        public byte[]            clientHashFunction;
+    }
+
+    private KryptnosticEngineHolder loadEngine() throws IrisException {
+        KryptnosticEngineHolder holder = new KryptnosticEngineHolder();
         /*
          * First let's make sure we can encrypt/decrypt.
          */
@@ -267,9 +277,14 @@ public class IrisConnection implements KryptnosticConnection {
         }
 
         KryptnosticEngine engine = new KryptnosticEngine();
+        holder.engine = engine;
+
         ObjectMapper mapper = KodexObjectMapperFactory.getSmileMapper();
         byte[] privateKey = null;
         byte[] searchPrivateKey = null;
+        BlockCiphertext encryptedPrivateKey;
+        BlockCiphertext encryptedSearchPrivateKey;
+
         try {
             /*
              * First we try loading keys from data store.
@@ -278,27 +293,40 @@ public class IrisConnection implements KryptnosticConnection {
                     .get( KryptnosticEngine.PRIVATE_KEY ) );
             Optional<byte[]> maybeSearchPrivateKeyBytes = Optional.fromNullable( dataStore
                     .get( KryptnosticEngine.SEARCH_PRIVATE_KEY ) );
-            if ( maybePrivateKeyBytes.isPresent() && maybeSearchPrivateKeyBytes.isPresent() ) {
+            Optional<byte[]> maybeClientHashFunction = Optional.fromNullable( dataStore
+                    .get( KryptnosticEngine.CLIENT_HASH_FUNCTION ) );
+            if ( maybePrivateKeyBytes.isPresent() && maybeSearchPrivateKeyBytes.isPresent()
+                    && maybeClientHashFunction.isPresent() ) {
                 privateKey = privateKeyCryptoService.decryptBytes( mapper.readValue( maybePrivateKeyBytes.get(),
                         BlockCiphertext.class ) );
                 searchPrivateKey = privateKeyCryptoService.decryptBytes( mapper.readValue( maybeSearchPrivateKeyBytes
                         .get(),
                         BlockCiphertext.class ) );
                 engine.initClient( privateKey, searchPrivateKey );
+                holder.clientHashFunction = maybeClientHashFunction.get();
+                return holder;
             } else {
                 // If some keys are absent locally let's try and pull from the network.
                 throw new IOException( "Unable to load kryptnostic engine keys." );
             }
         } catch ( SecurityConfigurationException | IOException e ) {
             try {
-                Optional<BlockCiphertext> encryptedPrivateKey = cryptoKeyStorageApi.getFHEPrivateKeyForCurrentUser();
-                Optional<BlockCiphertext> encryptedSearchPrivateKey = cryptoKeyStorageApi
+                Optional<BlockCiphertext> maybeEncryptedPrivateKey = cryptoKeyStorageApi
+                        .getFHEPrivateKeyForCurrentUser();
+                Optional<BlockCiphertext> maybeEncryptedSearchPrivateKey = cryptoKeyStorageApi
                         .getFHESearchPrivateKeyForUser();
-                if ( encryptedPrivateKey.isPresent() && encryptedSearchPrivateKey.isPresent() ) {
-                    privateKey = privateKeyCryptoService.decryptBytes( encryptedPrivateKey.get() );
-                    searchPrivateKey = privateKeyCryptoService.decryptBytes( encryptedSearchPrivateKey.get() );
-                } else { 
-                    throw new SecurityConfigurationException( "Unable to load FHE keys from server.");
+                Optional<ByteArrayEnvelope> maybeClientHashFunction = cryptoKeyStorageApi.getHashFunctionForCurrentUser();
+                if ( maybeEncryptedPrivateKey.isPresent() && maybeEncryptedSearchPrivateKey.isPresent()
+                        && maybeClientHashFunction.isPresent() ) {
+                    encryptedPrivateKey = maybeEncryptedPrivateKey.get();
+                    encryptedSearchPrivateKey = maybeEncryptedSearchPrivateKey.get();
+                    privateKey = privateKeyCryptoService.decryptBytes( encryptedPrivateKey );
+                    searchPrivateKey = privateKeyCryptoService.decryptBytes( encryptedSearchPrivateKey );
+
+                    engine.initClient( privateKey, searchPrivateKey );
+                    holder.clientHashFunction = maybeClientHashFunction.get().getBytes();
+                } else {
+                    throw new SecurityConfigurationException( "Unable to load FHE keys from server." );
                 }
             } catch ( BadRequestException | SecurityConfigurationException e1 ) {
                 // If have a problem retrieving data from the server or decrypting keys, we regenerate.
@@ -307,31 +335,44 @@ public class IrisConnection implements KryptnosticConnection {
                         "Private key from engine cannot be null." );
                 searchPrivateKey = Preconditions.checkNotNull( engine.getSearchPrivateKey(),
                         "Search private key cannot be null." );
+                holder.clientHashFunction = engine.getClientHashFunction();
+                /*
+                 * Need to flush to network since we just generated.
+                 */
                 try {
-                    cryptoKeyStorageApi.setHashFunctionForCurrentUser( engine.getClientHashFunction() );
-                } catch ( BadRequestException e2 ) {
+                    encryptedPrivateKey = privateKeyCryptoService.encrypt( privateKey );
+                    encryptedSearchPrivateKey = privateKeyCryptoService.encrypt( searchPrivateKey );
+                    cryptoKeyStorageApi.setHashFunctionForCurrentUser( new ByteArrayEnvelope( holder.clientHashFunction ) );
+                    cryptoKeyStorageApi.setFHEPrivateKeyForCurrentUser( encryptedPrivateKey );
+                    cryptoKeyStorageApi.setFHESearchPrivateKeyForCurrentUser( encryptedSearchPrivateKey );
+                } catch ( SecurityConfigurationException | BadRequestException e2 ) {
                     throw new IrisException( e2 );
                 }
             }
 
+            /*
+             * If we got here then keys came from network or were freshly created and need to be flushed to disk.
+             */
             try {
-                // Let's store the keys locally
-                BlockCiphertext encryptedPrivateKey = privateKeyCryptoService.encrypt( privateKey );
-                BlockCiphertext encryptedSearchPrivateKey = privateKeyCryptoService.encrypt( searchPrivateKey );
                 dataStore.put( KryptnosticEngine.PRIVATE_KEY, mapper.writeValueAsBytes( encryptedPrivateKey )
                         );
                 dataStore.put( KryptnosticEngine.SEARCH_PRIVATE_KEY,
                         mapper.writeValueAsBytes( encryptedSearchPrivateKey ) );
-                
-                cryptoKeyStorageApi.setFHEPrivateKeyForCurrentUser( encryptedPrivateKey );
-                cryptoKeyStorageApi.setFHESearchPrivateKeyForCurrentUser( encryptedSearchPrivateKey );
-                
-            } catch ( IOException | SecurityConfigurationException | BadRequestException e1 ) {
+                dataStore.put( KryptnosticEngine.CLIENT_HASH_FUNCTION,
+                        mapper.writeValueAsBytes( holder.clientHashFunction ) );
+
+            } catch ( IOException e1 ) {
                 logger.error( "Unable to configure FHE keys." );
                 throw new Error( "Sad times.Freeze? I'm a robot. I'm not a refrigerator. " );
             }
+
         }
 
-        return engine;
+        return holder;
+    }
+    
+    @Override
+    public byte[] getClientHashFunction() { 
+        return clientHashFunction;
     }
 }

@@ -66,7 +66,8 @@ public class DefaultSearchClient implements SearchClient {
     /**
      * @return List<BitVector> of search tokens, the ciphertext to be submitted to KryptnosticSearch.
      */
-    private SearchRequest generateSearchRequest( List<String> tokens ) {
+    @Override
+    public SearchRequest generateSearchRequest( List<String> tokens ) {
         Preconditions.checkArgument( tokens != null, "Cannot pass null tokens param." );
 
         List<byte[]> searchTokens = Lists.newArrayList();
