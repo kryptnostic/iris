@@ -11,8 +11,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import com.kryptnostic.indexing.v1.ServerIndexPair;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
@@ -105,7 +107,7 @@ public class SharingManager implements SharingClient {
         if ( incomingShares == null || incomingShares.isEmpty() ) {
             return ImmutableSet.of();
         }
-        Map<String, byte[]> indexPairs = Maps.newHashMap();
+        Map<String, ServerIndexPair> indexPairs = Maps.newHashMap();
 
         for ( Share share : incomingShares ) {
             String id = share.getObjectId();
@@ -127,7 +129,8 @@ public class SharingManager implements SharingClient {
             Optional<BlockCiphertext> encryptedSharingPair = share.getEncryptedSharingPair();
             if( encryptedSharingPair.isPresent() ) {
                 byte[] sharingPair = decryptor.decryptBytes( encryptedSharingPair.get() );
-                indexPairs.put( id, this.engine.getObjectIndexPairFromSharing( sharingPair ) );
+                Preconditions.checkState( sharingPair.length == 2064 , "Sharing pair must be 2064 bytes long.");
+                indexPairs.put( id, new ServerIndexPair( this.engine.getObjectIndexPairFromSharing( sharingPair ) ) );
             }
         }
 

@@ -17,6 +17,7 @@ import com.google.common.collect.Maps;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.indexing.v1.ServerIndexPair;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
@@ -60,12 +61,12 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public void addIndexPair( String objectId, byte[] indexPair ) {
+    public void addIndexPair( String objectId, ServerIndexPair indexPair ) {
         sharingClient.addIndexPairs( ImmutableMap.of( objectId, indexPair ) );
     }
 
     @Override
-    public void addIndexPairs( Map<String, byte[]> indexPairs ) {
+    public void addIndexPairs( Map<String, ServerIndexPair> indexPairs ) {
         sharingClient.addIndexPairs( indexPairs );
     }
 

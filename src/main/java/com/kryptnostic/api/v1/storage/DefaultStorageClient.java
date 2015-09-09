@@ -24,6 +24,7 @@ import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.api.v1.sharing.IndexPair;
 import com.kryptnostic.indexing.v1.PaddedMetadata;
+import com.kryptnostic.indexing.v1.ServerIndexPair;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
@@ -121,6 +122,7 @@ public class DefaultStorageClient implements StorageClient {
 
 
         if ( req.isSearchable() ) {
+            //Setting up sharing is only required if object is searchable.
             IndexPair indexPair = setupSharing( obj );
             makeObjectSearchable( obj, indexPair.getObjectSearchKey(), indexPair.getObjectAddressMatrix() );
         }
@@ -150,10 +152,11 @@ public class DefaultStorageClient implements StorageClient {
         KryptnosticEngine engine = context.getConnection().getKryptnosticEngine();
         IndexPair splitIndexPair = IndexPair.newFromKryptnosticEngine( engine );
         byte[] indexPair = splitIndexPair.computeIndexPair( engine );
+        Preconditions.checkState( indexPair.length == 2080 , "Index pair must be 2080 bytes.");
         // byte[] sharingPair = splitIndexPair.computeSharingPair( engine );
         logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         watch.reset().start();
-        context.addIndexPair( object.getMetadata().getId(), indexPair );
+        context.addIndexPair( object.getMetadata().getId(), new ServerIndexPair( indexPair ) );
         logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         return splitIndexPair;
