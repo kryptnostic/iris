@@ -254,7 +254,7 @@ public class IrisConnection implements KryptnosticConnection {
         return new RsaCompressingCryptoService( RsaKeyLoader.CIPHER, getRsaPrivateKey(), getRsaPublicKey() );
     }
 
-    private KryptnosticEngine loadEngine() {
+    private KryptnosticEngine loadEngine() throws IrisException {
         /*
          * First let's make sure we can encrypt/decrypt.
          */
@@ -307,6 +307,11 @@ public class IrisConnection implements KryptnosticConnection {
                         "Private key from engine cannot be null." );
                 searchPrivateKey = Preconditions.checkNotNull( engine.getSearchPrivateKey(),
                         "Search private key cannot be null." );
+                try {
+                    cryptoKeyStorageApi.setHashFunctionForCurrentUser( engine.getClientHashFunction() );
+                } catch ( BadRequestException e2 ) {
+                    throw new IrisException( e2 );
+                }
             }
 
             try {
@@ -317,9 +322,10 @@ public class IrisConnection implements KryptnosticConnection {
                         );
                 dataStore.put( KryptnosticEngine.SEARCH_PRIVATE_KEY,
                         mapper.writeValueAsBytes( encryptedSearchPrivateKey ) );
-
+                
                 cryptoKeyStorageApi.setFHEPrivateKeyForCurrentUser( encryptedPrivateKey );
                 cryptoKeyStorageApi.setFHESearchPrivateKeyForCurrentUser( encryptedSearchPrivateKey );
+                
             } catch ( IOException | SecurityConfigurationException | BadRequestException e1 ) {
                 logger.error( "Unable to configure FHE keys." );
                 throw new Error( "Sad times.Freeze? I'm a robot. I'm not a refrigerator. " );

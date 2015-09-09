@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
@@ -88,11 +89,11 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public int processIncomingShares() throws IOException, SecurityConfigurationException {
+    public Set<String> processIncomingShares() throws IOException, SecurityConfigurationException {
         CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
         IncomingShares incomingShares = sharingApi.getIncomingShares();
         if ( incomingShares == null || incomingShares.isEmpty() ) {
-            return 0;
+            return ImmutableSet.of();
         }
         Map<String, byte[]> indexPairs = Maps.newHashMap();
 
@@ -123,7 +124,7 @@ public class SharingManager implements SharingClient {
         }
         
         sharingApi.addIndexPairs( indexPairs );
-        return incomingShares.size();
+        return indexPairs.keySet();
     }
 
     @Override
