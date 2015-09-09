@@ -297,6 +297,8 @@ public class IrisConnection implements KryptnosticConnection {
                 if ( encryptedPrivateKey.isPresent() && encryptedSearchPrivateKey.isPresent() ) {
                     privateKey = privateKeyCryptoService.decryptBytes( encryptedPrivateKey.get() );
                     searchPrivateKey = privateKeyCryptoService.decryptBytes( encryptedSearchPrivateKey.get() );
+                } else { 
+                    throw new SecurityConfigurationException( "Unable to load FHE keys from server.");
                 }
             } catch ( BadRequestException | SecurityConfigurationException e1 ) {
                 // If have a problem retrieving data from the server or decrypting keys, we regenerate.
