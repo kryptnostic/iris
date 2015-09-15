@@ -110,7 +110,7 @@ public class SharingManager implements SharingClient {
         }
         Map<String, ServerIndexPair> indexPairs = Maps.newHashMap();
 
-        for ( Share share : incomingShares ) {
+        for ( Share share : incomingShares.values() ) {
             String id = share.getObjectId();
             CryptoService decryptor;
             try {
