@@ -47,6 +47,7 @@ public class SharingManager implements SharingClient {
         return sharingApi.getIndexPair( objectId );
     }
 
+    @Override
     public Optional<byte[]> getSharingPair( String objectId ) throws ResourceNotFoundException {
         Optional<byte[]> maybeIndexPair = getIndexPair( objectId );
         if ( maybeIndexPair.isPresent() ) {
@@ -87,7 +88,7 @@ public class SharingManager implements SharingClient {
                 } else {
                     encryptedSharingPair = Optional.absent();
                 }
-                SharingRequest request = new SharingRequest( objectId, seals, encryptedSharingPair );
+                SharingRequest request = new SharingRequest( objectId, Optional.of( "" ), seals, encryptedSharingPair );
                 sharingApi.share( request );
             } else {
                 logger.error( "Unable to load crypto service for object {}", objectId );
@@ -125,7 +126,7 @@ public class SharingManager implements SharingClient {
             } catch ( ExecutionException e ) {
                 throw new IOException( e );
             }
-            
+
             Optional<BlockCiphertext> encryptedSharingPair = share.getEncryptedSharingPair();
             if( encryptedSharingPair.isPresent() ) {
                 byte[] sharingPair = decryptor.decryptBytes( encryptedSharingPair.get() );
