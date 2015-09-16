@@ -30,7 +30,10 @@ repositories {
   mavenCentral()
   mavenLocal()
   maven {
-    url "https://build.shibboleth.net/nexus/content/groups/public/"
+    url 'http://artifactory.krypt.int/artifactory/libs-snapshot/'
+  }
+  maven {
+    url 'http://artifactory.krypt.int/artifactory/remote-repos/'
   }
   maven {
     url "http://maven.springframework.org/snapshot"
@@ -44,7 +47,9 @@ repositories {
   maven {
    url "https://oss.sonatype.org/content/repositories/snapshots"
   }
-
+  maven {
+    url "https://build.shibboleth.net/nexus/content/groups/public/"
+  }
 }
 
 ext.fhe_core_version='0.1.2-SNAPSHOT'
