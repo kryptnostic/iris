@@ -150,7 +150,7 @@ public class DefaultStorageClient implements StorageClient {
         Stopwatch watch = Stopwatch.createStarted();
         KryptnosticEngine engine = context.getConnection().getKryptnosticEngine();
         byte[] indexPair = engine.getObjectIndexPair();
-        Preconditions.checkState( indexPair.length == 2080 , "Index pair must be 2080 bytes.");
+        Preconditions.checkState( indexPair.length == 2064 , "Index pair must be 2064 bytes.");
         // byte[] sharingPair = splitIndexPair.computeSharingPair( engine );
         logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         watch.reset().start();
