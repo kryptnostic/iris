@@ -33,8 +33,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
     @Override
     public Collection<PaddedMetadata> mapTokensToKeys(
             Set<Metadata> metadata,
-            byte[] objectSearchKey,
-            byte[] objectAddressMatrix )
+            byte[] objectIndexPair )
             throws IrisException {
 
         /*
@@ -63,14 +62,14 @@ public class PaddedMetadataMapper implements MetadataMapper {
             numAcceptedTokens++;
             List<Integer> locations = metadatum.getLocations();
 
-            byte[] indexForTerm = context.generateIndexForToken( token, objectSearchKey, objectAddressMatrix );
-            
+            byte[] indexForTerm = context.generateIndexForToken( token, objectIndexPair );
+
             String key = encoder.encodeAsString( indexForTerm );
 
             Metadata balancedMetadatum = new Metadata( metadatum.getObjectId(), token, subListAndPad(
                     locations,
                     bucketSize ) );
-            
+
             PaddedMetadata pm = metadataMap.get( key );
 
             if ( pm == null ) {

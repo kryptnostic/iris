@@ -47,13 +47,14 @@ public class SharingManager implements SharingClient {
         return sharingApi.getIndexPair( objectId );
     }
 
+    @Override
     public Optional<byte[]> getSharingPair( String objectId ) throws ResourceNotFoundException {
         Optional<byte[]> maybeIndexPair = getIndexPair( objectId );
         if ( maybeIndexPair.isPresent() ) {
             return Optional.of( context
                     .getConnection()
                     .getKryptnosticEngine()
-                    .getObjectSharingPair( maybeIndexPair.get() ) );
+                    .getObjectSharePairFromObjectSearchPair( maybeIndexPair.get() ) );
         } else {
             return Optional.absent();
         }
@@ -125,12 +126,12 @@ public class SharingManager implements SharingClient {
             } catch ( ExecutionException e ) {
                 throw new IOException( e );
             }
-            
+
             Optional<BlockCiphertext> encryptedSharingPair = share.getEncryptedSharingPair();
             if( encryptedSharingPair.isPresent() ) {
                 byte[] sharingPair = decryptor.decryptBytes( encryptedSharingPair.get() );
                 Preconditions.checkState( sharingPair.length == 2064 , "Sharing pair must be 2064 bytes long.");
-                indexPairs.put( id, new ServerIndexPair( this.engine.getObjectIndexPairFromSharing( sharingPair ) ) );
+                indexPairs.put( id, new ServerIndexPair( this.engine.getObjectSearchPairFromObjectSharePair( sharingPair ) ) );
             }
         }
 
