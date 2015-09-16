@@ -71,10 +71,9 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public byte[] generateIndexForToken( String token, byte[] objectSearchKey, byte[] objectAddressMatrix ) {
+    public byte[] generateIndexForToken( String token, byte[] objectIndexPair ) {
         byte[] searchHash = getHashedToken( token );
-        byte[] indexForTerm = connection.getKryptnosticEngine().clientGetMetadatumAddress( objectAddressMatrix,
-                objectSearchKey,
+        byte[] indexForTerm = connection.getKryptnosticEngine().clientGetMetadatumAddress( objectIndexPair,
                 searchHash );
         return indexForTerm;
     }
