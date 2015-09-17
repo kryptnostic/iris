@@ -53,7 +53,7 @@ repositories {
 }
 
 ext.fhe_core_version='0.1.2-SNAPSHOT'
-ext.kodex_version="3.0.0-SNAPSHOT"
+ext.kodex_version="3.1.1"
 ext.retrofit_version='1.9.0'
 ext.spring_framework_version='4.2.0.RC3'
 ext.jackson_version='2.4.4'
