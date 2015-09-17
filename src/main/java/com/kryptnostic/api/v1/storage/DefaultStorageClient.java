@@ -12,11 +12,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import cern.colt.bitvector.BitVector;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -25,12 +22,10 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
-import com.kryptnostic.crypto.EncryptedSearchBridgeKey;
-import com.kryptnostic.crypto.EncryptedSearchPrivateKey;
-import com.kryptnostic.crypto.EncryptedSearchSharingKey;
+import com.kryptnostic.api.v1.sharing.IndexPair;
+import com.kryptnostic.indexing.v1.PaddedMetadata;
+import com.kryptnostic.indexing.v1.ServerIndexPair;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
-import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
-import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -40,9 +35,9 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
-import com.kryptnostic.kodex.v1.indexing.metadata.MappedMetadata;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
+import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.http.MetadataStorageApi;
@@ -70,8 +65,8 @@ public class DefaultStorageClient implements StorageClient {
     /**
      * Server-side
      */
-    private final ObjectStorageApi           objectApi;
-    private final MetadataStorageApi         metadataApi;
+    private final ObjectStorageApi    objectApi;
+    private final MetadataStorageApi  metadataApi;
     private final SharingApi          sharingApi;
 
     /**
@@ -125,16 +120,17 @@ public class DefaultStorageClient implements StorageClient {
             storeObject( obj );
         }
 
-        EncryptedSearchSharingKey sharingKey = setupSharing( obj );
 
         if ( req.isSearchable() ) {
-            makeObjectSearchable( obj, sharingKey );
+            //Setting up sharing is only required if object is searchable.
+            IndexPair indexPair = setupSharing( obj );
+            makeObjectSearchable( obj, indexPair.getObjectSearchKey(), indexPair.getObjectAddressMatrix() );
         }
 
         return objId;
     }
 
-    private void makeObjectSearchable( KryptnosticObject object, EncryptedSearchSharingKey sharingKey )
+    private void makeObjectSearchable( KryptnosticObject object, byte[] objectSearchKey, byte[] objectAddressMatrix )
             throws IrisException, BadRequestException {
         // index + map tokens for metadata
         Stopwatch watch = Stopwatch.createStarted();
@@ -143,7 +139,7 @@ public class DefaultStorageClient implements StorageClient {
         logger.debug( "[PROFILE] {} metadata indexed", metadata.size() );
 
         watch.reset().start();
-        List<MetadataRequest> metadataRequests = prepareMetadata( metadata, sharingKey );
+        List<MetadataRequest> metadataRequests = prepareMetadata( metadata, objectSearchKey, objectAddressMatrix );
         logger.debug( "[PROFILE] preparing took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         watch.reset().start();
         uploadMetadata( metadataRequests );
@@ -151,17 +147,19 @@ public class DefaultStorageClient implements StorageClient {
 
     }
 
-    private EncryptedSearchSharingKey setupSharing( KryptnosticObject object ) throws IrisException {
+    private IndexPair setupSharing( KryptnosticObject object ) throws IrisException {
         Stopwatch watch = Stopwatch.createStarted();
-        // generate nonce
-        EncryptedSearchSharingKey sharingKey = context.generateSharingKey();
+        KryptnosticEngine engine = context.getConnection().getKryptnosticEngine();
+        IndexPair splitIndexPair = IndexPair.newFromKryptnosticEngine( engine );
+        byte[] indexPair = splitIndexPair.computeIndexPair( engine );
+        Preconditions.checkState( indexPair.length == 2080 , "Index pair must be 2080 bytes.");
+        // byte[] sharingPair = splitIndexPair.computeSharingPair( engine );
         logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-
         watch.reset().start();
-        context.submitBridgeKeyWithSearchNonce( object.getMetadata().getId(), sharingKey );
+        context.addIndexPair( object.getMetadata().getId(), new ServerIndexPair( indexPair ) );
         logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-        return sharingKey;
+        return splitIndexPair;
     }
 
     private void storeObject( KryptnosticObject object ) throws SecurityConfigurationException, IrisException {
@@ -244,26 +242,32 @@ public class DefaultStorageClient implements StorageClient {
      * @return
      * @throws IrisException
      */
-    private List<MetadataRequest> prepareMetadata( Set<Metadata> metadata, EncryptedSearchSharingKey sharingKey )
+    private List<MetadataRequest> prepareMetadata(
+            Set<Metadata> metadata,
+            byte[] objectSearchKey,
+            byte[] objectAddressMatrix )
             throws IrisException {
 
         // create plaintext metadata
-        MappedMetadata keyedMetadata = metadataMapper.mapTokensToKeys( metadata, sharingKey );
-        logger.debug( "generated plaintext metadata {}", keyedMetadata );
+        Collection<PaddedMetadata> keyedMetadata = metadataMapper.mapTokensToKeys( metadata,
+                objectSearchKey,
+                objectAddressMatrix );
+        // logger.debug( "generated plaintext metadata {}", keyedMetadata );
 
         // encrypt the metadata and format for the server
-        Collection<IndexedMetadata> metadataIndex = Lists.newArrayList();
-        List<MetadataRequest> requests = Lists.newArrayList();
-        for ( Map.Entry<BitVector, List<Metadata>> m : keyedMetadata.getMetadataMap().entrySet() ) {
-            BitVector key = m.getKey();
-            List<Metadata> metadataForKey = m.getValue();
+        Collection<IndexedMetadata> metadataIndex = Lists.newArrayListWithExpectedSize( METADATA_BATCH_SIZE );
+        List<MetadataRequest> requests = Lists
+                .newArrayListWithExpectedSize( keyedMetadata.size() / METADATA_BATCH_SIZE );
+        for ( PaddedMetadata pm : keyedMetadata ) {
+            byte[] address = pm.getAddress();
+            List<Metadata> metadataForKey = pm.getMetadata();
 
             // encrypt the metadata
             for ( Metadata metadatumToEncrypt : metadataForKey ) {
                 Encryptable<Metadata> encryptedMetadatum = new Encryptable<Metadata>(
                         metadatumToEncrypt,
                         metadatumToEncrypt.getObjectId() );
-                metadataIndex.add( new IndexedMetadata( key, encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
+                metadataIndex.add( new IndexedMetadata( address, encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
                 if ( metadataIndex.size() == METADATA_BATCH_SIZE ) {
                     requests.add( new MetadataRequest( metadataIndex ) );
                     metadataIndex = Lists.newArrayList();
@@ -358,38 +362,6 @@ public class DefaultStorageClient implements StorageClient {
             frags.put( index, body.substring( backIndex, frontIndex ) );
         }
         return frags;
-    }
-
-    @Override
-    public String appendObject( ObjectMetadata objectMetadata, String body ) throws SecurityConfigurationException,
-            ExecutionException, ResourceNotFoundException, IrisException, BadRequestException {
-        Optional<CryptoService> maybeCS = this.context.getConnection().getCryptoServiceLoader()
-                .get( objectMetadata.getId() );
-        if ( maybeCS.isPresent() ) {
-            CryptoService crypto = maybeCS.get();
-
-            int curNumBlocks = objectMetadata.getNumBlocks();
-            BlockCiphertext ciphertext = crypto.encrypt( body.getBytes() );
-
-            EncryptableBlock blockToAppend = new EncryptableBlock( ciphertext, Encryptable.hashFunction.hashBytes(
-                    ciphertext.getContents() ).asBytes(), curNumBlocks, true, crypto.encrypt( String.class
-                    .getCanonicalName().getBytes() ), objectMetadata.getChunkingStrategy(), DateTime.now() );
-
-            Set<Metadata> metadata = indexer.index( objectMetadata.getId(), body );
-            EncryptedSearchPrivateKey privKey = context.getConnection().getEncryptedSearchPrivateKey();
-            EncryptedSearchBridgeKey bridgeKey = sharingApi.getEncryptedSearchObjectKey( objectMetadata.getId() )
-                    .getBridgeKey();
-
-            EncryptedSearchSharingKey encryptedSearchSharingKey = privKey.calculateSharingKey( bridgeKey );
-            List<MetadataRequest> mreq = prepareMetadata( metadata, encryptedSearchSharingKey );
-            uploadMetadata( mreq );
-            return objectApi.appendObject( objectMetadata.getId(), blockToAppend ).getData();
-        } else {
-            logger.error( "Unable to retrieve crypto service for object {}", objectMetadata.getId() );
-            throw new SecurityConfigurationException( "Unable to retrieve crypto service for object {}"
-                    + objectMetadata.getId() );
-        }
-
     }
 
     @Override

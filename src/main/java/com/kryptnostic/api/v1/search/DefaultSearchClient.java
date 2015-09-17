@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import cern.colt.bitvector.BitVector;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -15,7 +13,6 @@ import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.search.v1.http.SearchApi;
-import com.kryptnostic.search.v1.models.QueryHasherPairResult;
 import com.kryptnostic.search.v1.models.request.SearchRequest;
 import com.kryptnostic.search.v1.models.response.SearchResultResponse;
 
@@ -55,7 +52,6 @@ public class DefaultSearchClient implements SearchClient {
             searchRequest = new SearchRequest(
                     searchRequest.getSearchToken(),
                     request.getMaxResults(),
-                    request.getPairResults(),
                     request.getOffset() );
         }
 
@@ -70,10 +66,11 @@ public class DefaultSearchClient implements SearchClient {
     /**
      * @return List<BitVector> of search tokens, the ciphertext to be submitted to KryptnosticSearch.
      */
-    private SearchRequest generateSearchRequest( List<String> tokens ) {
+    @Override
+    public SearchRequest generateSearchRequest( List<String> tokens ) {
         Preconditions.checkArgument( tokens != null, "Cannot pass null tokens param." );
 
-        List<BitVector> searchTokens = Lists.newArrayList();
+        List<byte[]> searchTokens = Lists.newArrayList();
         for ( String token : tokens ) {
             searchTokens.add( context.prepareSearchToken( token ) );
         }
@@ -96,16 +93,5 @@ public class DefaultSearchClient implements SearchClient {
             }
         }
         return Lists.newArrayList( tokens );
-    }
-
-    @Override
-    public SearchResultResponse nextPage( SearchResultResponse response ) {
-        List<BitVector> tokens = Lists.newArrayList();
-        List<QueryHasherPairResult> pairs = Lists.newArrayList();
-        for ( Map.Entry<BitVector, QueryHasherPairResult> entry : response.getPairMap().entrySet() ) {
-            tokens.add( entry.getKey() );
-            pairs.add( entry.getValue() );
-        }
-        return search( SearchRequest.searchToken( tokens, response.getData().size(), pairs, response.getOffset() ) );
     }
 }

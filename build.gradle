@@ -30,7 +30,13 @@ repositories {
   mavenCentral()
   mavenLocal()
   maven {
-    url "https://build.shibboleth.net/nexus/content/groups/public/"
+    url 'http://artifactory.krypt.int/artifactory/libs-release/'
+  }
+  maven {
+    url 'http://artifactory.krypt.int/artifactory/libs-snapshot/'
+  }
+  maven {
+    url 'http://artifactory.krypt.int/artifactory/remote-repos/'
   }
   maven {
     url "http://maven.springframework.org/snapshot"
@@ -44,14 +50,15 @@ repositories {
   maven {
    url "https://oss.sonatype.org/content/repositories/snapshots"
   }
-
+  maven {
+    url "https://build.shibboleth.net/nexus/content/groups/public/"
+  }
 }
 
-ext.hazelcast_version='3.2.4'
 ext.fhe_core_version='0.1.2-SNAPSHOT'
-ext.kodex_version="3.0.0-SNAPSHOT"
+ext.kodex_version="3.1.1"
 ext.retrofit_version='1.9.0'
-ext.spring_framework_version='4.0.6.RELEASE'
+ext.spring_framework_version='4.2.0.RC3'
 ext.jackson_version='2.4.4'
 dependencies {
     /*
@@ -59,10 +66,9 @@ dependencies {
      * Currently use Log4J through sl4j.
      * TODO: Switch to logback
      */
-    compile group: 'org.slf4j', name: 'slf4j-log4j12', version:'1.7.5'
-    compile group: 'org.slf4j', name: 'slf4j-api', version:'1.7.5'
-
-    compile "log4j:log4j:1.2.17"
+    compile group: 'org.slf4j', name: 'slf4j-log4j12', version:'1.7.12'
+    compile group: 'org.slf4j', name: 'slf4j-api', version:'1.7.12'
+    compile "org.apache.logging.log4j:log4j:2.3"
 
     /*
      * GUAVA
@@ -73,7 +79,7 @@ dependencies {
     /*
      JODA TIME - A better datetime class.
      */
-    compile 'joda-time:joda-time:2.3'
+    compile 'joda-time:joda-time:2.8.2'
 
 
     compile "com.fasterxml.jackson.core:jackson-databind:${jackson_version}"
@@ -82,7 +88,7 @@ dependencies {
     compile "com.fasterxml.jackson.module:jackson-module-afterburner:${jackson_version}"
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-smile:${jackson_version}"
     compile "com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:${jackson_version}"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:2.4.0"
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:${jackson_version}"
 
     /*
      * APACHE COMMONS
@@ -127,7 +133,6 @@ dependencies {
      */
     testCompile "junit:junit:4.11"
     testCompile "org.mockito:mockito-all:1.9.5"
-    testCompile "com.github.tomakehurst:wiremock:1.51"
 }
 
 task sourcesJar(type : Jar) {

@@ -25,7 +25,6 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     public DefaultKryptnosticClient( KryptnosticServicesFactory factory, KryptnosticConnection connection ) throws IrisException,
             ResourceNotFoundException {
         this.context = new DefaultKryptnosticContext(
-                factory.createSearchFunctionApi(),
                 factory.createSharingApi(),
                 factory.createDirectoryApi(),
                 connection );
@@ -37,7 +36,7 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
                 factory.createSharingApi() );
         this.searchClient = new DefaultSearchClient( context, factory.createSearchApi() );
         this.directoryClient = new DefaultDirectoryClient( context, factory.createDirectoryApi() );
-        this.sharingClient = new SharingManager( context, factory.createSharingApi() );
+        this.sharingClient = new SharingManager( context, factory.createSharingApi() , connection.getKryptnosticEngine() );
     }
 
     @Override
