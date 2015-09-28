@@ -56,9 +56,8 @@ repositories {
 }
 
 ext.fhe_core_version='0.1.2-SNAPSHOT'
-ext.kodex_version='3.1.2'
+ext.kodex_version='3.1.2-SNAPSHOT'
 ext.retrofit_version='1.9.0'
-ext.spring_framework_version='4.2.1'
 ext.jackson_version='2.4.4'
 dependencies {
     /*
@@ -96,8 +95,8 @@ dependencies {
      */
 
     compile 'commons-io:commons-io:2.4'
-    compile 'org.apache.commons:commons-lang3:3.1'
-    compile 'commons-logging:commons-logging:1.1.3'
+    compile 'org.apache.commons:commons-lang3:3.4'
+    //compile 'commons-logging:commons-logging:1.1.3'
     compile 'commons-collections:commons-collections:3.2.1'
 
     if( project.hasProperty('developmentMode') && project.developmentMode ) {
@@ -116,17 +115,6 @@ dependencies {
 
     compile "com.squareup.retrofit:retrofit:${retrofit_version}"
     compile "com.squareup.okhttp:okhttp:2.3.0"
-
-	// FIXME: not working! use the following to replace com.kryptnostic.api.v1.utils.JacksonConverter plz!
-	// compile "com.squareup.retrofit:retrofit-converters:1.6.0" // not available for 1.6.1 //#${retrofit_version}
-
-    /*
-     * CORE SPRING FRAMEWORK DEPENDENCIES
-     */
-    testCompile "org.springframework:spring-core:${project.spring_framework_version}"
-    testCompile "org.springframework:spring-beans:${project.spring_framework_version}"
-    testCompile "org.springframework:spring-context:${project.spring_framework_version}"
-    testCompile "org.springframework:spring-test:${project.spring_framework_version}"
 
     /*
      * TESTING

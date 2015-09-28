@@ -133,7 +133,8 @@ public class SharingManager implements SharingClient {
             Optional<BlockCiphertext> encryptedSharingPair = share.getEncryptedSharingPair();
             if ( encryptedSharingPair.isPresent() ) {
                 byte[] sharePair = decryptor.decryptBytes( encryptedSharingPair.get() );
-                Preconditions.checkState( sharePair.length == 2064, "Sharing pair must be 2064 bytes long." );
+                Preconditions.checkState( sharePair.length == KryptnosticEngine.SHARE_PAIR_LENGTH,
+                        "Sharing pair must be 2064 bytes long." );
                 indexPairs.put( id,
                         new ObjectSearchPair( this.engine.getObjectSearchPairFromObjectSharePair( sharePair ) ) );
             }
