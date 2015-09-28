@@ -11,7 +11,7 @@ import retrofit.client.Client;
 import retrofit.converter.Converter;
 
 import com.kryptnostic.api.v1.utils.ByteArrayConverter;
-import com.kryptnostic.api.v1.utils.JacksonConverter;
+import com.kryptnostic.api.v1.utils.KryptnosticConverter;
 import com.kryptnostic.kodex.v1.authentication.PreauthenticationRequestInterceptor;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.exceptions.DefaultErrorHandler;
@@ -22,7 +22,7 @@ public final class KryptnosticRestAdapter {
     private static final Logger logger = LoggerFactory.getLogger( KryptnosticRestAdapter.class );
 
     public static RestAdapter create( Client client, KryptnosticConnection connection ) {
-        return builder( connection, new JacksonConverter( connection.getCryptoServiceLoader() ) ).setClient( client )
+        return builder( connection, new KryptnosticConverter( connection.getCryptoServiceLoader() ) ).setClient( client )
                 .build();
     }
 
@@ -31,15 +31,15 @@ public final class KryptnosticRestAdapter {
     }
 
     public static RestAdapter createWithDefaultClient( KryptnosticConnection connection ) {
-        return builder( connection, new JacksonConverter( connection.getCryptoServiceLoader() ) ).build();
+        return builder( connection, new KryptnosticConverter( connection.getCryptoServiceLoader() ) ).build();
     }
 
     public static RestAdapter createWithDefaultJacksonConverter( KryptnosticConnection connection ) {
-        return builder( connection, new JacksonConverter( connection.getCryptoServiceLoader() ) ).build();
+        return builder( connection, new KryptnosticConverter( connection.getCryptoServiceLoader() ) ).build();
     }
 
     public static RestAdapter createWithDefaultJacksonConverter( String url, UUID user, String userCredential ) {
-        return builder( url, user, userCredential, new JacksonConverter() ).build();
+        return builder( url, user, userCredential, new KryptnosticConverter() ).build();
     }
 
     public static RestAdapter createWithByteArrayJacksonConverter(
@@ -55,11 +55,11 @@ public final class KryptnosticRestAdapter {
             UUID user,
             String userCredential,
             Client client ) {
-        return builder( url, user, userCredential, new JacksonConverter() ).setClient( client ).build();
+        return builder( url, user, userCredential, new KryptnosticConverter() ).setClient( client ).build();
     }
 
     public static RestAdapter createWithNoAuthAndDefaultJacksonConverter( String url, Client client ) {
-        return new RestAdapter.Builder().setConverter( new JacksonConverter() ).setEndpoint( url )
+        return new RestAdapter.Builder().setConverter( new KryptnosticConverter() ).setEndpoint( url )
                 .setErrorHandler( new DefaultErrorHandler() ).setLogLevel( LogLevel.FULL ).setClient( client )
                 .setLog( new RestAdapter.Log() {
                     @Override

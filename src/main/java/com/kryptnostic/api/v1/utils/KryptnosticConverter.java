@@ -28,17 +28,17 @@ import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
-public class JacksonConverter implements Converter {
+public class KryptnosticConverter implements Converter {
     private static final String JSON_MIME_TYPE = "application/json; charset=UTF-8";
     private static final String BYTE_MIME_TYPE = "application/octet-stream";
-    private static final Logger logger         = LoggerFactory.getLogger( JacksonConverter.class );
+    private static final Logger logger         = LoggerFactory.getLogger( KryptnosticConverter.class );
     private final ObjectMapper  objectMapper;
 
-    public JacksonConverter() {
+    public KryptnosticConverter() {
         this.objectMapper = KodexObjectMapperFactory.getObjectMapper();
     }
 
-    public JacksonConverter( CryptoServiceLoader securityConfig ) {
+    public KryptnosticConverter( CryptoServiceLoader securityConfig ) {
         this.objectMapper = KodexObjectMapperFactory.getObjectMapper( securityConfig );
     }
 
