@@ -22,9 +22,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
-import com.kryptnostic.api.v1.sharing.IndexPair;
+import com.kryptnostic.indexing.v1.ObjectSearchPair;
 import com.kryptnostic.indexing.v1.PaddedMetadata;
-import com.kryptnostic.indexing.v1.ServerIndexPair;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
@@ -120,17 +119,16 @@ public class DefaultStorageClient implements StorageClient {
             storeObject( obj );
         }
 
-
         if ( req.isSearchable() ) {
-            //Setting up sharing is only required if object is searchable.
-            IndexPair indexPair = setupSharing( obj );
-            makeObjectSearchable( obj, indexPair.getObjectSearchKey(), indexPair.getObjectAddressMatrix() );
+            // Setting up sharing is only required if object is searchable.
+            byte[] objectIndexPair = provisionSearchPairAndReturnCorrespondingIndexPair( obj );
+            makeObjectSearchable( obj, objectIndexPair );
         }
 
         return objId;
     }
 
-    private void makeObjectSearchable( KryptnosticObject object, byte[] objectSearchKey, byte[] objectAddressMatrix )
+    private void makeObjectSearchable( KryptnosticObject object, byte[] objectIndexPair )
             throws IrisException, BadRequestException {
         // index + map tokens for metadata
         Stopwatch watch = Stopwatch.createStarted();
@@ -139,7 +137,7 @@ public class DefaultStorageClient implements StorageClient {
         logger.debug( "[PROFILE] {} metadata indexed", metadata.size() );
 
         watch.reset().start();
-        List<MetadataRequest> metadataRequests = prepareMetadata( metadata, objectSearchKey, objectAddressMatrix );
+        List<MetadataRequest> metadataRequests = prepareMetadata( metadata, objectIndexPair );
         logger.debug( "[PROFILE] preparing took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         watch.reset().start();
         uploadMetadata( metadataRequests );
@@ -147,19 +145,23 @@ public class DefaultStorageClient implements StorageClient {
 
     }
 
-    private IndexPair setupSharing( KryptnosticObject object ) throws IrisException {
-        Stopwatch watch = Stopwatch.createStarted();
+    private byte[] provisionSearchPairAndReturnCorrespondingIndexPair( KryptnosticObject object ) throws IrisException {
         KryptnosticEngine engine = context.getConnection().getKryptnosticEngine();
-        IndexPair splitIndexPair = IndexPair.newFromKryptnosticEngine( engine );
-        byte[] indexPair = splitIndexPair.computeIndexPair( engine );
-        Preconditions.checkState( indexPair.length == 2080 , "Index pair must be 2080 bytes.");
-        // byte[] sharingPair = splitIndexPair.computeSharingPair( engine );
+
+        Stopwatch watch = Stopwatch.createStarted();
+        byte[] objectIndexPair = engine.getObjectIndexPair();
+        byte[] objectSearchPair = engine.getObjectSearchPairFromObjectIndexPair( objectIndexPair );
         logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+        // TODO: Centralize these lengths in KryptnosticEngine
+        Preconditions.checkState( objectSearchPair.length == 2080, "Search pair must be 2080 bytes." );
+        Preconditions.checkState( objectIndexPair.length == 2064, "Index pair must be 2064 bytes." );
+
         watch.reset().start();
-        context.addIndexPair( object.getMetadata().getId(), new ServerIndexPair( indexPair ) );
+        context.addIndexPair( object.getMetadata().getId(), new ObjectSearchPair( objectSearchPair ) );
         logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-        return splitIndexPair;
+        return objectIndexPair;
     }
 
     private void storeObject( KryptnosticObject object ) throws SecurityConfigurationException, IrisException {
@@ -244,14 +246,12 @@ public class DefaultStorageClient implements StorageClient {
      */
     private List<MetadataRequest> prepareMetadata(
             Set<Metadata> metadata,
-            byte[] objectSearchKey,
-            byte[] objectAddressMatrix )
+            byte[] objectIndexPair )
             throws IrisException {
 
         // create plaintext metadata
         Collection<PaddedMetadata> keyedMetadata = metadataMapper.mapTokensToKeys( metadata,
-                objectSearchKey,
-                objectAddressMatrix );
+                objectIndexPair );
         // logger.debug( "generated plaintext metadata {}", keyedMetadata );
 
         // encrypt the metadata and format for the server
@@ -267,7 +267,8 @@ public class DefaultStorageClient implements StorageClient {
                 Encryptable<Metadata> encryptedMetadatum = new Encryptable<Metadata>(
                         metadatumToEncrypt,
                         metadatumToEncrypt.getObjectId() );
-                metadataIndex.add( new IndexedMetadata( address, encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
+                metadataIndex
+                        .add( new IndexedMetadata( address, encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
                 if ( metadataIndex.size() == METADATA_BATCH_SIZE ) {
                     requests.add( new MetadataRequest( metadataIndex ) );
                     metadataIndex = Lists.newArrayList();

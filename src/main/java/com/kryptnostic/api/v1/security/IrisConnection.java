@@ -25,7 +25,6 @@ import com.kryptnostic.api.v1.security.loaders.rsa.LocalRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.NetworkRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.model.ByteArrayEnvelope;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
@@ -315,16 +314,17 @@ public class IrisConnection implements KryptnosticConnection {
                         .getFHEPrivateKeyForCurrentUser();
                 Optional<BlockCiphertext> maybeEncryptedSearchPrivateKey = cryptoKeyStorageApi
                         .getFHESearchPrivateKeyForUser();
-                Optional<ByteArrayEnvelope> maybeClientHashFunction = cryptoKeyStorageApi.getHashFunctionForCurrentUser();
+                byte[] maybeClientHashFunction = cryptoKeyStorageApi.getHashFunctionForCurrentUser();
+                // TODO: Check that the length matches the expected length for the client hash function.
                 if ( maybeEncryptedPrivateKey.isPresent() && maybeEncryptedSearchPrivateKey.isPresent()
-                        && maybeClientHashFunction.isPresent() ) {
+                        && ( maybeClientHashFunction.length > 0 ) ) {
                     encryptedPrivateKey = maybeEncryptedPrivateKey.get();
                     encryptedSearchPrivateKey = maybeEncryptedSearchPrivateKey.get();
                     privateKey = privateKeyCryptoService.decryptBytes( encryptedPrivateKey );
                     searchPrivateKey = privateKeyCryptoService.decryptBytes( encryptedSearchPrivateKey );
 
                     engine.initClient( privateKey, searchPrivateKey );
-                    holder.clientHashFunction = maybeClientHashFunction.get().getBytes();
+                    holder.clientHashFunction = maybeClientHashFunction;
                 } else {
                     throw new SecurityConfigurationException( "Unable to load FHE keys from server." );
                 }
@@ -342,7 +342,7 @@ public class IrisConnection implements KryptnosticConnection {
                 try {
                     encryptedPrivateKey = privateKeyCryptoService.encrypt( privateKey );
                     encryptedSearchPrivateKey = privateKeyCryptoService.encrypt( searchPrivateKey );
-                    cryptoKeyStorageApi.setHashFunctionForCurrentUser( new ByteArrayEnvelope( holder.clientHashFunction ) );
+                    cryptoKeyStorageApi.setHashFunctionForCurrentUser( holder.clientHashFunction );
                     cryptoKeyStorageApi.setFHEPrivateKeyForCurrentUser( encryptedPrivateKey );
                     cryptoKeyStorageApi.setFHESearchPrivateKeyForCurrentUser( encryptedSearchPrivateKey );
                 } catch ( SecurityConfigurationException | BadRequestException e2 ) {
@@ -370,9 +370,9 @@ public class IrisConnection implements KryptnosticConnection {
 
         return holder;
     }
-    
+
     @Override
-    public byte[] getClientHashFunction() { 
+    public byte[] getClientHashFunction() {
         return clientHashFunction;
     }
 }
