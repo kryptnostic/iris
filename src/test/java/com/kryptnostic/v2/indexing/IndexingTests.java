@@ -78,6 +78,14 @@ public class IndexingTests {
         }
 
         Map<ByteBuffer, List<Metadata>> mappedMetadata = mapper.mapTokensToKeys( metadata, objectIndexPair );
+
+        for ( int i = 0; i < 16; ++i ) {
+            List<Metadata> metas = mappedMetadata.get( ByteBuffer.wrap( addresses[ i ] ) );
+            Assert.assertTrue( "All metadatas must be present", metadata.containsAll( metas ) );
+            metadata.removeAll( metas );
+        }
+
+        Assert.assertTrue( "All metas should have been removed", metadata.isEmpty() );
         logger.info( "Data: {}", mappedMetadata.values() );
     }
 }
