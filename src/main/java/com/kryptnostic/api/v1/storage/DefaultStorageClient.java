@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -15,13 +16,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
-import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
 import com.kryptnostic.indexing.v1.PaddedMetadata;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
@@ -32,26 +33,26 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
-import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
 import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.storage.v1.StorageClient;
 import com.kryptnostic.storage.v1.http.MetadataStorageApi;
-import com.kryptnostic.storage.v1.http.ObjectStorageApi;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
-import com.kryptnostic.storage.v1.models.ObjectMetadata;
 import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.storage.v1.models.request.PendingObjectRequest;
-import com.kryptnostic.storage.v1.models.request.StorageRequest;
+import com.kryptnostic.storage.v2.http.ObjectStorageApi;
+import com.kryptnostic.storage.v2.models.CreateObjectRequest;
+import com.kryptnostic.storage.v2.models.ObjectMetadata;
+import com.kryptnostic.v2.indexing.Indexer;
+import com.kryptnostic.v2.indexing.SimpleIndexer;
+import com.kryptnostic.v2.indexing.metadata.Metadata;
 
 /**
- * @author sinaiman
+ * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
 public class DefaultStorageClient implements StorageClient {
@@ -98,11 +99,12 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public String uploadObject( StorageRequest req ) throws BadRequestException, SecurityConfigurationException,
+    public UUID storeObject( CreateObjectRequest req, Object storeable ) throws BadRequestException, SecurityConfigurationException,
             IrisException, ResourceLockedException, ResourceNotFoundException {
-        String id = req.getObjectId();
-
-        if ( id == null ) {
+        Optional<UUID> maybeId = req.getObjectId();
+        
+        if ( maybeId.isPresent() ) {
+            objectApi.createObject( request )
             PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId()
                     .orNull(), Optional.<Boolean> absent() );
             id = objectApi.createPendingObject( pendingRequest ).getData();
@@ -154,8 +156,10 @@ public class DefaultStorageClient implements StorageClient {
         logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         // TODO: Centralize these lengths in KryptnosticEngine
-        Preconditions.checkState( objectSearchPair.length == 2080, "Search pair must be 2080 bytes." );
-        Preconditions.checkState( objectIndexPair.length == 2064, "Index pair must be 2064 bytes." );
+        Preconditions.checkState( objectSearchPair.length == KryptnosticEngine.SEARCH_PAIR_LENGTH,
+                "Search pair must be 2080 bytes." );
+        Preconditions.checkState( objectIndexPair.length == KryptnosticEngine.INDEX_PAIR_LENGTH,
+                "Index pair must be 2064 bytes." );
 
         watch.reset().start();
         context.addIndexPair( object.getMetadata().getId(), new ObjectSearchPair( objectSearchPair ) );
@@ -174,8 +178,9 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public KryptnosticObject getObject( String id ) throws ResourceNotFoundException {
-        return objectApi.getObject( id );
+    public Object getObject( UUID id ) throws ResourceNotFoundException {
+
+        byte[] contents = objectApi.getObjectBlockCiphertextContent( objectId, version );
     }
 
     @Override
@@ -217,25 +222,6 @@ public class DefaultStorageClient implements StorageClient {
         }
     }
 
-    @Override
-    public Collection<String> getObjectIds() {
-        return objectApi.getObjectIds().getData();
-    }
-
-    @Override
-    public Collection<String> getObjectIds( int offset, int pageSize ) {
-        return objectApi.getObjectIds( offset, pageSize ).getData();
-    }
-
-    @Override
-    public Collection<String> getObjectIdsByType( String type ) {
-        return objectApi.getObjectIdsByType( type ).getData();
-    }
-
-    @Override
-    public Collection<String> getObjectIdsByType( String type, int offset, int pageSize ) {
-        return objectApi.getObjectIdsByType( type, offset, pageSize ).getData();
-    }
 
     /**
      * Maps all metadata to an index that the server can compute when searching
@@ -304,12 +290,12 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public void deleteMetadata( String id ) {
+    public void deleteMetadata( UUID id ) {
         metadataApi.deleteAll( new MetadataDeleteRequest( Lists.newArrayList( id ) ) );
     }
 
     @Override
-    public void deleteObject( String id ) {
+    public void deleteObject( UUID id ) {
         sharingApi.removeIncomingShares( id );
         objectApi.delete( id );
     }
@@ -366,7 +352,69 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public ObjectMetadata getObjectMetadata( String id ) throws ResourceNotFoundException {
+    public ObjectMetadata getObjectMetadata( UUID id ) throws ResourceNotFoundException {
         return objectApi.getObjectMetadata( id );
+    }
+
+    @Override
+    public UUID registerType( Class<?> clazz ) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public <T> T getObject( UUID id, Class<T> clazz ) throws ResourceNotFoundException {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public <T> T getObject( UUID id, TypeReference<T> ref ) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Map<UUID, ?> getObjects( List<UUID> ids ) throws ResourceNotFoundException {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public void deleteObject( UUID id ) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public Collection<UUID> getObjectIds() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Collection<UUID> getObjectIds( int offset, int pageSize ) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Map<Integer, String> getObjectPreview( UUID objectId, List<Integer> locations, int wordRadius )
+            throws SecurityConfigurationException, ExecutionException, ResourceNotFoundException,
+            ClassNotFoundException, IOException {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Collection<UUID> getObjectIdsByType( UUID type ) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Collection<UUID> getObjectIdsByType( UUID type, int offset, int pageSize ) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

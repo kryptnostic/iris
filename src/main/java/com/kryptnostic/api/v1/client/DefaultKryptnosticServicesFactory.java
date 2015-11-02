@@ -11,7 +11,7 @@ import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.search.v1.http.SearchApi;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.http.MetadataStorageApi;
-import com.kryptnostic.storage.v1.http.ObjectStorageApi;
+import com.kryptnostic.storage.v2.http.ObjectStorageApi;
 
 public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFactory {
     private final static Logger      logger = LoggerFactory.getLogger( DefaultKryptnosticServicesFactory.class );

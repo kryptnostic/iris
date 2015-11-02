@@ -3,6 +3,7 @@ package com.kryptnostic.api.v1.client;
 import com.kryptnostic.api.v1.search.DefaultSearchClient;
 import com.kryptnostic.api.v1.sharing.SharingManager;
 import com.kryptnostic.api.v1.storage.DefaultStorageClient;
+import com.kryptnostic.api.v1.storage.StorageClient;
 import com.kryptnostic.directory.v1.DirectoryClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
@@ -12,7 +13,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.sharing.v1.SharingClient;
-import com.kryptnostic.storage.v1.StorageClient;
 
 public class DefaultKryptnosticClient implements KryptnosticClient {
     private final KryptnosticContext          context;
