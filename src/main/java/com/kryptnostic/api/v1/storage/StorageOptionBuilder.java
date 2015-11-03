@@ -29,7 +29,7 @@ public class StorageOptionBuilder {
         isStoreable = true;
         inheritingCryptoService = false;
         inheritingOwnership = false;
-        type = TypeUUIDs.UTF8_STRING;
+        type = TypeUUIDs.DEFAULT_TYPE;
     }
 
     public StorageOptionBuilder withId( UUID objectId ) {
