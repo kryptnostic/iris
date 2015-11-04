@@ -15,8 +15,8 @@ import com.kryptnostic.v2.storage.types.TypeUUIDs;
 public class StorageOptionBuilder {
     private Optional<UUID> objectId;
     private Optional<UUID> parentObjectId;
-    private boolean        isSearchable;
-    private boolean        isStoreable;
+    private boolean        searchable;
+    private boolean        storeable;
     private boolean        inheritingOwnership;
     private boolean        inheritingCryptoService;
     private UUID           type;
@@ -24,8 +24,8 @@ public class StorageOptionBuilder {
     public StorageOptionBuilder() {
         objectId = Optional.absent();
         parentObjectId = Optional.absent();
-        isSearchable = true;
-        isStoreable = true;
+        searchable = true;
+        storeable = true;
         inheritingCryptoService = false;
         inheritingOwnership = false;
         type = TypeUUIDs.DEFAULT_TYPE;
@@ -47,7 +47,7 @@ public class StorageOptionBuilder {
     }
 
     public StorageOptionBuilder searchable() {
-        this.isSearchable = true;
+        this.searchable = true;
         return this;
     }
 
@@ -62,22 +62,22 @@ public class StorageOptionBuilder {
     }
 
     public StorageOptionBuilder storeable() {
-        this.isStoreable = true;
+        this.storeable = true;
         return this;
     }
 
     public StorageOptionBuilder notSearchable() {
-        this.isSearchable = false;
+        this.searchable = false;
         return this;
     }
 
     public StorageOptionBuilder notStoreable() {
-        this.isStoreable = false;
+        this.storeable = false;
         return this;
     }
 
     public StorageOptions build() {
-        Preconditions.checkState( isSearchable || isStoreable, "Must storeable or searchable." );
+        Preconditions.checkState( searchable || storeable, "Must storeable or searchable." );
         
         if ( inheritingCryptoService || inheritingOwnership ) {
             Preconditions.checkState( parentObjectId.isPresent(), "Parent object id required for inheritance." );
@@ -86,8 +86,8 @@ public class StorageOptionBuilder {
         return new StorageOptions(
                 objectId,
                 parentObjectId,
-                isSearchable,
-                isStoreable,
+                searchable,
+                storeable,
                 inheritingOwnership,
                 inheritingCryptoService,
                 type );
