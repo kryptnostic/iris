@@ -26,6 +26,7 @@ import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
 import com.kryptnostic.indexing.v1.PaddedMetadata;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -45,11 +46,13 @@ import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.storage.v1.models.request.PendingObjectRequest;
 import com.kryptnostic.storage.v2.http.ObjectStorageApi;
-import com.kryptnostic.storage.v2.models.CreateObjectRequest;
 import com.kryptnostic.storage.v2.models.ObjectMetadata;
+import com.kryptnostic.storage.v2.models.VersionedObjectKey;
 import com.kryptnostic.v2.indexing.Indexer;
 import com.kryptnostic.v2.indexing.SimpleIndexer;
 import com.kryptnostic.v2.indexing.metadata.Metadata;
+import com.kryptnostic.v2.types.MarshallingService;
+import com.kryptnostic.v2.types.TypedBytes;
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
@@ -76,6 +79,7 @@ public class DefaultStorageClient implements StorageClient {
     private final MetadataMapper      metadataMapper;
     private final Indexer             indexer;
     private final CryptoServiceLoader loader;
+    private final MarshallingService  marshaller;
 
     /**
      * @param context
@@ -99,19 +103,15 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public UUID storeObject( CreateObjectRequest req, Object storeable ) throws BadRequestException, SecurityConfigurationException,
+    public UUID storeObject( StorageOptions req, Object storeable ) throws BadRequestException, SecurityConfigurationException,
             IrisException, ResourceLockedException, ResourceNotFoundException {
-        Optional<UUID> maybeId = req.getObjectId();
         
-        if ( maybeId.isPresent() ) {
-            objectApi.createObject( request )
-            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId()
-                    .orNull(), Optional.<Boolean> absent() );
-            id = objectApi.createPendingObject( pendingRequest ).getData();
-        } else {
-            objectApi.createPendingObjectFromExisting( id );
-        }
-
+        VersionedObjectKey objectId = objectApi.createObject( req.toCreateObjectRequest() );
+        
+        TypedBytes bytes = marshaller.toTypedBytes( storeable );
+        BlockCiphertext ciphertext = loader.get( objectId.getObjectId() ).;
+           
+        
         KryptnosticObject obj = KryptnosticObject.fromIdAndBody( id, req.getObjectBody() );
 
         Preconditions.checkArgument( !obj.getBody().isEncrypted() );
@@ -221,7 +221,6 @@ public class DefaultStorageClient implements StorageClient {
             }
         }
     }
-
 
     /**
      * Maps all metadata to an index that the server can compute when searching
@@ -383,7 +382,7 @@ public class DefaultStorageClient implements StorageClient {
     @Override
     public void deleteObject( UUID id ) {
         // TODO Auto-generated method stub
-        
+
     }
 
     @Override

@@ -1,9 +1,9 @@
 package com.kryptnostic.api.v1.storage;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
@@ -13,9 +13,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
-import com.kryptnostic.storage.v2.models.CreateObjectRequest;
 import com.kryptnostic.storage.v2.models.ObjectMetadata;
 
 /**
@@ -23,8 +21,9 @@ import com.kryptnostic.storage.v2.models.ObjectMetadata;
  *
  */
 public interface StorageClient {
+    UUID storeObject( Object storeable );
 
-    UUID storeObject( CreateObjectRequest req, Object storeable ) throws BadRequestException,
+    UUID storeObject( StorageOptions options, Object storeable ) throws BadRequestException,
             SecurityConfigurationException,
             IrisException, ResourceLockedException, ResourceNotFoundException;
 
@@ -36,7 +35,7 @@ public interface StorageClient {
 
     <T> T getObject( UUID id, TypeReference<T> ref );
 
-    Map<UUID, ?> getObjects( List<UUID> ids ) throws ResourceNotFoundException;
+    Map<UUID, ?> getObjects( Set<UUID> ids ) throws ResourceNotFoundException;
 
     void uploadMetadata( List<MetadataRequest> metadata ) throws BadRequestException;
 
@@ -44,17 +43,17 @@ public interface StorageClient {
 
     void deleteObject( UUID id );
 
-    Collection<UUID> getObjectIds();
+    Set<UUID> getObjectIds();
 
-    Collection<UUID> getObjectIds( int offset, int pageSize );
+    Set<UUID> getObjectIds( int offset, int pageSize );
 
     Map<Integer, String> getObjectPreview( UUID objectId, List<Integer> locations, int wordRadius )
             throws SecurityConfigurationException, ExecutionException, ResourceNotFoundException,
             ClassNotFoundException, IOException;
 
-    Collection<UUID> getObjectIdsByType( UUID type );
+    Set<UUID> getObjectIdsByType( UUID type );
 
-    Collection<UUID> getObjectIdsByType( UUID type, int offset, int pageSize );
+    Set<UUID> getObjectIdsByType( UUID type, int offset, int pageSize );
 
     ObjectMetadata getObjectMetadata( UUID id ) throws ResourceNotFoundException;
 }

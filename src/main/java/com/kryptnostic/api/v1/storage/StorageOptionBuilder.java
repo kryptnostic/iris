@@ -6,8 +6,7 @@ import javax.annotation.Nullable;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
-import com.kryptnostic.storage.v2.models.CreateObjectRequest;
-import com.kryptnostic.storage.v2.types.TypeUUIDs;
+import com.kryptnostic.v2.storage.types.TypeUUIDs;
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
@@ -53,13 +52,11 @@ public class StorageOptionBuilder {
     }
 
     public StorageOptionBuilder inheritOwner() {
-        Preconditions.checkState( parentObjectId.isPresent(), "Parent object id required for inheritance." );
         this.inheritingOwnership = true;
         return this;
     }
 
     public StorageOptionBuilder inheritCryptoService() {
-        Preconditions.checkState( parentObjectId.isPresent(), "Parent object id required for inheritance." );
         this.inheritingCryptoService = true;
         return this;
     }
@@ -79,10 +76,13 @@ public class StorageOptionBuilder {
         return this;
     }
 
-    public CreateObjectRequest build() {
-        if ( !isSearchable && !isStoreable ) {
-            throw new IllegalStateException( "Not searchable or storeable, so no-op" );
+    public StorageOptions build() {
+        Preconditions.checkState( isSearchable || isStoreable, "Must storeable or searchable." );
+        
+        if ( inheritingCryptoService || inheritingOwnership ) {
+            Preconditions.checkState( parentObjectId.isPresent(), "Parent object id required for inheritance." );
         }
+
         return new StorageOptions(
                 objectId,
                 parentObjectId,
