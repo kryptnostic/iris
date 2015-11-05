@@ -5,11 +5,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.UUID;
 
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.indexing.analysis.TokenizingWhitespaceAnalyzer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
+import com.kryptnostic.storage.v2.models.VersionedObjectKey;
 import com.kryptnostic.v2.indexing.metadata.Metadata;
 
 public class SimpleIndexer implements Indexer {
@@ -20,7 +20,7 @@ public class SimpleIndexer implements Indexer {
     }
 
     @Override
-    public Set<Metadata> index( UUID objectId, String object ) {
+    public Set<Metadata> index( VersionedObjectKey objectId, String object ) {
         Set<Metadata> metadata = Sets.newHashSet();
         for ( Analyzer analyzer : analyzers ) {
             Map<String, List<Integer>> invertedIndex = analyzer.analyze( object );

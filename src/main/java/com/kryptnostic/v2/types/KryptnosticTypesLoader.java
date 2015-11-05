@@ -1,9 +1,11 @@
 package com.kryptnostic.v2.types;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +22,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.storage.v2.models.VersionedObjectKey;
 import com.kryptnostic.v2.storage.types.TypeUUIDs;
 
 /**
@@ -41,8 +44,7 @@ public class KryptnosticTypesLoader implements TypeResolver {
 
         Set<UUID> typeIds = storageClient.getObjectIdsByType( TypeUUIDs.TYPE );
 
-        @SuppressWarnings( "unchecked" )
-        Map<UUID, String> typesMap = (Map<UUID, String>) storageClient.getObjects( typeIds );
+        Map<UUID, String> typesMap = (Map<UUID, String>) storageClient.getStrings( typeIds );
         registeredTypes = HashBiMap.<UUID, Class<?>> create( typesMap.size() );
         for ( Entry<UUID, ?> entry : typesMap.entrySet() ) {
             String className = (String) entry.getValue();
@@ -74,7 +76,7 @@ public class KryptnosticTypesLoader implements TypeResolver {
     public void registerType( Class<?> clazz ) throws IrisException {
         String className = clazz.getCanonicalName();
         StorageOptions options = new StorageOptionBuilder().withType( TypeUUIDs.TYPE ).build();
-        UUID key;
+        VersionedObjectKey key;
         try {
             key = storageClient.storeObject( options, className );
         } catch (
@@ -82,11 +84,11 @@ public class KryptnosticTypesLoader implements TypeResolver {
                 | SecurityConfigurationException
                 | IrisException
                 | ResourceLockedException
-                | ResourceNotFoundException e ) {
+                | ResourceNotFoundException | IOException | ExecutionException e ) {
             logger.error( "Unable to register type for class {}.", clazz, e );
             throw new IrisException( e );
         }
-        registeredTypes.put( key, clazz );
+        registeredTypes.put( key.getObjectId(), clazz );
     }
 
     @Override

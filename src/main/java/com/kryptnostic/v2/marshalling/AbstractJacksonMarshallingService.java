@@ -1,4 +1,4 @@
-package com.kryptnostic.v2.types;
+package com.kryptnostic.v2.marshalling;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -8,6 +8,9 @@ import com.google.common.base.Charsets;
 import com.kryptnostic.api.v1.storage.StorageClient;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.v2.storage.types.TypeUUIDs;
+import com.kryptnostic.v2.types.KryptnosticTypesLoader;
+import com.kryptnostic.v2.types.TypeResolver;
+import com.kryptnostic.v2.types.TypedBytes;
 
 public abstract class AbstractJacksonMarshallingService implements MarshallingService {
     private final ObjectMapper mapper;

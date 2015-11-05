@@ -14,29 +14,38 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
+import com.kryptnostic.storage.v2.models.LoadLevel;
 import com.kryptnostic.storage.v2.models.ObjectMetadata;
+import com.kryptnostic.storage.v2.models.ObjectMetadataNode;
+import com.kryptnostic.storage.v2.models.VersionedObjectKey;
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
 public interface StorageClient {
+    UUID registerType( Class<?> clazz );
+    
     UUID storeObject( Object storeable );
 
-    UUID storeObject( StorageOptions options, Object storeable ) throws BadRequestException,
+    VersionedObjectKey storeObject( StorageOptions options, Object storeable ) throws BadRequestException,
             SecurityConfigurationException,
-            IrisException, ResourceLockedException, ResourceNotFoundException;
+            IrisException, ResourceLockedException, ResourceNotFoundException, IOException, ExecutionException;
 
-    UUID registerType( Class<?> clazz );
+    ObjectMetadata getObjectMetadata( UUID id ) throws ResourceNotFoundException;
 
     Object getObject( UUID id );
+
+    Object getObject( ObjectMetadata objectKey ) throws ResourceNotFoundException, ExecutionException, SecurityConfigurationException, IOException;
 
     <T> T getObject( UUID id, Class<T> clazz ) throws ResourceNotFoundException;
 
     <T> T getObject( UUID id, TypeReference<T> ref );
 
-    Map<UUID, ?> getObjects( Set<UUID> ids ) throws ResourceNotFoundException;
+    ObjectMetadataNode getObjects( Set<UUID> objectIds , Map<UUID, LoadLevel> loadLevelsByTypeId ) throws ResourceNotFoundException;
 
+    Map<UUID, String> getStrings( Set<UUID> objectIds );
+    
     void uploadMetadata( List<MetadataRequest> metadata ) throws BadRequestException;
 
     void deleteMetadata( UUID id );
@@ -55,5 +64,4 @@ public interface StorageClient {
 
     Set<UUID> getObjectIdsByType( UUID type, int offset, int pageSize );
 
-    ObjectMetadata getObjectMetadata( UUID id ) throws ResourceNotFoundException;
 }
