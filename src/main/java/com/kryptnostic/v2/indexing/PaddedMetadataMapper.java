@@ -64,7 +64,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
             ByteBuffer key = ByteBuffer.wrap( indexForTerm );
 
             Metadata balancedMetadatum = new Metadata(
-                    metadatum.getObjectId(),
+                    metadatum.getObjectKey(),
                     term,
                     metadatum.getLength(),
                     subListAndPad(

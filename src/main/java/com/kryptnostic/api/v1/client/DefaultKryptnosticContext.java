@@ -27,6 +27,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.sharing.v1.http.SharingApi;
+import com.kryptnostic.storage.v2.models.VersionedObjectKey;
 
 /**
  *
@@ -61,12 +62,12 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public void addIndexPair( String objectId, ObjectSearchPair indexPair ) {
+    public void addIndexPair( VersionedObjectKey objectId, ObjectSearchPair indexPair ) {
         sharingClient.addSearchPairs( ImmutableMap.of( objectId, indexPair ) );
     }
 
     @Override
-    public void addIndexPairs( Map<String, ObjectSearchPair> indexPairs ) {
+    public void addIndexPairs( Map<VersionedObjectKey, ObjectSearchPair> indexPairs ) {
         sharingClient.addSearchPairs( indexPairs );
     }
 

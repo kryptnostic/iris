@@ -34,7 +34,7 @@ public interface StorageClient {
 
     ObjectMetadata getObjectMetadata( UUID id ) throws ResourceNotFoundException;
 
-    Object getObject( UUID id );
+    Object getObject( UUID id ) throws IOException, ExecutionException, SecurityConfigurationException;
 
     Object getObject( ObjectMetadata objectKey ) throws ResourceNotFoundException, ExecutionException, SecurityConfigurationException, IOException;
 

@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.RandomUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -22,6 +23,7 @@ import com.google.common.collect.Sets;
 import com.google.common.io.Resources;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
+import com.kryptnostic.storage.v2.models.VersionedObjectKey;
 import com.kryptnostic.v2.indexing.metadata.Metadata;
 
 public class IndexingTests {
@@ -36,7 +38,7 @@ public class IndexingTests {
         String document = Resources.toString( Resources.getResource( "privacy.txt" ), Charsets.UTF_8 );
         logger.info( "Loaded privacy.txt" );
         long start = System.nanoTime();
-        UUID documentId = UUID.randomUUID();
+        VersionedObjectKey documentId = new VersionedObjectKey( UUID.randomUUID(), RandomUtils.nextLong( 0, Long.MAX_VALUE ) );
         logger.info(
                 "Hashed document of length {} in {} ms.",
                 document.length(),
@@ -72,7 +74,7 @@ public class IndexingTests {
         Assert.assertNotNull( context.generateIndexForToken( terms[ 0 ], objectIndexPair ) );
         Assert.assertArrayEquals( addresses[ 0 ], context.generateIndexForToken( terms[ 0 ], objectIndexPair ) );
         Set<Metadata> metadata = Sets.newHashSet();
-        UUID id = UUID.randomUUID();
+        VersionedObjectKey id = new VersionedObjectKey( UUID.randomUUID(), RandomUtils.nextLong( 0, Long.MAX_VALUE ) );
         for ( int i = 0; i < 16; ++i ) {
             metadata.add( new Metadata( id, terms[ i ], 16, Lists.newArrayList( 1, 2, 3 ) ) );
         }

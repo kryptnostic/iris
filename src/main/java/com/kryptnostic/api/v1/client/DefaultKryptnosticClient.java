@@ -15,12 +15,12 @@ import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.sharing.v1.SharingClient;
 
 public class DefaultKryptnosticClient implements KryptnosticClient {
-    private final KryptnosticContext          context;
+    private final KryptnosticContext context;
 
-    private final SearchClient                searchClient;
-    private final StorageClient               storageClient;
-    private final SharingClient               sharingClient;
-    private final DirectoryClient             directoryClient;
+    private final SearchClient       searchClient;
+    private final StorageClient      storageClient;
+    private final SharingClient      sharingClient;
+    private final DirectoryClient    directoryClient;
 
     public DefaultKryptnosticClient( KryptnosticServicesFactory factory, KryptnosticConnection connection ) throws IrisException,
             ResourceNotFoundException {
@@ -29,14 +29,18 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
                 factory.createDirectoryApi(),
                 connection );
 
-        this.storageClient = new DefaultStorageClient(
-                context,
-                factory.createDocumentApi(),
-                factory.createMetadataApi(),
-                factory.createSharingApi() );
+        try {
+            this.storageClient = new DefaultStorageClient(
+                    context,
+                    factory.createDocumentApi(),
+                    factory.createMetadataApi(),
+                    factory.createSharingApi() );
+        } catch ( ClassNotFoundException e ) {
+            throw new IrisException( e );
+        }
         this.searchClient = new DefaultSearchClient( context, factory.createSearchApi() );
         this.directoryClient = new DefaultDirectoryClient( context, factory.createDirectoryApi() );
-        this.sharingClient = new SharingManager( context, factory.createSharingApi() , connection.getKryptnosticEngine() );
+        this.sharingClient = new SharingManager( context, factory.createSharingApi(), connection.getKryptnosticEngine() );
     }
 
     @Override

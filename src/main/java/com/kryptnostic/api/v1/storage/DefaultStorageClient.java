@@ -1,9 +1,11 @@
 package com.kryptnostic.api.v1.storage;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -22,9 +24,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
-import com.kryptnostic.indexing.v1.PaddedMetadata;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
@@ -34,16 +34,12 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
-import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.http.MetadataStorageApi;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
-import com.kryptnostic.storage.v1.models.IndexedMetadata;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
 import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
-import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.storage.v2.http.ObjectStorageApi;
 import com.kryptnostic.storage.v2.models.LoadLevel;
 import com.kryptnostic.storage.v2.models.ObjectMetadata;
@@ -52,9 +48,13 @@ import com.kryptnostic.storage.v2.models.ObjectMetadataNode;
 import com.kryptnostic.storage.v2.models.ObjectTreeLoadRequest;
 import com.kryptnostic.storage.v2.models.VersionedObjectKey;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
+import com.kryptnostic.v2.indexing.IndexMetadata;
 import com.kryptnostic.v2.indexing.Indexer;
+import com.kryptnostic.v2.indexing.PaddedMetadataMapper;
 import com.kryptnostic.v2.indexing.SimpleIndexer;
 import com.kryptnostic.v2.indexing.metadata.Metadata;
+import com.kryptnostic.v2.indexing.metadata.MetadataMapper;
+import com.kryptnostic.v2.indexing.metadata.MetadataRequest;
 import com.kryptnostic.v2.marshalling.JsonJacksonMarshallingService;
 import com.kryptnostic.v2.marshalling.MarshallingService;
 import com.kryptnostic.v2.types.TypedBytes;
@@ -197,10 +197,27 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public Object getObject( UUID id ) throws ResourceNotFoundException {
-        //TODO: Cache
-        ObjectMetadata objectMetadata objectApi.getObjectMetadata( id );
-        byte[] contents = objectApi.getObjectBlockCiphertextContent( objectId, version );
+    public Object getObject( UUID id ) throws IOException, ExecutionException, SecurityConfigurationException {
+        // TODO: Cache
+        ObjectMetadata objectMetadata = objectApi.getObjectMetadata( id );
+        BlockCiphertext ciphertext = getCiphertextUsingMetadata( objectMetadata );
+        CryptoService service = loader.get( VersionedObjectKey.fromObjectMetadata( objectMetadata ) ).get();
+
+        byte[] raw = service.decryptBytes( ciphertext );
+
+        return marshaller.fromTypeBytes( new TypedBytes( raw, objectMetadata.getType() ) );
+    }
+
+    private BlockCiphertext getCiphertextUsingMetadata( ObjectMetadata metadata ) {
+        UUID objectId = metadata.getId();
+        long version = metadata.getVersion();
+
+        byte[] contents = objectApi.getObjectContent( objectId, version );
+        byte[] iv = objectApi.getObjectIV( objectId, version );
+        byte[] salt = objectApi.getObjectSalt( objectId, version );
+        byte[] tag = objectApi.getObjectTag( objectId, version );
+
+        return new BlockCiphertext( iv, salt, contents, Optional.<byte[]> absent(), Optional.of( tag ) );
     }
 
     @Override
@@ -255,28 +272,42 @@ public class DefaultStorageClient implements StorageClient {
             throws IrisException {
 
         // create plaintext metadata
-        Collection<PaddedMetadata> keyedMetadata = metadataMapper.mapTokensToKeys( metadata,
+        Map<ByteBuffer, List<Metadata>> mappedMetadata = metadataMapper.mapTokensToKeys( metadata,
                 objectIndexPair );
         // logger.debug( "generated plaintext metadata {}", keyedMetadata );
 
         // encrypt the metadata and format for the server
-        Collection<IndexedMetadata> metadataIndex = Lists.newArrayListWithExpectedSize( METADATA_BATCH_SIZE );
+        Collection<IndexMetadata> metadataIndex = Lists.newArrayListWithExpectedSize( METADATA_BATCH_SIZE );
         List<MetadataRequest> requests = Lists
-                .newArrayListWithExpectedSize( keyedMetadata.size() / METADATA_BATCH_SIZE );
-        for ( PaddedMetadata pm : keyedMetadata ) {
-            byte[] address = pm.getAddress();
-            List<Metadata> metadataForKey = pm.getMetadata();
+                .newArrayListWithExpectedSize( mappedMetadata.size() / METADATA_BATCH_SIZE );
+        for ( Entry<ByteBuffer, List<Metadata>> pm : mappedMetadata.entrySet() ) {
+            byte[] address = pm.getKey().array();
+            List<Metadata> metadataForKey = pm.getValue();
 
             // encrypt the metadata
             for ( Metadata metadatumToEncrypt : metadataForKey ) {
-                TypedBytes metadataBytes = marshaller.toTypedBytes( metadatumToEncrypt );
-                StorageOptions options = new StorageOptionBuilder().notSearchable().storeable().inheritCryptoService().inheritOwner().build();
-                storeObject( req, storeable )metadataBytes
-                Encryptable<Metadata> encryptedMetadatum = new Encryptable<Metadata>(
-                        metadatumToEncrypt,
-                        metadatumToEncrypt.getObjectId() );
+                StorageOptions options = new StorageOptionBuilder()
+                        .notSearchable()
+                        .storeable()
+                        .inheritCryptoService()
+                        .inheritOwner()
+                        .build();
+                VersionedObjectKey metadataObjectKey;
+                try {
+                    metadataObjectKey = storeObject( options, metadatumToEncrypt );
+                } catch (
+                        BadRequestException
+                        | SecurityConfigurationException
+                        | ResourceLockedException
+                        | ResourceNotFoundException
+                        | IOException
+                        | ExecutionException e ) {
+                    logger.error( "Failed to store metadatum. ", e );
+                    throw new IrisException( e );
+                }
+
                 metadataIndex
-                        .add( new IndexedMetadata( address, encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
+                        .add( new IndexMetadata( address, metadataObjectKey, metadatumToEncrypt.getObjectKey() ) );
                 if ( metadataIndex.size() == METADATA_BATCH_SIZE ) {
                     requests.add( new MetadataRequest( metadataIndex ) );
                     metadataIndex = Lists.newArrayList();
