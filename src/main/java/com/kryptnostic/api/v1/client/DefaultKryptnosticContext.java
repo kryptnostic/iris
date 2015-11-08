@@ -16,15 +16,14 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.KryptnosticConnection;
+import com.kryptnostic.api.v1.KryptnosticCryptoManager;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
-import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
-import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
@@ -37,7 +36,7 @@ import com.kryptnostic.v2.storage.models.VersionedObjectKey;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
-public class DefaultKryptnosticContext implements KryptnosticContext {
+public class DefaultKryptnosticContext implements KryptnosticCryptoManager {
     private final SharingApi            sharingApi;
     private final KeyStorageApi         keyStorageApi;
     private final KryptnosticConnection connection;
@@ -53,12 +52,12 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public void addIndexPair( VersionedObjectKey objectId, ObjectSearchPair indexPair ) {
+    public void registerObjectSearchPair( VersionedObjectKey objectId, ObjectSearchPair indexPair ) {
         sharingApi.addSearchPairs( ImmutableMap.of( objectId, indexPair ) );
     }
 
     @Override
-    public void addIndexPairs( Map<VersionedObjectKey, ObjectSearchPair> indexPairs ) {
+    public void registerObjectSearchPairs( Map<VersionedObjectKey, ObjectSearchPair> indexPairs ) {
         sharingApi.addSearchPairs( indexPairs );
     }
 
@@ -108,13 +107,13 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             @Override
             public RsaCompressingEncryptionService apply( UUID input ) {
                 try {
-                    return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, new PublicKeyEnvelope( keyStorageApi.getPublicKey(
-                            input ) ).asRsaPublicKey() );
+                    return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, new PublicKeyEnvelope(
+                            keyStorageApi.getPublicKey(
+                                    input ) ).asRsaPublicKey() );
                 } catch (
                         InvalidKeySpecException
                         | NoSuchAlgorithmException
-                        | SecurityConfigurationException
-                        | ResourceNotFoundException e ) {
+                        | SecurityConfigurationException e ) {
                     return null;
                 }
             }
@@ -123,6 +122,9 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
-        return connection.getRsaCryptoService();
+        return new RsaCompressingCryptoService(
+                RsaKeyLoader.CIPHER,
+                connection.getPrivateKey(),
+                connection.getPublicKey() );
     }
 }

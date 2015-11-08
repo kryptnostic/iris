@@ -1,10 +1,11 @@
-package com.kryptnostic.api.v1;
+package com.kryptnostic.v2.crypto;
 
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -17,46 +18,61 @@ import com.google.common.base.Optional;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
-import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.model.ByteArrayEnvelope;
+import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
-import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.v2.storage.api.KeyStorageApi;
+import com.kryptnostic.v2.storage.api.ObjectStorageApi;
+import com.kryptnostic.v2.storage.models.VersionedObjectKey;
+import com.kryptnostic.v2.storage.models.VersionedObjectKeySet;
 
-public class DefaultCryptoServiceLoader implements CryptoServiceLoader {
-    private static final Logger                       logger = LoggerFactory
-                                                                     .getLogger( DefaultCryptoServiceLoader.class );
+/**
+ * Provider class for {@link CryptoService} objects used for encrypting and decrypting objects.
+ * 
+ * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
+ *
+ */
+public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
+    private static final Logger                                   logger = LoggerFactory
+                                                                                 .getLogger( KryptnosticCryptoServiceLoader.class );
 
-    private final LoadingCache<String, CryptoService> keyCache;
-    private final DirectoryApi                        directoryApi;
-    private final KryptnosticConnection               connection;
-    private Cypher                                    cypher;
+    private final LoadingCache<VersionedObjectKey, CryptoService> keyCache;
+    private KeyStorageApi                                         directoryApi;
+    private ObjectStorageApi                                      objectStorageApi;
+    private KryptnosticConnection                                 connection;
+    private Cypher                                                cypher;
 
-    public DefaultCryptoServiceLoader(
+    public KryptnosticCryptoServiceLoader(
             final KryptnosticConnection connection,
+            final KeyStorageApi directoryApi,
+            ObjectStorageApi objectStorageApi,
             Cypher cypher ) {
+        this.directoryApi = directoryApi;
+        this.objectStorageApi = objectStorageApi;
         this.connection = connection;
-        this.directoryApi = connection.getDirectoryApi();
         this.cypher = cypher;
         keyCache = CacheBuilder.newBuilder().maximumSize( 1000 ).expireAfterWrite( 10, TimeUnit.MINUTES )
-                .build( new CacheLoader<String, CryptoService>() {
+                .build( new CacheLoader<VersionedObjectKey, CryptoService>() {
                     @Override
-                    public Map<String, CryptoService> loadAll( Iterable<? extends String> keys ) throws IOException,
+                    public Map<VersionedObjectKey, CryptoService> loadAll( Iterable<? extends VersionedObjectKey> keys )
+                            throws IOException,
                             SecurityConfigurationException {
+                        VersionedObjectKeySet ids = new VersionedObjectKeySet();
 
-                        Set<String> ids = ImmutableSet.copyOf( keys );
+                        for ( VersionedObjectKey key : keys ) {
+                            ids.add( key );
+                        }
 
-                        Map<String, byte[]> data = directoryApi.getObjectCryptoServices( ids );
+                        Map<VersionedObjectKey, byte[]> data = directoryApi.getObjectCryptoServices( ids );
                         if ( data.size() != ids.size() ) {
                             throw new InvalidCacheLoadException( "Unable to retrieve all keys." );
                         }
-                        Map<String, CryptoService> processedData = Maps.newHashMap();
+                        Map<VersionedObjectKey, CryptoService> processedData = Maps.newHashMap();
 
-                        for ( Map.Entry<String, byte[]> entry : data.entrySet() ) {
+                        for ( Map.Entry<VersionedObjectKey, byte[]> entry : data.entrySet() ) {
                             byte[] crypto = entry.getValue();
                             if ( crypto != null ) {
                                 CryptoService service = connection.getCryptoManager().getRsaCryptoService().decrypt(
@@ -69,17 +85,18 @@ public class DefaultCryptoServiceLoader implements CryptoServiceLoader {
                     }
 
                     @Override
-                    public CryptoService load( String key ) throws IOException, SecurityConfigurationException {
+                    public CryptoService load( VersionedObjectKey key ) throws IOException,
+                            SecurityConfigurationException {
                         byte[] crypto = null;
                         try {
-                            crypto = directoryApi.getObjectCryptoService( key ).getData();
+                            crypto = directoryApi.getObjectCryptoService( key.getObjectId(), key.getVersion() );
                         } catch ( RetrofitError e ) {
                             logger.error( "Failed to load crypto service from backend for id {} ", key, e );
                             throw new IOException( e );
                         }
                         if ( ( crypto == null ) ) {
                             try {
-                                CryptoService cs = new AesCryptoService( DefaultCryptoServiceLoader.this.cypher );
+                                CryptoService cs = new AesCryptoService( KryptnosticCryptoServiceLoader.this.cypher );
                                 put( key, cs );
                                 return cs;
                             } catch (
@@ -99,23 +116,23 @@ public class DefaultCryptoServiceLoader implements CryptoServiceLoader {
     }
 
     @Override
-    public Optional<CryptoService> get( String id ) throws ExecutionException {
+    public Optional<CryptoService> get( VersionedObjectKey id ) throws ExecutionException {
         return Optional.fromNullable( keyCache.get( id ) );
     }
 
     @Override
-    public void put( String id, CryptoService service ) throws ExecutionException {
+    public void put( VersionedObjectKey id, CryptoService service ) throws ExecutionException {
         keyCache.put( id, service );
         try {
             byte[] cs = connection.getCryptoManager().getRsaCryptoService().encrypt( service );
-            directoryApi.setObjectCryptoService( id, new ByteArrayEnvelope( cs ) );
+            directoryApi.setObjectCryptoService( id.getObjectId(), id.getVersion(), cs );
         } catch ( SecurityConfigurationException | IOException e ) {
             throw new ExecutionException( e );
         }
     }
 
     @Override
-    public Map<String, CryptoService> getAll( Set<String> ids ) throws ExecutionException {
+    public Map<VersionedObjectKey, CryptoService> getAll( Set<VersionedObjectKey> ids ) throws ExecutionException {
         return keyCache.getAllPresent( ids );
     }
 
@@ -123,5 +140,10 @@ public class DefaultCryptoServiceLoader implements CryptoServiceLoader {
     public void clear() {
         keyCache.invalidateAll();
         keyCache.cleanUp();
+    }
+
+    @Override
+    public Optional<CryptoService> getLatest( UUID id ) throws ExecutionException {
+        return get( VersionedObjectKey.fromObjectMetadata( objectStorageApi.getObjectMetadata( id ) ) );
     }
 }

@@ -13,8 +13,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.kryptnostic.api.v1.KryptnosticCryptoManager;
 import com.kryptnostic.indexing.v1.PaddedMetadata;
-import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
 import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
@@ -23,10 +23,10 @@ public class PaddedMetadataMapper implements MetadataMapper {
     private static final Random      r                    = new SecureRandom();
     private static final Base64      encoder              = new Base64();
     private static final Logger      log                  = LoggerFactory.getLogger( PaddedMetadataMapper.class );
-    private final KryptnosticContext context;
+    private final KryptnosticCryptoManager context;
     private static final int         MINIMUM_TOKEN_LENGTH = 1;
 
-    public PaddedMetadataMapper( KryptnosticContext context ) {
+    public PaddedMetadataMapper( KryptnosticCryptoManager context ) {
         this.context = context;
     }
 

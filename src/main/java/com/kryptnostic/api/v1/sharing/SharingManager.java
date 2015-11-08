@@ -14,48 +14,49 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import com.kryptnostic.api.v1.KryptnosticConnection;
+import com.kryptnostic.api.v1.KryptnosticCryptoManager;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
-import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
-import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.sharing.v1.SharingClient;
-import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.sharing.v1.models.IncomingShares;
-import com.kryptnostic.sharing.v1.models.Share;
-import com.kryptnostic.sharing.v1.models.request.RevocationRequest;
-import com.kryptnostic.sharing.v1.models.request.SharingRequest;
+import com.kryptnostic.v2.crypto.CryptoServiceLoader;
+import com.kryptnostic.v2.sharing.api.SharingApi;
+import com.kryptnostic.v2.sharing.models.IncomingShares;
+import com.kryptnostic.v2.sharing.models.RevocationRequest;
+import com.kryptnostic.v2.sharing.models.Share;
+import com.kryptnostic.v2.sharing.models.SharingRequest;
+import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 public class SharingManager implements SharingClient {
-    private static final Logger      logger = LoggerFactory.getLogger( SharingManager.class );
-    private final KryptnosticContext context;
-    private final SharingApi         sharingApi;
-    private final KryptnosticEngine  engine;
+    private static final Logger            logger = LoggerFactory.getLogger( SharingManager.class );
+    private final KryptnosticCryptoManager context;
+    private final SharingApi               sharingApi;
+    private final KryptnosticConnection    connection;
 
-    public SharingManager( KryptnosticContext context, SharingApi sharingClient, KryptnosticEngine engine ) {
-        this.context = context;
-        this.sharingApi = sharingClient;
-        this.engine = engine;
+    public SharingManager( KryptnosticConnection connection ) {
+        this.context = connection.getCryptoManager();
+        this.sharingApi = connection.getSharingApi();
+        this.connection = connection;
     }
 
     @Override
-    public Optional<byte[]> getSearchPair( String objectId ) {
-        byte[] objectSearchPair = sharingApi.getSearchPair( objectId );
+    public Optional<byte[]> getSearchPair( VersionedObjectKey objectKey ) {
+        byte[] objectSearchPair = sharingApi.getSearchPair( objectKey.getObjectId(), objectKey.getVersion() );
         if ( ( objectSearchPair == null ) || ( objectSearchPair.length != 2080 ) ) {
             return Optional.absent();
         }
         return Optional.of( objectSearchPair );
     }
 
-    public Optional<byte[]> getSharingPair( String objectId ) throws ResourceNotFoundException {
-        Optional<byte[]> maybeSearchPair = getSearchPair( objectId );
+    public Optional<byte[]> getSharingPair( VersionedObjectKey objectKey ) throws ResourceNotFoundException {
+        Optional<byte[]> maybeSearchPair = getSearchPair( objectKey );
         if ( maybeSearchPair.isPresent() ) {
-            return Optional.of( context
-                    .getConnection()
+            return Optional.of( connection
                     .getKryptnosticEngine()
                     .getObjectSharePairFromObjectSearchPair( maybeSearchPair.get() ) );
         } else {
@@ -64,14 +65,14 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public void shareObjectWithUsers( String objectId, Set<UUID> users ) throws ResourceNotFoundException {
+    public void shareObjectWithUsers( VersionedObjectKey objectId, Set<UUID> users ) throws ResourceNotFoundException {
         shareObjectWithUsers( objectId, users, getSharingPair( objectId ) );
     }
 
     @Override
-    public void shareObjectWithUsers( String objectId, Set<UUID> users, Optional<byte[]> sharingPair )
+    public void shareObjectWithUsers( VersionedObjectKey objectId, Set<UUID> users, Optional<byte[]> sharingPair )
             throws ResourceNotFoundException {
-        CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
+        CryptoServiceLoader loader = connection.getCryptoServiceLoader();
 
         CryptoService service;
         try {
@@ -105,16 +106,16 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public Set<String> processIncomingShares() throws IOException, SecurityConfigurationException {
-        CryptoServiceLoader loader = context.getConnection().getCryptoServiceLoader();
+    public Set<VersionedObjectKey> processIncomingShares() throws IOException, SecurityConfigurationException {
+        CryptoServiceLoader loader = connection.getCryptoServiceLoader();
         IncomingShares incomingShares = sharingApi.getIncomingShares();
         if ( incomingShares == null || incomingShares.isEmpty() ) {
             return ImmutableSet.of();
         }
-        Map<String, ObjectSearchPair> indexPairs = Maps.newHashMap();
+        Map<VersionedObjectKey, ObjectSearchPair> objectSearchPairs = Maps.newHashMap();
 
         for ( Share share : incomingShares.values() ) {
-            String id = share.getObjectId();
+            VersionedObjectKey id = share.getObjectId();
             CryptoService decryptor;
             try {
                 logger.info( "Processing share for {}", id );
@@ -135,17 +136,19 @@ public class SharingManager implements SharingClient {
                 byte[] sharePair = decryptor.decryptBytes( encryptedSharingPair.get() );
                 Preconditions.checkState( sharePair.length == KryptnosticEngine.SHARE_PAIR_LENGTH,
                         "Sharing pair must be 2064 bytes long." );
-                indexPairs.put( id,
-                        new ObjectSearchPair( this.engine.getObjectSearchPairFromObjectSharePair( sharePair ) ) );
+                objectSearchPairs.put( id,
+                        new ObjectSearchPair( connection
+                                .getKryptnosticEngine()
+                                .getObjectSearchPairFromObjectSharePair( sharePair ) ) );
             }
         }
 
-        sharingApi.addSearchPairs( indexPairs );
-        return indexPairs.keySet();
+        sharingApi.addSearchPairs( objectSearchPairs );
+        return objectSearchPairs.keySet();
     }
 
     @Override
-    public void unshareObjectWithUsers( String objectId, Set<UUID> users ) {
+    public void unshareObjectWithUsers( VersionedObjectKey objectId, Set<UUID> users ) {
         RevocationRequest revocation = new RevocationRequest( objectId, users );
         sharingApi.revokeAccess( revocation );
     }
@@ -158,5 +161,4 @@ public class SharingManager implements SharingClient {
         }
         return incomingShares.size();
     }
-
 }

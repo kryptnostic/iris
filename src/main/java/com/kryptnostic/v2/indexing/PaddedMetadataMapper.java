@@ -12,18 +12,20 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.api.v1.KryptnosticCryptoManager;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.v2.indexing.metadata.Metadata;
 import com.kryptnostic.v2.indexing.metadata.MetadataMapper;
 
 public class PaddedMetadataMapper implements MetadataMapper {
-    private static final Random      r                    = new SecureRandom();
-    private static final Logger      loggger              = LoggerFactory.getLogger( PaddedMetadataMapper.class );
-    private static final int         MINIMUM_TOKEN_LENGTH = 1;
+    private static final Random            r                    = new SecureRandom();
+    private static final Logger            loggger              = LoggerFactory.getLogger( PaddedMetadataMapper.class );
+    private static final int               MINIMUM_TOKEN_LENGTH = 1;
 
-    public PaddedMetadataMapper( KryptnosticContext context ) {
-        this.context = context;
+    private final KryptnosticCryptoManager cryptoManager;
+
+    public PaddedMetadataMapper( KryptnosticCryptoManager cryptoManager ) {
+        this.cryptoManager = cryptoManager;
     }
 
     @Override
@@ -58,7 +60,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
             numAcceptedTokens++;
             List<Integer> locations = metadatum.getLocations();
 
-            byte[] indexForTerm = context.generateIndexForToken( term, objectIndexPair );
+            byte[] indexForTerm = cryptoManager.generateIndexForToken( term, objectIndexPair );
 
             ByteBuffer key = ByteBuffer.wrap( indexForTerm );
 

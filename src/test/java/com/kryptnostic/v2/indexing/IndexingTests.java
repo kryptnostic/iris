@@ -21,7 +21,7 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.Resources;
-import com.kryptnostic.kodex.v1.client.KryptnosticContext;
+import com.kryptnostic.api.v1.KryptnosticCryptoManager;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.v2.indexing.metadata.Metadata;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
@@ -56,7 +56,7 @@ public class IndexingTests {
 
     @Test
     public void testMapping() throws IOException, IrisException {
-        KryptnosticContext context = Mockito.mock( KryptnosticContext.class );
+        KryptnosticCryptoManager context = Mockito.mock( KryptnosticCryptoManager.class );
         Random r = new Random();
 
         byte[][] addresses = new byte[ 16 ][];

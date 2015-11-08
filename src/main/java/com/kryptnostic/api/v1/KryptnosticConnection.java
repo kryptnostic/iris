@@ -6,14 +6,12 @@ import java.util.UUID;
 
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
-import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
-import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.search.v1.http.SearchApi;
-import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.http.MetadataStorageApi;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
+import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
 
@@ -52,13 +50,11 @@ public interface KryptnosticConnection {
 
     CryptoServiceLoader getCryptoServiceLoader();
 
-    RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException;
-
     KeyStorageApi getCryptoKeyStorageApi();
 
     MetadataStorageApi getMetadataApi();
 
-    ObjectStorageApi getDocumentApi();
+    ObjectStorageApi getObjectStorageApi();
 
     SearchApi getSearchApi();
 
@@ -76,5 +72,7 @@ public interface KryptnosticConnection {
      * @return An instance of {@link KryptnosticClient}
      */
     KryptnosticClient getClient();
+    
+    KryptnosticCryptoManager getCryptoManager();
 
 }

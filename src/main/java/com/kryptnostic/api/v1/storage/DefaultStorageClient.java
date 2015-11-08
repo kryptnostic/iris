@@ -35,7 +35,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
-import com.kryptnostic.sharing.v1.http.SharingApi;
 import com.kryptnostic.storage.v1.http.MetadataStorageApi;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
@@ -50,6 +49,7 @@ import com.kryptnostic.v2.indexing.metadata.MetadataMapper;
 import com.kryptnostic.v2.indexing.metadata.MetadataRequest;
 import com.kryptnostic.v2.marshalling.JsonJacksonMarshallingService;
 import com.kryptnostic.v2.marshalling.MarshallingService;
+import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
 import com.kryptnostic.v2.storage.models.LoadLevel;
 import com.kryptnostic.v2.storage.models.ObjectMetadata;
@@ -94,14 +94,11 @@ public class DefaultStorageClient implements StorageClient {
      * @throws ClassNotFoundException
      */
     public DefaultStorageClient(
-            KryptnosticConnection connection,
-            ObjectStorageApi objectApi,
-            MetadataStorageApi metadataApi,
-            SharingApi sharingApi ) throws ClassNotFoundException, ResourceNotFoundException {
-        this.objectApi = objectApi;
-        this.metadataApi = metadataApi;
-        this.sharingApi = sharingApi;
-        this.metadataMapper = new PaddedMetadataMapper( context );
+            KryptnosticConnection connection ) throws ClassNotFoundException, ResourceNotFoundException {
+        this.objectApi = connection.getObjectStorageApi();
+        this.metadataApi = connection.getMetadataApi();
+        this.sharingApi = connection.getSharingApi();
+        this.metadataMapper = new PaddedMetadataMapper( connection.getCryptoManager() );
         this.indexer = new SimpleIndexer();
         this.marshaller = new JsonJacksonMarshallingService( this );
         this.loader = Preconditions.checkNotNull(

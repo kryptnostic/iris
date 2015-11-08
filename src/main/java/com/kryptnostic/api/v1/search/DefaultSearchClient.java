@@ -7,8 +7,9 @@ import java.util.Set;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.kryptnostic.api.v1.KryptnosticConnection;
+import com.kryptnostic.api.v1.KryptnosticCryptoManager;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
-import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.search.v1.SearchClient;
@@ -23,13 +24,13 @@ import com.kryptnostic.search.v1.models.response.SearchResultResponse;
  *
  */
 public class DefaultSearchClient implements SearchClient {
-    private final SearchApi          searchService;
+    private final SearchApi          searchApi;
     private final Indexer            indexer;
-    private final KryptnosticContext context;
+    private final KryptnosticCryptoManager context;
 
-    public DefaultSearchClient( KryptnosticContext context, SearchApi searchService ) {
-        this.context = context;
-        this.searchService = searchService;
+    public DefaultSearchClient( KryptnosticConnection connection ) {
+        this.context = connection.getCryptoManager();
+        this.searchApi = connection.getSearchApi();
         this.indexer = new SimpleIndexer();
     }
 
@@ -60,7 +61,7 @@ public class DefaultSearchClient implements SearchClient {
 
     @Override
     public SearchResultResponse search( SearchRequest request ) {
-        return searchService.search( request );
+        return searchApi.search( request );
     }
 
     /**

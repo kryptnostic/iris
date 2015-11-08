@@ -20,19 +20,19 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.kryptnostic.api.v1.KryptnosticConnection;
+import com.kryptnostic.api.v1.KryptnosticCryptoManager;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.LocalRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.NetworkRsaKeyLoader;
-import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
+import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
-import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
@@ -41,9 +41,13 @@ import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
+import com.kryptnostic.search.v1.http.SearchApi;
+import com.kryptnostic.storage.v1.http.MetadataStorageApi;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
 import com.kryptnostic.v2.crypto.KryptnosticCryptoServiceLoader;
+import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
+import com.kryptnostic.v2.storage.api.ObjectStorageApi;
 import com.kryptnostic.v2.storage.models.keys.BootstrapKeyIds;
 import com.kryptnostic.v2.storage.uuids.ReservedObjectUUIDs;
 
@@ -55,7 +59,11 @@ public class IrisConnection implements KryptnosticConnection {
     private final String                          userCredential;
     private final String                          url;
     private final DirectoryApi                    keyService;
+    private final ObjectStorageApi                objectStorageApi;
     private final KeyStorageApi                   keyStorageApi;
+    private final SearchApi                       searchApi;
+    private final SharingApi                      sharingApi;
+    private final MetadataStorageApi              metadataStorageApi;
     private final DataStore                       dataStore;
     private final PublicKey                       rsaPublicKey;
     private final PrivateKey                      rsaPrivateKey;
@@ -63,6 +71,15 @@ public class IrisConnection implements KryptnosticConnection {
     boolean                                       doFresh = false;
     private final KryptnosticEngine               engine;
     private final byte[]                          clientHashFunction;
+
+    // TODO: Make constructor that can take mock services.
+    // public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client ,
+    // DirectoryApi directoryApi , ObjectStorageApi objectStorageApi , KeyStorageApi keyStorageApi, SearchApi searchApi,
+    // MetadataStorageApi storageApi ) {
+    // this.url = url;
+    // this.userKey = userKey;
+    // this.
+    // }
 
     public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client ) throws IrisException {
         this( url, userKey, password, dataStore, client, null );
@@ -86,6 +103,11 @@ public class IrisConnection implements KryptnosticConnection {
 
         this.keyService = adapter.create( DirectoryApi.class );
         this.keyStorageApi = adapter.create( KeyStorageApi.class );
+        this.objectStorageApi = adapter.create( ObjectStorageApi.class );
+        this.metadataStorageApi = adapter.create( MetadataStorageApi.class );
+        this.searchApi = adapter.create( SearchApi.class );
+        this.sharingApi = adapter.create( SharingApi.class );
+
         this.userCredential = credential;
         this.userKey = userKey;
         this.url = url;
@@ -102,7 +124,7 @@ public class IrisConnection implements KryptnosticConnection {
         this.rsaPublicKey = keyPair.getPublic();
         logger.debug( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-        this.loader = new KryptnosticCryptoServiceLoader( this, keyStorageApi, Cypher.AES_CTR_128 );
+        this.loader = new KryptnosticCryptoServiceLoader( this, keyStorageApi, objectStorageApi, Cypher.AES_CTR_128 );
         KryptnosticEngineHolder holder = loadEngine();
         this.engine = holder.engine;
         this.clientHashFunction = holder.clientHashFunction;
@@ -253,11 +275,6 @@ public class IrisConnection implements KryptnosticConnection {
         return keyStorageApi;
     }
 
-    @Override
-    public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
-        return new RsaCompressingCryptoService( RsaKeyLoader.CIPHER, getPrivateKey(), getPublicKey() );
-    }
-
     private static class KryptnosticEngineHolder {
         public KryptnosticEngine engine;
         public byte[]            clientHashFunction;
@@ -265,7 +282,7 @@ public class IrisConnection implements KryptnosticConnection {
 
     private KryptnosticEngineHolder loadEngine() throws IrisException {
         BootstrapKeyIds bootstrapKeyIds = keyStorageApi.getBootstrapInformation();
-        
+
         KryptnosticEngineHolder holder = new KryptnosticEngineHolder();
         /*
          * First let's make sure we can encrypt/decrypt.
@@ -378,5 +395,49 @@ public class IrisConnection implements KryptnosticConnection {
     @Override
     public byte[] getClientHashFunction() {
         return clientHashFunction;
+    }
+
+    @Override
+    public MetadataStorageApi getMetadataApi() {
+        return metadataStorageApi;
+    }
+
+    @Override
+    public ObjectStorageApi getObjectStorageApi() {
+        return objectStorageApi;
+    }
+
+    @Override
+    public SearchApi getSearchApi() {
+        return searchApi;
+    }
+
+    @Override
+    public SharingApi getSharingApi() {
+        return sharingApi;
+    }
+
+    @Override
+    public DirectoryApi getDirectoryApi() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public KeyStorageApi getKeyStorageApi() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public KryptnosticClient getClient() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public KryptnosticCryptoManager getCryptoManager() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }
