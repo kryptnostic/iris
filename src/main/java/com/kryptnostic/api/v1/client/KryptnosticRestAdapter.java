@@ -10,10 +10,10 @@ import retrofit.RestAdapter.LogLevel;
 import retrofit.client.Client;
 import retrofit.converter.Converter;
 
+import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.api.v1.utils.ByteArrayConverter;
 import com.kryptnostic.api.v1.utils.KryptnosticConverter;
 import com.kryptnostic.kodex.v1.authentication.PreauthenticationRequestInterceptor;
-import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.exceptions.DefaultErrorHandler;
 
 public final class KryptnosticRestAdapter {

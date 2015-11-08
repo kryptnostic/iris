@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.LocalRsaKeyLoader;
@@ -27,7 +28,6 @@ import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
-import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
@@ -41,9 +41,10 @@ import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
-import com.kryptnostic.storage.v2.http.KeyStorageApi;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
 import com.kryptnostic.v2.crypto.KryptnosticCryptoServiceLoader;
+import com.kryptnostic.v2.storage.api.KeyStorageApi;
+import com.kryptnostic.v2.storage.models.keys.BootstrapKeyIds;
 import com.kryptnostic.v2.storage.uuids.ReservedObjectUUIDs;
 
 public class IrisConnection implements KryptnosticConnection {
@@ -54,7 +55,7 @@ public class IrisConnection implements KryptnosticConnection {
     private final String                          userCredential;
     private final String                          url;
     private final DirectoryApi                    keyService;
-    private final KeyStorageApi                   cryptoKeyStorageApi;
+    private final KeyStorageApi                   keyStorageApi;
     private final DataStore                       dataStore;
     private final PublicKey                       rsaPublicKey;
     private final PrivateKey                      rsaPrivateKey;
@@ -84,7 +85,7 @@ public class IrisConnection implements KryptnosticConnection {
                 client );
 
         this.keyService = adapter.create( DirectoryApi.class );
-        this.cryptoKeyStorageApi = adapter.create( KeyStorageApi.class );
+        this.keyStorageApi = adapter.create( KeyStorageApi.class );
         this.userCredential = credential;
         this.userKey = userKey;
         this.url = url;
@@ -101,7 +102,7 @@ public class IrisConnection implements KryptnosticConnection {
         this.rsaPublicKey = keyPair.getPublic();
         logger.debug( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-        this.loader = new KryptnosticCryptoServiceLoader( this, cryptoKeyStorageApi, Cypher.AES_CTR_128 );
+        this.loader = new KryptnosticCryptoServiceLoader( this, keyStorageApi, Cypher.AES_CTR_128 );
         KryptnosticEngineHolder holder = loadEngine();
         this.engine = holder.engine;
         this.clientHashFunction = holder.clientHashFunction;
@@ -223,17 +224,17 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     @Override
-    public DataStore getDataStore() {
+    public DataStore getLocalDataStore() {
         return dataStore;
     }
 
     @Override
-    public PrivateKey getRsaPrivateKey() {
+    public PrivateKey getPrivateKey() {
         return rsaPrivateKey;
     }
 
     @Override
-    public PublicKey getRsaPublicKey() {
+    public PublicKey getPublicKey() {
         return rsaPublicKey;
     }
 
@@ -249,12 +250,12 @@ public class IrisConnection implements KryptnosticConnection {
 
     @Override
     public KeyStorageApi getCryptoKeyStorageApi() {
-        return cryptoKeyStorageApi;
+        return keyStorageApi;
     }
 
     @Override
     public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
-        return new RsaCompressingCryptoService( RsaKeyLoader.CIPHER, getRsaPrivateKey(), getRsaPublicKey() );
+        return new RsaCompressingCryptoService( RsaKeyLoader.CIPHER, getPrivateKey(), getPublicKey() );
     }
 
     private static class KryptnosticEngineHolder {
@@ -263,6 +264,8 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     private KryptnosticEngineHolder loadEngine() throws IrisException {
+        BootstrapKeyIds bootstrapKeyIds = keyStorageApi.getBootstrapInformation();
+        
         KryptnosticEngineHolder holder = new KryptnosticEngineHolder();
         /*
          * First let's make sure we can encrypt/decrypt.
@@ -310,11 +313,11 @@ public class IrisConnection implements KryptnosticConnection {
             }
         } catch ( SecurityConfigurationException | IOException e ) {
             try {
-                Optional<BlockCiphertext> maybeEncryptedPrivateKey = cryptoKeyStorageApi
+                Optional<BlockCiphertext> maybeEncryptedPrivateKey = keyStorageApi
                         .getFHEPrivateKeyForCurrentUser();
-                Optional<BlockCiphertext> maybeEncryptedSearchPrivateKey = cryptoKeyStorageApi
+                Optional<BlockCiphertext> maybeEncryptedSearchPrivateKey = keyStorageApi
                         .getFHESearchPrivateKeyForUser();
-                byte[] maybeClientHashFunction = cryptoKeyStorageApi.getHashFunctionForCurrentUser();
+                byte[] maybeClientHashFunction = keyStorageApi.getHashFunctionForCurrentUser();
                 // TODO: Check that the length matches the expected length for the client hash function.
                 if ( maybeEncryptedPrivateKey.isPresent() && maybeEncryptedSearchPrivateKey.isPresent()
                         && ( maybeClientHashFunction.length > 0 ) ) {
@@ -342,9 +345,9 @@ public class IrisConnection implements KryptnosticConnection {
                 try {
                     encryptedPrivateKey = privateKeyCryptoService.encrypt( privateKey );
                     encryptedSearchPrivateKey = privateKeyCryptoService.encrypt( searchPrivateKey );
-                    cryptoKeyStorageApi.setHashFunctionForCurrentUser( holder.clientHashFunction );
-                    cryptoKeyStorageApi.setFHEPrivateKeyForCurrentUser( encryptedPrivateKey );
-                    cryptoKeyStorageApi.setFHESearchPrivateKeyForCurrentUser( encryptedSearchPrivateKey );
+                    keyStorageApi.setHashFunctionForCurrentUser( holder.clientHashFunction );
+                    keyStorageApi.setFHEPrivateKeyForCurrentUser( encryptedPrivateKey );
+                    keyStorageApi.setFHESearchPrivateKeyForCurrentUser( encryptedSearchPrivateKey );
                 } catch ( SecurityConfigurationException | BadRequestException e2 ) {
                     throw new IrisException( e2 );
                 }

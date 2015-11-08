@@ -23,8 +23,8 @@ import com.google.common.collect.Sets;
 import com.google.common.io.Resources;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
-import com.kryptnostic.storage.v2.models.VersionedObjectKey;
 import com.kryptnostic.v2.indexing.metadata.Metadata;
+import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 public class IndexingTests {
     private static final Logger logger = LoggerFactory.getLogger( IndexingTests.class );

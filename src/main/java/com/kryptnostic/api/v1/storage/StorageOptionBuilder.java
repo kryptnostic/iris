@@ -6,6 +6,7 @@ import javax.annotation.Nullable;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
+import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 import com.kryptnostic.v2.storage.types.TypeUUIDs;
 
 /**
@@ -13,13 +14,13 @@ import com.kryptnostic.v2.storage.types.TypeUUIDs;
  *
  */
 public class StorageOptionBuilder {
-    private Optional<UUID> objectId;
-    private Optional<UUID> parentObjectId;
-    private boolean        searchable;
-    private boolean        storeable;
-    private boolean        inheritingOwnership;
-    private boolean        inheritingCryptoService;
-    private UUID           type;
+    private Optional<VersionedObjectKey> objectId;
+    private Optional<VersionedObjectKey> parentObjectId;
+    private boolean                      searchable;
+    private boolean                      storeable;
+    private boolean                      inheritingOwnership;
+    private boolean                      inheritingCryptoService;
+    private UUID                         type;
 
     public StorageOptionBuilder() {
         objectId = Optional.absent();
@@ -31,13 +32,13 @@ public class StorageOptionBuilder {
         type = TypeUUIDs.DEFAULT_TYPE;
     }
 
-    public StorageOptionBuilder withId( UUID objectId ) {
-        this.objectId = Optional.fromNullable( objectId );
+    public StorageOptionBuilder withId( @Nullable VersionedObjectKey objectKey ) {
+        this.objectId = Optional.fromNullable( objectKey );
         return this;
     }
 
-    public StorageOptionBuilder withParentId( @Nullable UUID parentObjectId ) {
-        this.parentObjectId = Optional.fromNullable( parentObjectId );
+    public StorageOptionBuilder withParentId( @Nullable VersionedObjectKey parentObjectKey ) {
+        this.parentObjectId = Optional.fromNullable( parentObjectKey );
         return this;
     }
 
@@ -78,7 +79,7 @@ public class StorageOptionBuilder {
 
     public StorageOptions build() {
         Preconditions.checkState( searchable || storeable, "Must storeable or searchable." );
-        
+
         if ( inheritingCryptoService || inheritingOwnership ) {
             Preconditions.checkState( parentObjectId.isPresent(), "Parent object id required for inheritance." );
         }

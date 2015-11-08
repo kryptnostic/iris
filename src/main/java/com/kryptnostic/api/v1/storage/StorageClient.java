@@ -14,10 +14,10 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.storage.v1.models.request.MetadataRequest;
-import com.kryptnostic.storage.v2.models.LoadLevel;
-import com.kryptnostic.storage.v2.models.ObjectMetadata;
-import com.kryptnostic.storage.v2.models.ObjectMetadataNode;
-import com.kryptnostic.storage.v2.models.VersionedObjectKey;
+import com.kryptnostic.v2.storage.models.LoadLevel;
+import com.kryptnostic.v2.storage.models.ObjectMetadata;
+import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
+import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;

@@ -9,8 +9,8 @@ import java.util.Set;
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.indexing.analysis.TokenizingWhitespaceAnalyzer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
-import com.kryptnostic.storage.v2.models.VersionedObjectKey;
 import com.kryptnostic.v2.indexing.metadata.Metadata;
+import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 public class SimpleIndexer implements Indexer {
     private final Set<Analyzer> analyzers;

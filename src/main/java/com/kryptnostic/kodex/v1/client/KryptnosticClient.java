@@ -1,5 +1,6 @@
 package com.kryptnostic.kodex.v1.client;
 
+import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.api.v1.storage.StorageClient;
 import com.kryptnostic.directory.v1.DirectoryClient;
 import com.kryptnostic.search.v1.SearchClient;

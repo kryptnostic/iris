@@ -15,10 +15,10 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.hash.Hashing;
+import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
-import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
-import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
@@ -27,7 +27,8 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.storage.v2.models.VersionedObjectKey;
+import com.kryptnostic.v2.storage.api.KeyStorageApi;
+import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 /**
  *
@@ -37,38 +38,28 @@ import com.kryptnostic.storage.v2.models.VersionedObjectKey;
  *
  */
 public class DefaultKryptnosticContext implements KryptnosticContext {
-    private final SharingApi            sharingClient;
-    private final DirectoryApi          directoryClient;
+    private final SharingApi            sharingApi;
+    private final KeyStorageApi         keyStorageApi;
     private final KryptnosticConnection connection;
 
-    public static final String          CHECKSUM_KEY = "global.hash.checksum";
-    public static final String          FUNCTION_KEY = "global.hash.function";
-
-    private static final Logger         logger       = LoggerFactory
-                                                             .getLogger( DefaultKryptnosticContext.class );
+    private static final Logger         logger = LoggerFactory
+                                                       .getLogger( DefaultKryptnosticContext.class );
 
     public DefaultKryptnosticContext(
-            SharingApi sharingClient,
-            DirectoryApi directoryClient,
             KryptnosticConnection connection ) throws IrisException {
-        this.sharingClient = sharingClient;
-        this.directoryClient = directoryClient;
+        this.sharingApi = connection.getSharingApi();
+        this.keyStorageApi = connection.getKeyStorageApi();
         this.connection = connection;
     }
 
     @Override
-    public KryptnosticConnection getConnection() {
-        return this.connection;
-    }
-
-    @Override
     public void addIndexPair( VersionedObjectKey objectId, ObjectSearchPair indexPair ) {
-        sharingClient.addSearchPairs( ImmutableMap.of( objectId, indexPair ) );
+        sharingApi.addSearchPairs( ImmutableMap.of( objectId, indexPair ) );
     }
 
     @Override
     public void addIndexPairs( Map<VersionedObjectKey, ObjectSearchPair> indexPairs ) {
-        sharingClient.addSearchPairs( indexPairs );
+        sharingApi.addSearchPairs( indexPairs );
     }
 
     @Override
@@ -102,12 +93,12 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
 
     @Override
     public byte[] rsaDecrypt( byte[] ciphertext ) throws SecurityConfigurationException {
-        return Cyphers.decrypt( RsaKeyLoader.CIPHER, connection.getRsaPrivateKey(), ciphertext );
+        return Cyphers.decrypt( RsaKeyLoader.CIPHER, connection.getPrivateKey(), ciphertext );
     }
 
     @Override
     public byte[] rsaEncrypt( byte[] plaintext ) throws SecurityConfigurationException {
-        return Cyphers.encrypt( RsaKeyLoader.CIPHER, connection.getRsaPublicKey(), plaintext );
+        return Cyphers.encrypt( RsaKeyLoader.CIPHER, connection.getPublicKey(), plaintext );
     }
 
     @Override
@@ -117,8 +108,8 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
             @Override
             public RsaCompressingEncryptionService apply( UUID input ) {
                 try {
-                    return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, directoryClient.getPublicKey(
-                            input ).asRsaPublicKey() );
+                    return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, new PublicKeyEnvelope( keyStorageApi.getPublicKey(
+                            input ) ).asRsaPublicKey() );
                 } catch (
                         InvalidKeySpecException
                         | NoSuchAlgorithmException

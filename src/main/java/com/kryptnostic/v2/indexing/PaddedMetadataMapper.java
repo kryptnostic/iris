@@ -20,7 +20,6 @@ import com.kryptnostic.v2.indexing.metadata.MetadataMapper;
 public class PaddedMetadataMapper implements MetadataMapper {
     private static final Random      r                    = new SecureRandom();
     private static final Logger      loggger              = LoggerFactory.getLogger( PaddedMetadataMapper.class );
-    private final KryptnosticContext context;
     private static final int         MINIMUM_TOKEN_LENGTH = 1;
 
     public PaddedMetadataMapper( KryptnosticContext context ) {

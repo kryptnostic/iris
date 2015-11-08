@@ -3,25 +3,28 @@ package com.kryptnostic.api.v1.storage;
 import java.util.UUID;
 
 import com.google.common.base.Optional;
-import com.kryptnostic.storage.v2.models.CreateObjectRequest;
+import com.kryptnostic.v2.storage.models.CreateObjectRequest;
+import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 public class StorageOptions {
-    private static final boolean    LOCK_DEFAULT = true;
-    private final Optional<UUID>    objectId;
-    private final Optional<UUID>    parentObjectId;
-    private final boolean           isSearchable;
-    private final boolean           isStoreable;
-    private final Optional<Boolean> inheritOwnership;
-    private final Optional<Boolean> inheritCryptoService;
-    private final UUID              type;
+    public static final boolean                LOCK_DEFAULT                   = true;
+    public static final boolean                INHERIT_OWNERSHIP_DEFAULT      = true;
+    public static final boolean                INHERIT_CRYPTO_SERVICE_DEFAULT = true;
+    private final Optional<VersionedObjectKey> objectId;
+    private final Optional<VersionedObjectKey> parentObjectId;
+    private final boolean                      isSearchable;
+    private final boolean                      isStoreable;
+    private final boolean                      inheritOwnership;
+    private final boolean                      inheritCryptoService;
+    private final UUID                         type;
 
     public StorageOptions(
-            Optional<UUID> objectId,
-            Optional<UUID> parentObjectId,
+            Optional<VersionedObjectKey> objectId,
+            Optional<VersionedObjectKey> parentObjectId,
             boolean isSearchable,
             boolean isStoreable,
-            Optional<Boolean> inheritOwnership,
-            Optional<Boolean> inheritCryptoService,
+            boolean inheritOwnership,
+            boolean inheritCryptoService,
             UUID type ) {
         super();
         this.objectId = objectId;
@@ -41,11 +44,11 @@ public class StorageOptions {
         return type;
     }
 
-    public Optional<UUID> getParentObjectId() {
+    public Optional<VersionedObjectKey> getParentObjectId() {
         return parentObjectId;
     }
 
-    public Optional<UUID> getObjectId() {
+    public Optional<VersionedObjectKey> getObjectId() {
         return objectId;
     }
 
@@ -66,8 +69,8 @@ public class StorageOptions {
                 type,
                 parentObjectId,
                 objectId,
-                inheritOwnership,
-                inheritCryptoService,
+                Optional.<Boolean> of( inheritOwnership ),
+                Optional.<Boolean> of( inheritCryptoService ),
                 Optional.<Boolean> of( locked ) );
     }
 }

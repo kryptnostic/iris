@@ -24,8 +24,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
-import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
@@ -40,13 +40,6 @@ import com.kryptnostic.storage.v1.http.MetadataStorageApi;
 import com.kryptnostic.storage.v1.models.EncryptableBlock;
 import com.kryptnostic.storage.v1.models.KryptnosticObject;
 import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
-import com.kryptnostic.storage.v2.http.ObjectStorageApi;
-import com.kryptnostic.storage.v2.models.LoadLevel;
-import com.kryptnostic.storage.v2.models.ObjectMetadata;
-import com.kryptnostic.storage.v2.models.ObjectMetadataEncryptedNode;
-import com.kryptnostic.storage.v2.models.ObjectMetadataNode;
-import com.kryptnostic.storage.v2.models.ObjectTreeLoadRequest;
-import com.kryptnostic.storage.v2.models.VersionedObjectKey;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
 import com.kryptnostic.v2.indexing.IndexMetadata;
 import com.kryptnostic.v2.indexing.Indexer;
@@ -57,6 +50,13 @@ import com.kryptnostic.v2.indexing.metadata.MetadataMapper;
 import com.kryptnostic.v2.indexing.metadata.MetadataRequest;
 import com.kryptnostic.v2.marshalling.JsonJacksonMarshallingService;
 import com.kryptnostic.v2.marshalling.MarshallingService;
+import com.kryptnostic.v2.storage.api.ObjectStorageApi;
+import com.kryptnostic.v2.storage.models.LoadLevel;
+import com.kryptnostic.v2.storage.models.ObjectMetadata;
+import com.kryptnostic.v2.storage.models.ObjectMetadataEncryptedNode;
+import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
+import com.kryptnostic.v2.storage.models.ObjectTreeLoadRequest;
+import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 import com.kryptnostic.v2.types.TypedBytes;
 
 /**
@@ -81,7 +81,6 @@ public class DefaultStorageClient implements StorageClient {
     /**
      * Client-side
      */
-    private final KryptnosticContext  context;
     private final MetadataMapper      metadataMapper;
     private final Indexer             indexer;
     private final CryptoServiceLoader loader;
@@ -95,11 +94,10 @@ public class DefaultStorageClient implements StorageClient {
      * @throws ClassNotFoundException
      */
     public DefaultStorageClient(
-            KryptnosticContext context,
+            KryptnosticConnection connection,
             ObjectStorageApi objectApi,
             MetadataStorageApi metadataApi,
             SharingApi sharingApi ) throws ClassNotFoundException, ResourceNotFoundException {
-        this.context = context;
         this.objectApi = objectApi;
         this.metadataApi = metadataApi;
         this.sharingApi = sharingApi;
@@ -107,7 +105,7 @@ public class DefaultStorageClient implements StorageClient {
         this.indexer = new SimpleIndexer();
         this.marshaller = new JsonJacksonMarshallingService( this );
         this.loader = Preconditions.checkNotNull(
-                context.getConnection().getCryptoServiceLoader(),
+                connection.getCryptoServiceLoader(),
                 "CryptoServiceLoader from KryptnosticConnection cannot be null." );
     }
 
