@@ -1,14 +1,14 @@
 package com.kryptnostic.v2.marshalling;
 
-import com.kryptnostic.api.v1.storage.StorageClient;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
+import com.kryptnostic.v2.types.TypeStorage;
 
 public class JsonJacksonMarshallingService extends AbstractJacksonMarshallingService {
 
-    public JsonJacksonMarshallingService( StorageClient storageClient ) throws ClassNotFoundException,
+    public JsonJacksonMarshallingService( TypeStorage typeStorage ) throws ClassNotFoundException,
             ResourceNotFoundException {
-        super( KodexObjectMapperFactory.getObjectMapper(), storageClient );
+        super( KodexObjectMapperFactory.getObjectMapper(), typeStorage );
     }
 
 }

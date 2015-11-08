@@ -5,21 +5,17 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
-import com.kryptnostic.api.v1.storage.StorageClient;
-import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.v2.storage.types.TypeUUIDs;
-import com.kryptnostic.v2.types.KryptnosticTypesLoader;
-import com.kryptnostic.v2.types.TypeResolver;
+import com.kryptnostic.v2.types.TypeStorage;
 import com.kryptnostic.v2.types.TypedBytes;
 
 public abstract class AbstractJacksonMarshallingService implements MarshallingService {
     private final ObjectMapper mapper;
-    private final TypeResolver resolver;
-
-    protected AbstractJacksonMarshallingService( ObjectMapper mapper, StorageClient storageClient ) throws ClassNotFoundException,
-            ResourceNotFoundException {
+    private final TypeStorage resolver;
+    
+    protected AbstractJacksonMarshallingService( ObjectMapper mapper, TypeStorage resolver ) throws ClassNotFoundException {
         this.mapper = mapper;
-        this.resolver = new KryptnosticTypesLoader( storageClient );
+        this.resolver = resolver;
     }
 
     @Override

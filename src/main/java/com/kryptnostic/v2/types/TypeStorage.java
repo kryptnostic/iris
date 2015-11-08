@@ -15,7 +15,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
-public interface TypeResolver {
+public interface TypeStorage {
     Optional<Class<?>> get( UUID typeId );
 
     Optional<UUID> getTypeId( Object object );

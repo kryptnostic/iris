@@ -13,7 +13,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.storage.v1.models.request.MetadataRequest;
 import com.kryptnostic.v2.storage.models.LoadLevel;
 import com.kryptnostic.v2.storage.models.ObjectMetadata;
 import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
@@ -46,9 +45,7 @@ public interface StorageClient {
 
     Map<UUID, String> getStrings( Set<UUID> objectIds );
     
-    void uploadMetadata( List<MetadataRequest> metadata ) throws BadRequestException;
-
-    void deleteMetadata( UUID id );
+    void deleteMetadataForObjectId( UUID id );
 
     void deleteObject( UUID id );
 

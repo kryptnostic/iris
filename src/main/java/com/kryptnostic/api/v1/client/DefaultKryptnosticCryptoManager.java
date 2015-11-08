@@ -25,7 +25,7 @@ import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.sharing.v1.http.SharingApi;
+import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
@@ -36,15 +36,15 @@ import com.kryptnostic.v2.storage.models.VersionedObjectKey;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
-public class DefaultKryptnosticContext implements KryptnosticCryptoManager {
+public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager {
     private final SharingApi            sharingApi;
     private final KeyStorageApi         keyStorageApi;
     private final KryptnosticConnection connection;
 
     private static final Logger         logger = LoggerFactory
-                                                       .getLogger( DefaultKryptnosticContext.class );
+                                                       .getLogger( DefaultKryptnosticCryptoManager.class );
 
-    public DefaultKryptnosticContext(
+    public DefaultKryptnosticCryptoManager(
             KryptnosticConnection connection ) throws IrisException {
         this.sharingApi = connection.getSharingApi();
         this.keyStorageApi = connection.getKeyStorageApi();

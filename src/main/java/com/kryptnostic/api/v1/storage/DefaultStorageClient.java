@@ -11,9 +11,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +20,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
@@ -32,13 +29,8 @@ import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
-import com.kryptnostic.storage.v1.http.MetadataStorageApi;
-import com.kryptnostic.storage.v1.models.EncryptableBlock;
-import com.kryptnostic.storage.v1.models.KryptnosticObject;
-import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
 import com.kryptnostic.v2.indexing.IndexMetadata;
 import com.kryptnostic.v2.indexing.Indexer;
@@ -49,7 +41,6 @@ import com.kryptnostic.v2.indexing.metadata.MetadataMapper;
 import com.kryptnostic.v2.indexing.metadata.MetadataRequest;
 import com.kryptnostic.v2.marshalling.JsonJacksonMarshallingService;
 import com.kryptnostic.v2.marshalling.MarshallingService;
-import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
 import com.kryptnostic.v2.storage.models.LoadLevel;
 import com.kryptnostic.v2.storage.models.ObjectMetadata;
@@ -57,6 +48,7 @@ import com.kryptnostic.v2.storage.models.ObjectMetadataEncryptedNode;
 import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
 import com.kryptnostic.v2.storage.models.ObjectTreeLoadRequest;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
+import com.kryptnostic.v2.types.KryptnosticTypesResolver;
 import com.kryptnostic.v2.types.TypedBytes;
 
 /**
@@ -64,43 +56,34 @@ import com.kryptnostic.v2.types.TypedBytes;
  *
  */
 public class DefaultStorageClient implements StorageClient {
-    public static final byte[]        ZERO_LENGTH_BYTE_ARRAY   = new byte[ 0 ];
-    private static final Logger       logger                   = LoggerFactory.getLogger( StorageClient.class );
-    private static final int          PARALLEL_NETWORK_THREADS = 16;
-    private static final int          METADATA_BATCH_SIZE      = 500;
-    ExecutorService                   exec                     = Executors
-                                                                       .newFixedThreadPool( PARALLEL_NETWORK_THREADS );
+    public static final byte[]          ZERO_LENGTH_BYTE_ARRAY   = new byte[ 0 ];
+    private static final Logger         logger                   = LoggerFactory.getLogger( StorageClient.class );
+    private static final int            PARALLEL_NETWORK_THREADS = 16;
+    private static final int            METADATA_BATCH_SIZE      = 500;
+    ExecutorService                     exec                     = Executors
+                                                                         .newFixedThreadPool( PARALLEL_NETWORK_THREADS );
 
     /**
      * Server-side
      */
-    private final ObjectStorageApi    objectApi;
-    private final MetadataStorageApi  metadataApi;
-    private final SharingApi          sharingApi;
+    private final KryptnosticConnection connection;
+    private final ObjectStorageApi      objectApi;
 
     /**
      * Client-side
      */
-    private final MetadataMapper      metadataMapper;
-    private final Indexer             indexer;
-    private final CryptoServiceLoader loader;
-    private final MarshallingService  marshaller;
+    private final MetadataMapper        metadataMapper;
+    private final Indexer               indexer;
+    private final CryptoServiceLoader   loader;
+    private final MarshallingService    marshaller;
 
-    /**
-     * @param context
-     * @param objectApi
-     * @param metadataApi
-     * @throws ResourceNotFoundException
-     * @throws ClassNotFoundException
-     */
     public DefaultStorageClient(
             KryptnosticConnection connection ) throws ClassNotFoundException, ResourceNotFoundException {
+        this.connection = connection;
         this.objectApi = connection.getObjectStorageApi();
-        this.metadataApi = connection.getMetadataApi();
-        this.sharingApi = connection.getSharingApi();
         this.metadataMapper = new PaddedMetadataMapper( connection.getCryptoManager() );
         this.indexer = new SimpleIndexer();
-        this.marshaller = new JsonJacksonMarshallingService( this );
+        this.marshaller = new JsonJacksonMarshallingService( new KryptnosticTypesResolver( this ) );
         this.loader = Preconditions.checkNotNull(
                 connection.getCryptoServiceLoader(),
                 "CryptoServiceLoader from KryptnosticConnection cannot be null." );
@@ -151,16 +134,12 @@ public class DefaultStorageClient implements StorageClient {
         logger.debug( "[PROFILE] {} metadata indexed", metadata.size() );
 
         watch.reset().start();
-        List<MetadataRequest> metadataRequests = prepareMetadata( metadata, objectIndexPair );
-        logger.debug( "[PROFILE] preparing took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-        watch.reset().start();
-        uploadMetadata( metadataRequests );
-        logger.debug( "[PROFILE] uploading metadata took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-
+        prepareMetadata( metadata, objectIndexPair );
+        logger.debug( "[PROFILE] indexing and uploading took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
     }
 
     private byte[] provisionSearchPairAndReturnCorrespondingIndexPair( VersionedObjectKey key ) throws IrisException {
-        KryptnosticEngine engine = context.getConnection().getKryptnosticEngine();
+        KryptnosticEngine engine = connection.getKryptnosticEngine();
 
         Stopwatch watch = Stopwatch.createStarted();
         byte[] objectIndexPair = engine.getObjectIndexPair();
@@ -174,7 +153,7 @@ public class DefaultStorageClient implements StorageClient {
                 "Index pair must be 2064 bytes." );
 
         watch.reset().start();
-        context.addIndexPair( key, new ObjectSearchPair( objectSearchPair ) );
+        connection.getCryptoManager().registerObjectSearchPair( key, new ObjectSearchPair( objectSearchPair ) );
         logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         return objectIndexPair;
@@ -215,45 +194,6 @@ public class DefaultStorageClient implements StorageClient {
         return new BlockCiphertext( iv, salt, contents, Optional.<byte[]> absent(), Optional.of( tag ) );
     }
 
-    @Override
-    public void uploadMetadata( List<MetadataRequest> requests ) throws BadRequestException {
-        logger.debug( "Starting metadata upload of {} batches of max size {}", requests.size(), METADATA_BATCH_SIZE );
-        List<Future<?>> tasks = Lists.newArrayList();
-        final AtomicInteger remaining = new AtomicInteger( requests.size() );
-        for ( final MetadataRequest request : requests ) {
-            tasks.add( exec.submit( new Runnable() {
-
-                @Override
-                public void run() {
-                    Stopwatch watch = Stopwatch.createStarted();
-                    try {
-                        metadataApi.uploadMetadata( request ).getData();
-                    } catch ( BadRequestException e ) {
-                        logger.error( "Metadata upload failed", e );
-                    }
-                    logger.debug(
-                            "[PROFILE] uploading metadata batch of size {} took {} ms. {} Remaining batches",
-                            request.getMetadata().size(),
-                            watch.elapsed( TimeUnit.MILLISECONDS ),
-                            remaining.decrementAndGet() );
-                }
-
-            } ) );
-        }
-
-        for ( Future<?> task : tasks ) {
-            try {
-                task.get();
-            } catch ( InterruptedException e ) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            } catch ( ExecutionException e ) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-    }
-
     /**
      * Maps all metadata to an index that the server can compute when searching
      *
@@ -261,7 +201,7 @@ public class DefaultStorageClient implements StorageClient {
      * @return
      * @throws IrisException
      */
-    private List<MetadataRequest> prepareMetadata(
+    private void prepareMetadata(
             Set<Metadata> metadata,
             byte[] objectIndexPair )
             throws IrisException {
@@ -310,41 +250,16 @@ public class DefaultStorageClient implements StorageClient {
             }
 
         }
-        if ( !metadataIndex.isEmpty() ) {
-            requests.add( new MetadataRequest( metadataIndex ) );
-        }
-
-        return requests;
-    }
-
-    /**
-     * Submit blocks in parallel
-     *
-     * @param objectId
-     * @param blocks
-     * @throws IrisException
-     */
-    private void submitBlocksToServer( final KryptnosticObject obj ) throws IrisException {
-        Preconditions.checkNotNull( obj.getBody().getEncryptedData() );
-        final String objectId = obj.getMetadata().getId();
-        for ( EncryptableBlock input : obj.getBody().getEncryptedData() ) {
-            try {
-                objectApi.updateObject( objectId, input );
-            } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
-                logger.error( "Failed to uploaded block. Should probably add a retry here!" );
-            }
-            logger.info( "Object block upload completed for object {} and block {}", objectId, input.getIndex() );
-        }
     }
 
     @Override
-    public void deleteMetadata( UUID id ) {
-        metadataApi.deleteAll( new MetadataDeleteRequest( ImmutableSet.of( id ) ) );
+    public void deleteMetadataForObjectId( UUID objectId ) {
+        
     }
 
     @Override
-    public void deleteObject( UUID id ) {
-        objectApi.delete( id, version )( id );
+    public void deleteObject( UUID objectId ) {
+        objectApi.delete( objectId );
     }
 
     @Override

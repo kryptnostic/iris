@@ -29,14 +29,14 @@ import com.kryptnostic.v2.storage.types.TypeUUIDs;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
-public class KryptnosticTypesLoader implements TypeResolver {
+public class KryptnosticTypesResolver implements TypeStorage {
     private static final Logger         logger = LoggerFactory
-                                                       .getLogger( KryptnosticTypesLoader.class );
+                                                       .getLogger( KryptnosticTypesResolver.class );
 
     private final BiMap<UUID, Class<?>> registeredTypes;
     private final StorageClient         storageClient;
 
-    public KryptnosticTypesLoader(
+    public KryptnosticTypesResolver(
             final StorageClient storageClient ) throws ClassNotFoundException, ResourceNotFoundException {
         this.storageClient = storageClient;
 

@@ -23,9 +23,9 @@ public interface KryptnosticCryptoManager {
 
     byte[] rsaEncrypt( byte[] plaintext ) throws SecurityConfigurationException;
 
-    void registerObjectSearchPair( VersionedObjectKey objectKey, ObjectSearchPair indexPair );
+    void registerObjectSearchPair( VersionedObjectKey objectKey, ObjectSearchPair objectSearchPair );
 
-    void registerObjectSearchPairs( Map<VersionedObjectKey, ObjectSearchPair> indexPairs );
+    void registerObjectSearchPairs( Map<VersionedObjectKey, ObjectSearchPair> objectSearchPairs );
 
     byte[] prepareSearchToken( String token );
 
