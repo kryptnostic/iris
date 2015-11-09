@@ -14,7 +14,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
-import com.kryptnostic.indexing.v1.ServerIndexPair;
+import com.kryptnostic.indexing.v1.ObjectSearchPair;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
@@ -43,17 +43,21 @@ public class SharingManager implements SharingClient {
     }
 
     @Override
-    public Optional<byte[]> getIndexPair( String objectId ) {
-        return sharingApi.getIndexPair( objectId );
+    public Optional<byte[]> getSearchPair( String objectId ) {
+        byte[] objectSearchPair = sharingApi.getSearchPair( objectId );
+        if ( ( objectSearchPair == null ) || ( objectSearchPair.length != 2080 ) ) {
+            return Optional.absent();
+        }
+        return Optional.of( objectSearchPair );
     }
 
     public Optional<byte[]> getSharingPair( String objectId ) throws ResourceNotFoundException {
-        Optional<byte[]> maybeIndexPair = getIndexPair( objectId );
-        if ( maybeIndexPair.isPresent() ) {
+        Optional<byte[]> maybeSearchPair = getSearchPair( objectId );
+        if ( maybeSearchPair.isPresent() ) {
             return Optional.of( context
                     .getConnection()
                     .getKryptnosticEngine()
-                    .getObjectSharingPair( maybeIndexPair.get() ) );
+                    .getObjectSharePairFromObjectSearchPair( maybeSearchPair.get() ) );
         } else {
             return Optional.absent();
         }
@@ -107,7 +111,7 @@ public class SharingManager implements SharingClient {
         if ( incomingShares == null || incomingShares.isEmpty() ) {
             return ImmutableSet.of();
         }
-        Map<String, ServerIndexPair> indexPairs = Maps.newHashMap();
+        Map<String, ObjectSearchPair> indexPairs = Maps.newHashMap();
 
         for ( Share share : incomingShares.values() ) {
             String id = share.getObjectId();
@@ -125,16 +129,18 @@ public class SharingManager implements SharingClient {
             } catch ( ExecutionException e ) {
                 throw new IOException( e );
             }
-            
+
             Optional<BlockCiphertext> encryptedSharingPair = share.getEncryptedSharingPair();
-            if( encryptedSharingPair.isPresent() ) {
-                byte[] sharingPair = decryptor.decryptBytes( encryptedSharingPair.get() );
-                Preconditions.checkState( sharingPair.length == 2064 , "Sharing pair must be 2064 bytes long.");
-                indexPairs.put( id, new ServerIndexPair( this.engine.getObjectIndexPairFromSharing( sharingPair ) ) );
+            if ( encryptedSharingPair.isPresent() ) {
+                byte[] sharePair = decryptor.decryptBytes( encryptedSharingPair.get() );
+                Preconditions.checkState( sharePair.length == KryptnosticEngine.SHARE_PAIR_LENGTH,
+                        "Sharing pair must be 2064 bytes long." );
+                indexPairs.put( id,
+                        new ObjectSearchPair( this.engine.getObjectSearchPairFromObjectSharePair( sharePair ) ) );
             }
         }
 
-        sharingApi.addIndexPairs( indexPairs );
+        sharingApi.addSearchPairs( indexPairs );
         return indexPairs.keySet();
     }
 

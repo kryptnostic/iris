@@ -17,7 +17,7 @@ import com.google.common.collect.Maps;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.indexing.v1.ServerIndexPair;
+import com.kryptnostic.indexing.v1.ObjectSearchPair;
 import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.client.KryptnosticContext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
@@ -61,20 +61,19 @@ public class DefaultKryptnosticContext implements KryptnosticContext {
     }
 
     @Override
-    public void addIndexPair( String objectId, ServerIndexPair indexPair ) {
-        sharingClient.addIndexPairs( ImmutableMap.of( objectId, indexPair ) );
+    public void addIndexPair( String objectId, ObjectSearchPair indexPair ) {
+        sharingClient.addSearchPairs( ImmutableMap.of( objectId, indexPair ) );
     }
 
     @Override
-    public void addIndexPairs( Map<String, ServerIndexPair> indexPairs ) {
-        sharingClient.addIndexPairs( indexPairs );
+    public void addIndexPairs( Map<String, ObjectSearchPair> indexPairs ) {
+        sharingClient.addSearchPairs( indexPairs );
     }
 
     @Override
-    public byte[] generateIndexForToken( String token, byte[] objectSearchKey, byte[] objectAddressMatrix ) {
+    public byte[] generateIndexForToken( String token, byte[] objectIndexPair ) {
         byte[] searchHash = getHashedToken( token );
-        byte[] indexForTerm = connection.getKryptnosticEngine().clientGetMetadatumAddress( objectAddressMatrix,
-                objectSearchKey,
+        byte[] indexForTerm = connection.getKryptnosticEngine().clientGetMetadatumAddress( objectIndexPair,
                 searchHash );
         return indexForTerm;
     }

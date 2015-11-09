@@ -64,7 +64,7 @@ public class DefaultSearchClient implements SearchClient {
     }
 
     /**
-     * @return List<BitVector> of search tokens, the ciphertext to be submitted to KryptnosticSearch.
+     * @return SearchRequest based on search tokens, the ciphertext to be submitted to KryptnosticSearch.
      */
     @Override
     public SearchRequest generateSearchRequest( List<String> tokens ) {
