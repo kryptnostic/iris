@@ -13,7 +13,7 @@ import com.kryptnostic.v2.storage.types.TypeUUIDs;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
-public class StorageOptionBuilder {
+public class StorageOptionsBuilder {
     private Optional<VersionedObjectKey> objectId;
     private Optional<VersionedObjectKey> parentObjectId;
     private boolean                      searchable;
@@ -22,7 +22,7 @@ public class StorageOptionBuilder {
     private boolean                      inheritingCryptoService;
     private UUID                         type;
 
-    public StorageOptionBuilder() {
+    public StorageOptionsBuilder() {
         objectId = Optional.absent();
         parentObjectId = Optional.absent();
         searchable = true;
@@ -32,47 +32,47 @@ public class StorageOptionBuilder {
         type = TypeUUIDs.DEFAULT_TYPE;
     }
 
-    public StorageOptionBuilder withId( @Nullable VersionedObjectKey objectKey ) {
+    public StorageOptionsBuilder withId( @Nullable VersionedObjectKey objectKey ) {
         this.objectId = Optional.fromNullable( objectKey );
         return this;
     }
 
-    public StorageOptionBuilder withParentId( @Nullable VersionedObjectKey parentObjectKey ) {
+    public StorageOptionsBuilder withParentId( @Nullable VersionedObjectKey parentObjectKey ) {
         this.parentObjectId = Optional.fromNullable( parentObjectKey );
         return this;
     }
 
-    public StorageOptionBuilder withType( UUID type ) {
+    public StorageOptionsBuilder withType( UUID type ) {
         this.type = type;
         return this;
     }
 
-    public StorageOptionBuilder searchable() {
+    public StorageOptionsBuilder searchable() {
         this.searchable = true;
         return this;
     }
 
-    public StorageOptionBuilder inheritOwner() {
+    public StorageOptionsBuilder inheritOwner() {
         this.inheritingOwnership = true;
         return this;
     }
 
-    public StorageOptionBuilder inheritCryptoService() {
+    public StorageOptionsBuilder inheritCryptoService() {
         this.inheritingCryptoService = true;
         return this;
     }
 
-    public StorageOptionBuilder storeable() {
+    public StorageOptionsBuilder storeable() {
         this.storeable = true;
         return this;
     }
 
-    public StorageOptionBuilder notSearchable() {
+    public StorageOptionsBuilder notSearchable() {
         this.searchable = false;
         return this;
     }
 
-    public StorageOptionBuilder notStoreable() {
+    public StorageOptionsBuilder notStoreable() {
         this.storeable = false;
         return this;
     }

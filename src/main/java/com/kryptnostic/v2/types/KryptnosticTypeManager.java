@@ -15,7 +15,7 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.storage.StorageClient;
-import com.kryptnostic.api.v1.storage.StorageOptionBuilder;
+import com.kryptnostic.api.v1.storage.StorageOptionsBuilder;
 import com.kryptnostic.api.v1.storage.StorageOptions;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -29,14 +29,14 @@ import com.kryptnostic.v2.storage.types.TypeUUIDs;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
-public class KryptnosticTypesResolver implements TypeStorage {
+public class KryptnosticTypeManager implements TypeManager {
     private static final Logger         logger = LoggerFactory
-                                                       .getLogger( KryptnosticTypesResolver.class );
+                                                       .getLogger( KryptnosticTypeManager.class );
 
     private final BiMap<UUID, Class<?>> registeredTypes;
     private final StorageClient         storageClient;
 
-    public KryptnosticTypesResolver(
+    public KryptnosticTypeManager(
             final StorageClient storageClient ) throws ClassNotFoundException, ResourceNotFoundException {
         this.storageClient = storageClient;
 
@@ -75,7 +75,7 @@ public class KryptnosticTypesResolver implements TypeStorage {
     @Override
     public void registerType( Class<?> clazz ) throws IrisException {
         String className = clazz.getCanonicalName();
-        StorageOptions options = new StorageOptionBuilder().withType( TypeUUIDs.TYPE ).build();
+        StorageOptions options = new StorageOptionsBuilder().withType( TypeUUIDs.TYPE ).build();
         VersionedObjectKey key;
         try {
             key = storageClient.storeObject( options, className );

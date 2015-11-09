@@ -6,14 +6,14 @@ import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.kryptnostic.v2.storage.types.TypeUUIDs;
-import com.kryptnostic.v2.types.TypeStorage;
+import com.kryptnostic.v2.types.TypeManager;
 import com.kryptnostic.v2.types.TypedBytes;
 
 public abstract class AbstractJacksonMarshallingService implements MarshallingService {
     private final ObjectMapper mapper;
-    private final TypeStorage resolver;
+    private final TypeManager resolver;
     
-    protected AbstractJacksonMarshallingService( ObjectMapper mapper, TypeStorage resolver ) throws ClassNotFoundException {
+    protected AbstractJacksonMarshallingService( ObjectMapper mapper, TypeManager resolver ) throws ClassNotFoundException {
         this.mapper = mapper;
         this.resolver = resolver;
     }

@@ -8,14 +8,14 @@ import com.google.common.base.Optional;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 
 /**
- * This class is the interface for registering complex types. For the moment we do not provide direct support for
+ * This class is the interface for registering simple types. For the moment we do not provide direct support for
  * container types. Container types should have type information capture by either creating an explicit child child
  * type.
  * 
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
-public interface TypeStorage {
+public interface TypeManager {
     Optional<Class<?>> get( UUID typeId );
 
     Optional<UUID> getTypeId( Object object );

@@ -48,7 +48,7 @@ import com.kryptnostic.v2.storage.models.ObjectMetadataEncryptedNode;
 import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
 import com.kryptnostic.v2.storage.models.ObjectTreeLoadRequest;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
-import com.kryptnostic.v2.types.KryptnosticTypesResolver;
+import com.kryptnostic.v2.types.KryptnosticTypeManager;
 import com.kryptnostic.v2.types.TypedBytes;
 
 /**
@@ -83,7 +83,7 @@ public class DefaultStorageClient implements StorageClient {
         this.objectApi = connection.getObjectStorageApi();
         this.metadataMapper = new PaddedMetadataMapper( connection.getCryptoManager() );
         this.indexer = new SimpleIndexer();
-        this.marshaller = new JsonJacksonMarshallingService( new KryptnosticTypesResolver( this ) );
+        this.marshaller = new JsonJacksonMarshallingService( new KryptnosticTypeManager( this ) );
         this.loader = Preconditions.checkNotNull(
                 connection.getCryptoServiceLoader(),
                 "CryptoServiceLoader from KryptnosticConnection cannot be null." );
@@ -221,7 +221,7 @@ public class DefaultStorageClient implements StorageClient {
 
             // encrypt the metadata
             for ( Metadata metadatumToEncrypt : metadataForKey ) {
-                StorageOptions options = new StorageOptionBuilder()
+                StorageOptions options = new StorageOptionsBuilder()
                         .notSearchable()
                         .storeable()
                         .inheritCryptoService()

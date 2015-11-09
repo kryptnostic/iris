@@ -24,12 +24,12 @@ import com.kryptnostic.search.v1.models.response.SearchResultResponse;
  *
  */
 public class DefaultSearchClient implements SearchClient {
-    private final SearchApi          searchApi;
-    private final Indexer            indexer;
-    private final KryptnosticCryptoManager context;
+    private final SearchApi             searchApi;
+    private final Indexer               indexer;
+    private final KryptnosticConnection connection;
 
     public DefaultSearchClient( KryptnosticConnection connection ) {
-        this.context = connection.getCryptoManager();
+        this.connection = connection;
         this.searchApi = connection.getSearchApi();
         this.indexer = new SimpleIndexer();
     }
@@ -73,7 +73,7 @@ public class DefaultSearchClient implements SearchClient {
 
         List<byte[]> searchTokens = Lists.newArrayList();
         for ( String token : tokens ) {
-            searchTokens.add( context.prepareSearchToken( token ) );
+            searchTokens.add( connection.getCryptoManager().prepareSearchToken( token ) );
         }
 
         return SearchRequest.searchToken( searchTokens );

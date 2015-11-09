@@ -36,8 +36,8 @@ public class StorageOptions {
         this.type = type;
     }
 
-    public static StorageOptionBuilder builder() {
-        return new StorageOptionBuilder();
+    public static StorageOptionsBuilder builder() {
+        return new StorageOptionsBuilder();
     }
 
     public UUID getType() {
