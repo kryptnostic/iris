@@ -201,7 +201,7 @@ public class IrisConnection implements KryptnosticConnection {
         byte[] pubKey = keyPair.getPublic().getEncoded();
 
         logger.debug( "Flushing RSA privkey to web..." );
-        keyService.setPrivateKey( encPrivKey );
+        keyStorageApi.setRSAPrivateKey( encPrivKey );
         logger.debug( "Done flushing RSA privkey to web." );
 
         logger.debug( "Flushing RSA pubkey to web..." );
