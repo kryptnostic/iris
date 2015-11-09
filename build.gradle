@@ -62,15 +62,6 @@ ext.retrofit_version='1.9.0'
 ext.jackson_version='2.4.4'
 dependencies {
     /*
-     * SL4J + LOG4J
-     * Currently use Log4J through sl4j.
-     * TODO: Switch to logback
-     */
-    compile group: 'org.slf4j', name: 'slf4j-log4j12', version:'1.7.12'
-    compile group: 'org.slf4j', name: 'slf4j-api', version:'1.7.12'
-    compile "org.apache.logging.log4j:log4j:2.3"
-
-    /*
      * GUAVA
      * EventBus, FluentIterables, ListenableFutures and more
      */
