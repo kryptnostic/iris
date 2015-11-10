@@ -31,7 +31,7 @@ import com.kryptnostic.v2.storage.models.VersionedObjectKeySet;
 
 /**
  * Provider class for {@link CryptoService} objects used for encrypting and decrypting objects.
- * 
+ *
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
@@ -40,21 +40,22 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
                                                                                  .getLogger( KryptnosticCryptoServiceLoader.class );
 
     private final LoadingCache<VersionedObjectKey, CryptoService> keyCache;
-    private KeyStorageApi                                         directoryApi;
+    private KeyStorageApi                                         keyStorageApi;
     private ObjectStorageApi                                      objectStorageApi;
     private KryptnosticConnection                                 connection;
     private Cypher                                                cypher;
 
     public KryptnosticCryptoServiceLoader(
             final KryptnosticConnection connection,
-            final KeyStorageApi directoryApi,
+            final KeyStorageApi keyApi,
             ObjectStorageApi objectStorageApi,
             Cypher cypher ) {
-        this.directoryApi = directoryApi;
+        this.keyStorageApi = keyApi;
         this.objectStorageApi = objectStorageApi;
         this.connection = connection;
         this.cypher = cypher;
         keyCache = CacheBuilder.newBuilder().maximumSize( 1000 ).expireAfterWrite( 10, TimeUnit.MINUTES )
+                // TODO: make this a separate class
                 .build( new CacheLoader<VersionedObjectKey, CryptoService>() {
                     @Override
                     public Map<VersionedObjectKey, CryptoService> loadAll( Iterable<? extends VersionedObjectKey> keys )
@@ -66,7 +67,7 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
                             ids.add( key );
                         }
 
-                        Map<VersionedObjectKey, byte[]> data = directoryApi.getObjectCryptoServices( ids );
+                        Map<VersionedObjectKey, byte[]> data = keyApi.getObjectCryptoServices( ids );
                         if ( data.size() != ids.size() ) {
                             throw new InvalidCacheLoadException( "Unable to retrieve all keys." );
                         }
@@ -89,7 +90,7 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
                             SecurityConfigurationException {
                         byte[] crypto = null;
                         try {
-                            crypto = directoryApi.getObjectCryptoService( key.getObjectId(), key.getVersion() );
+                            crypto = keyApi.getObjectCryptoService( key.getObjectId(), key.getVersion() );
                         } catch ( RetrofitError e ) {
                             logger.error( "Failed to load crypto service from backend for id {} ", key, e );
                             throw new IOException( e );
@@ -125,7 +126,7 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
         keyCache.put( id, service );
         try {
             byte[] cs = connection.getCryptoManager().getRsaCryptoService().encrypt( service );
-            directoryApi.setObjectCryptoService( id.getObjectId(), id.getVersion(), cs );
+            keyStorageApi.setObjectCryptoService( id.getObjectId(), id.getVersion(), cs );
         } catch ( SecurityConfigurationException | IOException e ) {
             throw new ExecutionException( e );
         }
