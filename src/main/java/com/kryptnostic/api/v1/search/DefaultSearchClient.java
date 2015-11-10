@@ -73,7 +73,7 @@ public class DefaultSearchClient implements SearchClient {
 
         List<byte[]> searchTokens = Lists.newArrayList();
         for ( String token : tokens ) {
-            searchTokens.add( connection.getCryptoManager().prepareSearchToken( token ) );
+            searchTokens.add( connection.newCryptoManager().prepareSearchToken( token ) );
         }
 
         return SearchRequest.searchToken( searchTokens );

@@ -59,7 +59,7 @@ public class DefaultCryptoServiceLoader implements CryptoServiceLoader {
                         for ( Map.Entry<String, byte[]> entry : data.entrySet() ) {
                             byte[] crypto = entry.getValue();
                             if ( crypto != null ) {
-                                CryptoService service = connection.getCryptoManager().getRsaCryptoService().decrypt(
+                                CryptoService service = connection.newCryptoManager().getRsaCryptoService().decrypt(
                                         crypto,
                                         AesCryptoService.class );
                                 processedData.put( entry.getKey(), service );
@@ -91,7 +91,7 @@ public class DefaultCryptoServiceLoader implements CryptoServiceLoader {
                             }
                         }
                         return connection
-                                .getCryptoManager()
+                                .newCryptoManager()
                                 .getRsaCryptoService()
                                 .decrypt( crypto, AesCryptoService.class );
                     }
@@ -107,7 +107,7 @@ public class DefaultCryptoServiceLoader implements CryptoServiceLoader {
     public void put( String id, CryptoService service ) throws ExecutionException {
         keyCache.put( id, service );
         try {
-            byte[] cs = connection.getCryptoManager().getRsaCryptoService().encrypt( service );
+            byte[] cs = connection.newCryptoManager().getRsaCryptoService().encrypt( service );
             directoryApi.setObjectCryptoService( id, new ByteArrayEnvelope( cs ) );
         } catch ( SecurityConfigurationException | IOException e ) {
             throw new ExecutionException( e );

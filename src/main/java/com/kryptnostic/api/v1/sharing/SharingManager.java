@@ -39,7 +39,7 @@ public class SharingManager implements SharingClient {
     private final KryptnosticConnection    connection;
 
     public SharingManager( KryptnosticConnection connection ) {
-        this.context = connection.getCryptoManager();
+        this.context = connection.newCryptoManager();
         this.sharingApi = connection.getSharingApi();
         this.connection = connection;
     }

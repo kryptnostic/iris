@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
+import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.search.v1.http.SearchApi;
@@ -70,9 +72,12 @@ public interface KryptnosticConnection {
      * Retrieves the higher level client API.
      * 
      * @return An instance of {@link KryptnosticClient}
+     * @throws ResourceNotFoundException 
+     * @throws IrisException 
+     * @throws ClassNotFoundException 
      */
-    KryptnosticClient getClient();
+    KryptnosticClient newClient() throws ClassNotFoundException, IrisException, ResourceNotFoundException;
     
-    KryptnosticCryptoManager getCryptoManager();
+    KryptnosticCryptoManager newCryptoManager();
 
 }

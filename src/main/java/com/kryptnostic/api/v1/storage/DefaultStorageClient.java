@@ -83,7 +83,7 @@ public class DefaultStorageClient implements StorageClient {
             KryptnosticConnection connection ) throws ClassNotFoundException, ResourceNotFoundException {
         this.connection = connection;
         this.objectApi = connection.getObjectStorageApi();
-        this.metadataMapper = new PaddedMetadataMapper( connection.getCryptoManager() );
+        this.metadataMapper = new PaddedMetadataMapper( connection.newCryptoManager() );
         this.indexer = new SimpleIndexer();
         this.typeManager = new KryptnosticTypeManager( this );
         this.marshaller = new JsonJacksonMarshallingService( this.typeManager );
@@ -156,7 +156,7 @@ public class DefaultStorageClient implements StorageClient {
                 "Index pair must be 2064 bytes." );
 
         watch.reset().start();
-        connection.getCryptoManager().registerObjectSearchPair( key, new ObjectSearchPair( objectSearchPair ) );
+        connection.newCryptoManager().registerObjectSearchPair( key, new ObjectSearchPair( objectSearchPair ) );
         logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         return objectIndexPair;

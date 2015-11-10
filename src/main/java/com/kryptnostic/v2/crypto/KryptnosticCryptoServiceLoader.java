@@ -76,7 +76,7 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
                         for ( Map.Entry<VersionedObjectKey, byte[]> entry : data.entrySet() ) {
                             byte[] crypto = entry.getValue();
                             if ( crypto != null ) {
-                                CryptoService service = connection.getCryptoManager().getRsaCryptoService().decrypt(
+                                CryptoService service = connection.newCryptoManager().getRsaCryptoService().decrypt(
                                         crypto,
                                         AesCryptoService.class );
                                 processedData.put( entry.getKey(), service );
@@ -109,7 +109,7 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
                             }
                         }
                         return connection
-                                .getCryptoManager()
+                                .newCryptoManager()
                                 .getRsaCryptoService()
                                 .decrypt( crypto, AesCryptoService.class );
                     }
@@ -125,7 +125,7 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
     public void put( VersionedObjectKey id, CryptoService service ) throws ExecutionException {
         keyCache.put( id, service );
         try {
-            byte[] cs = connection.getCryptoManager().getRsaCryptoService().encrypt( service );
+            byte[] cs = connection.newCryptoManager().getRsaCryptoService().encrypt( service );
             keyStorageApi.setObjectCryptoService( id.getObjectId(), id.getVersion(), cs );
         } catch ( SecurityConfigurationException | IOException e ) {
             throw new ExecutionException( e );

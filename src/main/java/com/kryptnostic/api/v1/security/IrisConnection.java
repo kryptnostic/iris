@@ -21,6 +21,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.api.v1.KryptnosticCryptoManager;
+import com.kryptnostic.api.v1.client.DefaultKryptnosticClient;
+import com.kryptnostic.api.v1.client.DefaultKryptnosticCryptoManager;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.LocalRsaKeyLoader;
@@ -34,6 +36,7 @@ import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
+import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
@@ -56,7 +59,7 @@ public class IrisConnection implements KryptnosticConnection {
     private final UUID                            userKey;
     private final String                          userCredential;
     private final String                          url;
-    private final DirectoryApi                    keyService;
+    private final DirectoryApi                    directoryApi;
     private final ObjectStorageApi                objectStorageApi;
     private final KeyStorageApi                   keyStorageApi;
     private final SearchApi                       searchApi;
@@ -99,7 +102,7 @@ public class IrisConnection implements KryptnosticConnection {
                 credential,
                 client );
 
-        this.keyService = adapter.create( DirectoryApi.class );
+        this.directoryApi = adapter.create( DirectoryApi.class );
         this.keyStorageApi = adapter.create( KeyStorageApi.class );
         this.objectStorageApi = adapter.create( ObjectStorageApi.class );
         this.metadataStorageApi = adapter.create( MetadataStorageApi.class );
@@ -116,7 +119,7 @@ public class IrisConnection implements KryptnosticConnection {
          */
         Stopwatch watch = Stopwatch.createStarted();
         if ( keyPair == null ) {
-            keyPair = loadRsaKeys( cryptoService, userKey, dataStore, keyService );
+            keyPair = loadRsaKeys( cryptoService, userKey, dataStore, directoryApi );
         }
         this.rsaPrivateKey = keyPair.getPrivate();
         this.rsaPublicKey = keyPair.getPublic();
@@ -414,25 +417,21 @@ public class IrisConnection implements KryptnosticConnection {
 
     @Override
     public DirectoryApi getDirectoryApi() {
-        // TODO Auto-generated method stub
-        return null;
+        return directoryApi;
     }
 
     @Override
     public KeyStorageApi getKeyStorageApi() {
-        // TODO Auto-generated method stub
-        return null;
+        return keyStorageApi;
     }
 
     @Override
-    public KryptnosticClient getClient() {
-        // TODO Auto-generated method stub
-        return null;
+    public KryptnosticClient newClient() throws ClassNotFoundException, IrisException, ResourceNotFoundException {
+        return new DefaultKryptnosticClient( this );
     }
 
     @Override
-    public KryptnosticCryptoManager getCryptoManager() {
-        // TODO Auto-generated method stub
-        return null;
+    public KryptnosticCryptoManager newCryptoManager() {
+        return new DefaultKryptnosticCryptoManager( this );
     }
 }
