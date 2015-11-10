@@ -23,7 +23,6 @@ import com.kryptnostic.indexing.v1.ObjectSearchPair;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
-import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
@@ -38,14 +37,14 @@ import com.kryptnostic.v2.storage.models.VersionedObjectKey;
  */
 public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager {
     private final SharingApi            sharingApi;
-    private final KeyStorageApi         keyStorageApi;
+    final KeyStorageApi         keyStorageApi;
     private final KryptnosticConnection connection;
 
     private static final Logger         logger = LoggerFactory
                                                        .getLogger( DefaultKryptnosticCryptoManager.class );
 
     public DefaultKryptnosticCryptoManager(
-            KryptnosticConnection connection ) throws IrisException {
+            KryptnosticConnection connection ) {
         this.sharingApi = connection.getSharingApi();
         this.keyStorageApi = connection.getKeyStorageApi();
         this.connection = connection;
@@ -108,7 +107,7 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
             public RsaCompressingEncryptionService apply( UUID input ) {
                 try {
                     return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, new PublicKeyEnvelope(
-                            keyStorageApi.getPublicKey(
+                            keyStorageApi.getRSAPublicKey(
                                     input ) ).asRsaPublicKey() );
                 } catch (
                         InvalidKeySpecException

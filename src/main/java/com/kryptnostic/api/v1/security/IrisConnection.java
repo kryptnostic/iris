@@ -205,7 +205,7 @@ public class IrisConnection implements KryptnosticConnection {
         logger.debug( "Done flushing RSA privkey to web." );
 
         logger.debug( "Flushing RSA pubkey to web..." );
-        keyStorageApi.setPublicKey( pubKey );
+        keyStorageApi.setRSAPublicKey( pubKey );
         logger.debug( "Done flushing RSA pubkey to web." );
     }
 
