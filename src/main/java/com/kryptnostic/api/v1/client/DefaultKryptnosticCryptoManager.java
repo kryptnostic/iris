@@ -107,7 +107,7 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
             public RsaCompressingEncryptionService apply( UUID input ) {
                 try {
                     return new RsaCompressingEncryptionService( RsaKeyLoader.CIPHER, new PublicKeyEnvelope(
-                            keyStorageApi.getRSAPublicKey(
+                            keyStorageApi.getPublicKey(
                                     input ) ).asRsaPublicKey() );
                 } catch (
                         InvalidKeySpecException

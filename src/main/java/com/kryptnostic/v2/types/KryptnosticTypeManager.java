@@ -15,8 +15,8 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.storage.StorageClient;
-import com.kryptnostic.api.v1.storage.StorageOptionsBuilder;
 import com.kryptnostic.api.v1.storage.StorageOptions;
+import com.kryptnostic.api.v1.storage.StorageOptionsBuilder;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
@@ -97,4 +97,7 @@ public class KryptnosticTypeManager implements TypeManager {
         return registerType( object.getClass() );
     }
 
+    private  static final class ClassInformation {
+        
+    }
 }

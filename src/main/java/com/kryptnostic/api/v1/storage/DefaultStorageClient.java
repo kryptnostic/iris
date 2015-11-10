@@ -271,7 +271,7 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public UUID registerType( Class<?> clazz ) {
+    public VersionedObjectKey registerType( Class<?> clazz ) throws IrisException {
         return typeManager.registerType( clazz );
     }
 

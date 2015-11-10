@@ -38,7 +38,7 @@ public final class NetworkRsaKeyLoader extends RsaKeyLoader {
         BlockCiphertext rsaPrivateKeyCiphertext = null;
         byte[] pubKey = null;
         rsaPrivateKeyCiphertext = keyApi.getRSAPrivateKey();
-        pubKey = keyApi.getRSAPublicKey( userKey );
+        pubKey = keyApi.getPublicKey( userKey );
         if ( rsaPrivateKeyCiphertext == null || pubKey == null ) {
             throw new KodexException( "Encryption keys could not be retrieved from the network" );
         }

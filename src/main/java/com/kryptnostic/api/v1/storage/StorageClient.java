@@ -23,7 +23,7 @@ import com.kryptnostic.v2.storage.models.VersionedObjectKey;
  *
  */
 public interface StorageClient {
-    UUID registerType( Class<?> clazz );
+    VersionedObjectKey registerType( Class<?> clazz ) throws IrisException;
     
     UUID storeObject( Object storeable );
 
