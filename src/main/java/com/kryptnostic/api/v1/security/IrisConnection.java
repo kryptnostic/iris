@@ -159,7 +159,7 @@ public class IrisConnection implements KryptnosticConnection {
         if ( keyPair == null ) {
             try {
                 logger.debug( "Loading RSA keys from network" );
-                keyPair = new NetworkRsaKeyLoader( crypto, keyClient, userKey ).load();
+                keyPair = new NetworkRsaKeyLoader( crypto, keyStorageApi, userKey ).load();
                 try {
                     flushRsaKeysToDisk( keyPair, createEncryptedPrivateKey( keyPair ) );
                 } catch ( IOException | SecurityConfigurationException e ) {
@@ -206,7 +206,7 @@ public class IrisConnection implements KryptnosticConnection {
         logger.debug( "Done flushing RSA privkey to web." );
 
         logger.debug( "Flushing RSA pubkey to web..." );
-        keyStorageApi.setPublicKey( pubKey );
+        keyStorageApi.setRSAPublicKey( pubKey );
         logger.debug( "Done flushing RSA pubkey to web." );
     }
 
