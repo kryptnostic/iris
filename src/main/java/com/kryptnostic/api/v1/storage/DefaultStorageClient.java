@@ -48,6 +48,7 @@ import com.kryptnostic.v2.storage.models.ObjectMetadataEncryptedNode;
 import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
 import com.kryptnostic.v2.storage.models.ObjectTreeLoadRequest;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
+import com.kryptnostic.v2.storage.types.TypeUUIDs;
 import com.kryptnostic.v2.types.KryptnosticTypeManager;
 import com.kryptnostic.v2.types.TypeManager;
 import com.kryptnostic.v2.types.TypedBytes;
@@ -374,6 +375,18 @@ public class DefaultStorageClient implements StorageClient {
     public Map<UUID, String> getStrings( Set<UUID> objectIds ) {
         // TODO Auto-generated method stub
         return null;
+    }
+
+    @Override
+    public VersionedObjectKey storeIndexedString( String s ) throws BadRequestException,
+            SecurityConfigurationException, IrisException, ResourceLockedException, ResourceNotFoundException,
+            IOException, ExecutionException {
+        StorageOptions options = new StorageOptionsBuilder()
+                .searchable()
+                .storeable()
+                .withType( TypeUUIDs.UTF8_STRING )
+                .build();
+        return storeObject( options, s );
     }
 
 }

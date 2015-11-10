@@ -24,27 +24,32 @@ import com.kryptnostic.v2.storage.models.VersionedObjectKey;
  */
 public interface StorageClient {
     VersionedObjectKey registerType( Class<?> clazz ) throws IrisException;
-    
+
     UUID storeObject( Object storeable );
 
     VersionedObjectKey storeObject( StorageOptions options, Object storeable ) throws BadRequestException,
             SecurityConfigurationException,
             IrisException, ResourceLockedException, ResourceNotFoundException, IOException, ExecutionException;
 
+    VersionedObjectKey storeIndexedString( String s ) throws BadRequestException, SecurityConfigurationException,
+            IrisException, ResourceLockedException, ResourceNotFoundException, IOException, ExecutionException;
+
     ObjectMetadata getObjectMetadata( UUID id ) throws ResourceNotFoundException;
 
     Object getObject( UUID id ) throws IOException, ExecutionException, SecurityConfigurationException;
-
-    Object getObject( ObjectMetadata objectKey ) throws ResourceNotFoundException, ExecutionException, SecurityConfigurationException, IOException;
+    
+    Object getObject( ObjectMetadata objectMetadata ) throws ResourceNotFoundException, ExecutionException,
+            SecurityConfigurationException, IOException;
 
     <T> T getObject( UUID id, Class<T> clazz ) throws ResourceNotFoundException;
 
     <T> T getObject( UUID id, TypeReference<T> ref );
 
-    ObjectMetadataNode getObjects( Set<UUID> objectIds , Map<UUID, LoadLevel> loadLevelsByTypeId ) throws ResourceNotFoundException;
+    ObjectMetadataNode getObjects( Set<UUID> objectIds, Map<UUID, LoadLevel> loadLevelsByTypeId )
+            throws ResourceNotFoundException;
 
     Map<UUID, String> getStrings( Set<UUID> objectIds );
-    
+
     void deleteMetadataForObjectId( UUID id );
 
     void deleteObject( UUID id );
