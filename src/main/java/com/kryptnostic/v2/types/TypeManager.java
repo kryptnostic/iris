@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.google.common.base.Optional;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
+import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 /**
  * This class is the interface for registering simple types. For the moment we do not provide direct support for
@@ -20,9 +21,9 @@ public interface TypeManager {
 
     Optional<UUID> getTypeId( Object object );
 
-    void registerType( Class<?> clazz ) throws IrisException;
+    VersionedObjectKey registerType( Class<?> clazz ) throws IrisException;
 
-    void registerTypeOfObject( Object object ) throws IrisException;
+    VersionedObjectKey registerTypeOfObject( Object object ) throws IrisException;
 
     Map<UUID, Class<?>> getAll( Set<UUID> typeIds );
 }

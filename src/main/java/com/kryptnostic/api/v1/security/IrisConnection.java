@@ -40,6 +40,7 @@ import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.search.v1.http.SearchApi;
 import com.kryptnostic.storage.v1.http.MetadataStorageApi;
+import com.kryptnostic.v2.constants.Names;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
 import com.kryptnostic.v2.crypto.KryptnosticCryptoServiceLoader;
 import com.kryptnostic.v2.sharing.api.SharingApi;
@@ -302,11 +303,11 @@ public class IrisConnection implements KryptnosticConnection {
              * First we try loading keys from data store.
              */
             Optional<byte[]> maybePrivateKeyBytes = Optional.fromNullable( dataStore
-                    .get( ReservedObjectUUIDs.PRIVATE_KEY.toString() ) );
+                    .get( Names.FHE_PRIVATE_KEY ) );
             Optional<byte[]> maybeSearchPrivateKeyBytes = Optional.fromNullable( dataStore
-                    .get( ReservedObjectUUIDs.SEARCH_PRIVATE_KEY.toString() ) );
+                    .get( Names.FHE_SEARCH_PRIVATE_KEY ) );
             Optional<byte[]> maybeClientHashFunction = Optional.fromNullable( dataStore
-                    .get( ReservedObjectUUIDs.CLIENT_HASH_FUNCTION.toString() ) );
+                    .get( Names.CLIENT_HASH_FUNCTION ) );
             boolean privateKeyPresent = maybePrivateKeyBytes.isPresent();
             boolean searchPrivateKeyPresent = maybeSearchPrivateKeyBytes.isPresent();
             boolean clientHashPresent = maybeClientHashFunction.isPresent();
@@ -315,10 +316,10 @@ public class IrisConnection implements KryptnosticConnection {
                 throw new IOException( "Unable to load kryptnostic engine keys." );
             }
             privateKey = privateKeyCryptoService.decryptBytes( mapper.readValue( maybePrivateKeyBytes.get(),
-                        BlockCiphertext.class ) );
+                    BlockCiphertext.class ) );
             searchPrivateKey = privateKeyCryptoService.decryptBytes( mapper.readValue( maybeSearchPrivateKeyBytes
-                        .get(),
-                        BlockCiphertext.class ) );
+                    .get(),
+                    BlockCiphertext.class ) );
             engine.initClient( privateKey, searchPrivateKey );
             holder.clientHashFunction = maybeClientHashFunction.get();
             return holder;

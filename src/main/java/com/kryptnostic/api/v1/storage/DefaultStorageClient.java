@@ -49,6 +49,7 @@ import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
 import com.kryptnostic.v2.storage.models.ObjectTreeLoadRequest;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 import com.kryptnostic.v2.types.KryptnosticTypeManager;
+import com.kryptnostic.v2.types.TypeManager;
 import com.kryptnostic.v2.types.TypedBytes;
 
 /**
@@ -76,6 +77,7 @@ public class DefaultStorageClient implements StorageClient {
     private final Indexer               indexer;
     private final CryptoServiceLoader   loader;
     private final MarshallingService    marshaller;
+    private final TypeManager           typeManager;
 
     public DefaultStorageClient(
             KryptnosticConnection connection ) throws ClassNotFoundException, ResourceNotFoundException {
@@ -83,7 +85,8 @@ public class DefaultStorageClient implements StorageClient {
         this.objectApi = connection.getObjectStorageApi();
         this.metadataMapper = new PaddedMetadataMapper( connection.getCryptoManager() );
         this.indexer = new SimpleIndexer();
-        this.marshaller = new JsonJacksonMarshallingService( new KryptnosticTypeManager( this ) );
+        this.typeManager = new KryptnosticTypeManager( this );
+        this.marshaller = new JsonJacksonMarshallingService( this.typeManager );
         this.loader = Preconditions.checkNotNull(
                 connection.getCryptoServiceLoader(),
                 "CryptoServiceLoader from KryptnosticConnection cannot be null." );
@@ -254,7 +257,7 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public void deleteMetadataForObjectId( UUID objectId ) {
-        
+
     }
 
     @Override
@@ -269,8 +272,7 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public UUID registerType( Class<?> clazz ) {
-        // TODO Auto-generated method stub
-        return null;
+        return typeManager.registerType( clazz );
     }
 
     @Override

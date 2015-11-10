@@ -73,7 +73,7 @@ public class KryptnosticTypeManager implements TypeManager {
     }
 
     @Override
-    public void registerType( Class<?> clazz ) throws IrisException {
+    public VersionedObjectKey registerType( Class<?> clazz ) throws IrisException {
         String className = clazz.getCanonicalName();
         StorageOptions options = new StorageOptionsBuilder().withType( TypeUUIDs.TYPE ).build();
         VersionedObjectKey key;
@@ -89,11 +89,12 @@ public class KryptnosticTypeManager implements TypeManager {
             throw new IrisException( e );
         }
         registeredTypes.put( key.getObjectId(), clazz );
+        return key;
     }
 
     @Override
-    public void registerTypeOfObject( Object object ) throws IrisException {
-        registerType( object.getClass() );
+    public VersionedObjectKey registerTypeOfObject( Object object ) throws IrisException {
+        return registerType( object.getClass() );
     }
 
 }
