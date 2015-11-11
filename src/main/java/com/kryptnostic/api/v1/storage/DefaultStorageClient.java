@@ -41,10 +41,10 @@ import com.kryptnostic.v2.indexing.metadata.MetadataMapper;
 import com.kryptnostic.v2.indexing.metadata.MetadataRequest;
 import com.kryptnostic.v2.marshalling.JsonJacksonMarshallingService;
 import com.kryptnostic.v2.marshalling.MarshallingService;
+import com.kryptnostic.v2.storage.api.ObjectListingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
 import com.kryptnostic.v2.storage.models.LoadLevel;
 import com.kryptnostic.v2.storage.models.ObjectMetadata;
-import com.kryptnostic.v2.storage.models.ObjectMetadataEncryptedNode;
 import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
 import com.kryptnostic.v2.storage.models.ObjectTreeLoadRequest;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
@@ -70,6 +70,7 @@ public class DefaultStorageClient implements StorageClient {
      */
     private final KryptnosticConnection connection;
     private final ObjectStorageApi      objectApi;
+    private final ObjectListingApi      listingApi;
 
     /**
      * Client-side
@@ -84,6 +85,7 @@ public class DefaultStorageClient implements StorageClient {
             KryptnosticConnection connection ) throws ClassNotFoundException, ResourceNotFoundException {
         this.connection = connection;
         this.objectApi = connection.getObjectStorageApi();
+        this.listingApi = connection.getObjectListingApi();
         this.metadataMapper = new PaddedMetadataMapper( connection.newCryptoManager() );
         this.indexer = new SimpleIndexer();
         this.typeManager = new KryptnosticTypeManager( this );

@@ -12,9 +12,6 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import retrofit.RestAdapter;
-import retrofit.client.Client;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -48,9 +45,13 @@ import com.kryptnostic.v2.crypto.KryptnosticCryptoServiceLoader;
 import com.kryptnostic.v2.search.SearchApi;
 import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
+import com.kryptnostic.v2.storage.api.ObjectListingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
-import com.kryptnostic.v2.storage.models.keys.BootstrapKeyIds;
 import com.kryptnostic.v2.storage.uuids.ReservedObjectUUIDs;
+
+import retrofit.RestAdapter;
+import retrofit.RestAdapter.LogLevel;
+import retrofit.client.Client;
 
 public class IrisConnection implements KryptnosticConnection {
     private static final Logger                   logger  = LoggerFactory
@@ -61,6 +62,7 @@ public class IrisConnection implements KryptnosticConnection {
     private final String                          url;
     private final DirectoryApi                    directoryApi;
     private final ObjectStorageApi                objectStorageApi;
+    private final ObjectListingApi                objectListingApi;
     private final KeyStorageApi                   keyStorageApi;
     private final SearchApi                       searchApi;
     private final SharingApi                      sharingApi;
@@ -82,7 +84,8 @@ public class IrisConnection implements KryptnosticConnection {
     // this.
     // }
 
-    public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client ) throws IrisException {
+    public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client )
+            throws IrisException {
         this( url, userKey, password, dataStore, client, null );
     }
 
@@ -105,6 +108,7 @@ public class IrisConnection implements KryptnosticConnection {
         this.directoryApi = adapter.create( DirectoryApi.class );
         this.keyStorageApi = adapter.create( KeyStorageApi.class );
         this.objectStorageApi = adapter.create( ObjectStorageApi.class );
+        this.objectListingApi = adapter.create( ObjectListingApi.class );
         this.metadataStorageApi = adapter.create( MetadataStorageApi.class );
         this.searchApi = adapter.create( SearchApi.class );
         this.sharingApi = adapter.create( SharingApi.class );
@@ -371,8 +375,7 @@ public class IrisConnection implements KryptnosticConnection {
              */
             try {
                 dataStore.put( ReservedObjectUUIDs.PRIVATE_KEY.toString(),
-                        mapper.writeValueAsBytes( encryptedPrivateKey )
-                        );
+                        mapper.writeValueAsBytes( encryptedPrivateKey ) );
                 dataStore.put( ReservedObjectUUIDs.SEARCH_PRIVATE_KEY.toString(),
                         mapper.writeValueAsBytes( encryptedSearchPrivateKey ) );
                 dataStore.put( ReservedObjectUUIDs.CLIENT_HASH_FUNCTION.toString(),
@@ -401,6 +404,11 @@ public class IrisConnection implements KryptnosticConnection {
     @Override
     public ObjectStorageApi getObjectStorageApi() {
         return objectStorageApi;
+    }
+
+    @Override
+    public ObjectListingApi getObjectListingApi() {
+        return objectListingApi;
     }
 
     @Override
