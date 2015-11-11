@@ -313,14 +313,12 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public Set<UUID> getObjectIds() {
-        // TODO Auto-generated method stub
-        return null;
+        return listingApi.getAllObjectIds( connection.getUserId() );
     }
 
     @Override
     public Set<UUID> getObjectIds( int offset, int pageSize ) {
-        // TODO Auto-generated method stub
-        return null;
+        return listingApi.getAllObjectIdsPaged( connection.getUserId(), offset, pageSize );
     }
 
     @Override
@@ -333,14 +331,12 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public Set<UUID> getObjectIdsByType( UUID type ) {
-        // TODO Auto-generated method stub
-        return null;
+        return listingApi.getObjectIdsByType( connection.getUserId(), type );
     }
 
     @Override
     public Set<UUID> getObjectIdsByType( UUID type, int offset, int pageSize ) {
-        // TODO Auto-generated method stub
-        return null;
+        return listingApi.getObjectIdsByTypePaged( connection.getUserId(), type, offset, pageSize );
     }
 
     @Override
