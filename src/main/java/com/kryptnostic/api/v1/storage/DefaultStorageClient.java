@@ -45,6 +45,7 @@ import com.kryptnostic.v2.storage.api.ObjectListingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
 import com.kryptnostic.v2.storage.models.LoadLevel;
 import com.kryptnostic.v2.storage.models.ObjectMetadata;
+import com.kryptnostic.v2.storage.models.ObjectMetadataEncryptedNode;
 import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
 import com.kryptnostic.v2.storage.models.ObjectTreeLoadRequest;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
@@ -96,9 +97,8 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public VersionedObjectKey storeObject( StorageOptions req, Object storeable ) throws BadRequestException,
-            SecurityConfigurationException,
-            IrisException, ResourceLockedException, ResourceNotFoundException, IOException, ExecutionException {
+    public VersionedObjectKey storeObject( StorageOptions req, Object storeable )
+            throws IOException, ExecutionException, ResourceNotFoundException, SecurityConfigurationException, IrisException {
 
         VersionedObjectKey objectKey = objectApi.createObject( req.toCreateObjectRequest() );
         TypedBytes bytes = marshaller.toTypedBytes( storeable );
@@ -131,8 +131,7 @@ public class DefaultStorageClient implements StorageClient {
         return objectKey;
     }
 
-    private void makeObjectSearchable( VersionedObjectKey key, String data, byte[] objectIndexPair )
-            throws IrisException, BadRequestException {
+    private void makeObjectSearchable( VersionedObjectKey key, String data, byte[] objectIndexPair ) throws IrisException {
         // index + map tokens for metadata
         Stopwatch watch = Stopwatch.createStarted();
         Set<Metadata> metadata = indexer.index( key, data );
@@ -144,7 +143,7 @@ public class DefaultStorageClient implements StorageClient {
         logger.debug( "[PROFILE] indexing and uploading took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
     }
 
-    private byte[] provisionSearchPairAndReturnCorrespondingIndexPair( VersionedObjectKey key ) throws IrisException {
+    private byte[] provisionSearchPairAndReturnCorrespondingIndexPair( VersionedObjectKey key ) {
         KryptnosticEngine engine = connection.getKryptnosticEngine();
 
         Stopwatch watch = Stopwatch.createStarted();
@@ -165,8 +164,7 @@ public class DefaultStorageClient implements StorageClient {
         return objectIndexPair;
     }
 
-    private void storeObject( VersionedObjectKey objectKey, BlockCiphertext ciphertext )
-            throws SecurityConfigurationException, IrisException {
+    private void storeObject( VersionedObjectKey objectKey, BlockCiphertext ciphertext ) {
         UUID objectId = objectKey.getObjectId();
         long version = objectKey.getVersion();
 
@@ -237,9 +235,7 @@ public class DefaultStorageClient implements StorageClient {
                 try {
                     metadataObjectKey = storeObject( options, metadatumToEncrypt );
                 } catch (
-                        BadRequestException
-                        | SecurityConfigurationException
-                        | ResourceLockedException
+                        SecurityConfigurationException
                         | ResourceNotFoundException
                         | IOException
                         | ExecutionException e ) {
@@ -305,7 +301,6 @@ public class DefaultStorageClient implements StorageClient {
         for ( UUID id : objectIds ) {
             ObjectMetadata objectMetadata = objectApi.getObjectMetadata( id );
             VersionedObjectKey key = objectApi.getVersionedObjectKey( id );
-            // objects.put( key, objectApi.getObjectMetadata( id ) );
         }
 
         return null;
