@@ -278,15 +278,13 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     private KryptnosticEngineHolder loadEngine() throws IrisException {
-        BootstrapKeyIds bootstrapKeyIds = keyStorageApi.getBootstrapInformation();
-
         KryptnosticEngineHolder holder = new KryptnosticEngineHolder();
         /*
          * First let's make sure we can encrypt/decrypt.
          */
         CryptoService privateKeyCryptoService;
         try {
-            privateKeyCryptoService = loader.getLatest( ReservedObjectUUIDs.PRIVATE_KEY ).get();
+            privateKeyCryptoService = cryptoService;
         } catch ( Exception e1 ) {
             // This should only happen when the server return bad data. Fail.
             throw new Error( "Unable to get or generate AES keys." );
