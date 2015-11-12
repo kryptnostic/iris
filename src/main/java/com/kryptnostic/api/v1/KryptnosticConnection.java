@@ -1,13 +1,16 @@
 package com.kryptnostic.api.v1;
 
+import java.io.IOException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.storage.v1.http.MetadataStorageApi;
@@ -78,8 +81,11 @@ public interface KryptnosticConnection {
      * @throws ResourceNotFoundException
      * @throws IrisException
      * @throws ClassNotFoundException
+     * @throws SecurityConfigurationException 
+     * @throws ExecutionException 
+     * @throws IOException 
      */
-    KryptnosticClient newClient() throws ClassNotFoundException, IrisException, ResourceNotFoundException;
+    KryptnosticClient newClient() throws ClassNotFoundException, IrisException, ResourceNotFoundException, IOException, ExecutionException, SecurityConfigurationException;
 
     KryptnosticCryptoManager newCryptoManager();
 

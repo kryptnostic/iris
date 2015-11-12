@@ -21,6 +21,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
@@ -83,7 +84,7 @@ public class DefaultStorageClient implements StorageClient {
     private final TypeManager           typeManager;
 
     public DefaultStorageClient(
-            KryptnosticConnection connection ) throws ClassNotFoundException, ResourceNotFoundException {
+            KryptnosticConnection connection ) throws ClassNotFoundException, ResourceNotFoundException, IOException, ExecutionException, SecurityConfigurationException {
         this.connection = connection;
         this.objectApi = connection.getObjectStorageApi();
         this.listingApi = connection.getObjectListingApi();
@@ -365,9 +366,12 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public Map<UUID, String> getStrings( Set<UUID> objectIds ) {
-        // TODO Auto-generated method stub
-        return null;
+    public Map<UUID, String> getStrings( Set<UUID> objectIds ) throws IOException, ExecutionException, SecurityConfigurationException {
+        Map<UUID, String> strings = Maps.newHashMapWithExpectedSize( objectIds.size() );
+        for( UUID id : objectIds ) {
+            strings.put( id, (String) getObject( id ) );
+        }
+        return strings;
     }
 
     @Override

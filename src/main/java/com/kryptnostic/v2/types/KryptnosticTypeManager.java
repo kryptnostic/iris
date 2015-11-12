@@ -37,7 +37,7 @@ public class KryptnosticTypeManager implements TypeManager {
     private final StorageClient         storageClient;
 
     public KryptnosticTypeManager(
-            final StorageClient storageClient ) throws ClassNotFoundException {
+            final StorageClient storageClient ) throws ClassNotFoundException, IOException, ExecutionException, SecurityConfigurationException {
         this.storageClient = storageClient;
 
         // Initial type system

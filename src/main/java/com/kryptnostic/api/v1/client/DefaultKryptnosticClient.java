@@ -1,5 +1,8 @@
 package com.kryptnostic.api.v1.client;
 
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+
 import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.api.v1.search.DefaultSearchClient;
 import com.kryptnostic.api.v1.sharing.SharingManager;
@@ -9,6 +12,7 @@ import com.kryptnostic.directory.v1.DirectoryClient;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
+import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.sharing.v1.SharingClient;
 
@@ -19,7 +23,7 @@ public class DefaultKryptnosticClient implements KryptnosticClient {
     private final DirectoryClient directoryClient;
 
     public DefaultKryptnosticClient( KryptnosticConnection connection ) throws IrisException,
-            ResourceNotFoundException, ClassNotFoundException {
+            ResourceNotFoundException, ClassNotFoundException, IOException, ExecutionException, SecurityConfigurationException {
         this(
                 new DefaultSearchClient( connection ),
                 new DefaultStorageClient( connection ),

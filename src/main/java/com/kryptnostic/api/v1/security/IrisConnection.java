@@ -7,10 +7,14 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import retrofit.RestAdapter;
+import retrofit.client.Client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
@@ -48,10 +52,6 @@ import com.kryptnostic.v2.storage.api.KeyStorageApi;
 import com.kryptnostic.v2.storage.api.ObjectListingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
 import com.kryptnostic.v2.storage.uuids.ReservedObjectUUIDs;
-
-import retrofit.RestAdapter;
-import retrofit.RestAdapter.LogLevel;
-import retrofit.client.Client;
 
 public class IrisConnection implements KryptnosticConnection {
     private static final Logger                   logger  = LoggerFactory
@@ -97,21 +97,27 @@ public class IrisConnection implements KryptnosticConnection {
             Client client,
             KeyPair keyPair ) throws IrisException {
         cryptoService = new PasswordCryptoService( password );
-        String credential = bootstrapCredential( userKey, url, password, client );
+        String credential = bootstrapCredential( userKey, url + "/v2", password, client );
 
-        RestAdapter adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
-                url,
+        RestAdapter v1Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
+                url + "/v1",
                 userKey,
                 credential,
                 client );
 
-        this.directoryApi = adapter.create( DirectoryApi.class );
-        this.keyStorageApi = adapter.create( KeyStorageApi.class );
-        this.objectStorageApi = adapter.create( ObjectStorageApi.class );
-        this.objectListingApi = adapter.create( ObjectListingApi.class );
-        this.metadataStorageApi = adapter.create( MetadataStorageApi.class );
-        this.searchApi = adapter.create( SearchApi.class );
-        this.sharingApi = adapter.create( SharingApi.class );
+        RestAdapter v2Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
+                url + "/v2",
+                userKey,
+                credential,
+                client );
+
+        this.directoryApi = v1Adapter.create( DirectoryApi.class );
+        this.keyStorageApi = v2Adapter.create( KeyStorageApi.class );
+        this.objectStorageApi = v2Adapter.create( ObjectStorageApi.class );
+        this.objectListingApi = v2Adapter.create( ObjectListingApi.class );
+        this.metadataStorageApi = v1Adapter.create( MetadataStorageApi.class );
+        this.searchApi = v2Adapter.create( SearchApi.class );
+        this.sharingApi = v2Adapter.create( SharingApi.class );
 
         this.userCredential = credential;
         this.userKey = userKey;
@@ -432,7 +438,7 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     @Override
-    public KryptnosticClient newClient() throws ClassNotFoundException, IrisException, ResourceNotFoundException {
+    public KryptnosticClient newClient() throws ClassNotFoundException, IrisException, ResourceNotFoundException, IOException, ExecutionException, SecurityConfigurationException {
         return new DefaultKryptnosticClient( this );
     }
 
