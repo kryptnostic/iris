@@ -12,8 +12,6 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import retrofit.RetrofitError;
-
 import com.google.common.base.Optional;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -88,13 +86,7 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
                     @Override
                     public CryptoService load( VersionedObjectKey key ) throws IOException,
                             SecurityConfigurationException {
-                        byte[] crypto = null;
-                        try {
-                            crypto = keyApi.getObjectCryptoService( key.getObjectId(), key.getVersion() );
-                        } catch ( RetrofitError e ) {
-                            logger.error( "Failed to load crypto service from backend for id {} ", key, e );
-                            throw new IOException( e );
-                        }
+                        byte[] crypto = keyApi.getObjectCryptoService( key.getObjectId(), key.getVersion() );
                         if ( ( crypto == null ) ) {
                             try {
                                 CryptoService cs = new AesCryptoService( KryptnosticCryptoServiceLoader.this.cypher );
