@@ -97,7 +97,7 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
                                     | InvalidAlgorithmParameterException
                                     | ExecutionException e ) {
                                 logger.error( "Failed while trying to create new crypto service for object id: {} ",
-                                        key );
+                                        key, e );
                             }
                         }
                         return connection
