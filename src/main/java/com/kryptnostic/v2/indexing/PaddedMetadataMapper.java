@@ -83,7 +83,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
 
         }
         loggger
-                .info(
+                .trace(
                         "[PROFILE] MinLocations: {} MaxLocations: {} RawMetadataSize: {} ProcessedMetadataSize: {} AcceptedTokens: {}",
                         metadata.size(),
                         metadataMap.values().size(),

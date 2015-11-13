@@ -63,13 +63,13 @@ public class PaddedMetadataMapper implements MetadataMapper {
             List<Integer> locations = metadatum.getLocations();
 
             byte[] indexForTerm = context.generateIndexForToken( token, objectIndexPair );
-            
+
             String key = encoder.encodeAsString( indexForTerm );
 
             Metadata balancedMetadatum = new Metadata( metadatum.getObjectId(), token, subListAndPad(
                     locations,
                     bucketSize ) );
-            
+
             PaddedMetadata pm = metadataMap.get( key );
 
             if ( pm == null ) {
@@ -81,7 +81,7 @@ public class PaddedMetadataMapper implements MetadataMapper {
 
         }
         log
-                .info(
+                .trace(
                         "[PROFILE] MinLocations: {} MaxLocations: {} RawMetadataSize: {} ProcessedMetadataSize: {} AcceptedTokens: {}",
                         metadata.size(),
                         metadataMap.values().size(),

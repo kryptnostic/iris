@@ -13,9 +13,6 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import retrofit.RestAdapter;
-import retrofit.client.Client;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -52,6 +49,9 @@ import com.kryptnostic.v2.storage.api.KeyStorageApi;
 import com.kryptnostic.v2.storage.api.ObjectListingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
 import com.kryptnostic.v2.storage.uuids.ReservedObjectUUIDs;
+
+import retrofit.RestAdapter;
+import retrofit.client.Client;
 
 public class IrisConnection implements KryptnosticConnection {
     private static final Logger                   logger  = LoggerFactory
@@ -97,16 +97,16 @@ public class IrisConnection implements KryptnosticConnection {
             Client client,
             KeyPair keyPair ) throws IrisException {
         cryptoService = new PasswordCryptoService( password );
-        String credential = bootstrapCredential( userKey, url + "/v2", password, client );
+        String credential = bootstrapCredential( userKey, url, password, client );
 
         RestAdapter v1Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
-                url + "/v1",
+                url.replace( "/v2", "/v1" ),
                 userKey,
                 credential,
                 client );
 
         RestAdapter v2Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
-                url + "/v2",
+                url,
                 userKey,
                 credential,
                 client );
@@ -133,7 +133,7 @@ public class IrisConnection implements KryptnosticConnection {
         }
         this.rsaPrivateKey = keyPair.getPrivate();
         this.rsaPublicKey = keyPair.getPublic();
-        logger.debug( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        logger.trace( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         this.loader = new KryptnosticCryptoServiceLoader( this, keyStorageApi, objectStorageApi, Cypher.AES_CTR_128 );
         KryptnosticEngineHolder holder = loadEngine();
@@ -355,7 +355,7 @@ public class IrisConnection implements KryptnosticConnection {
                     throw new SecurityConfigurationException( "Unable to load FHE keys from server." );
                 }
             } catch ( SecurityConfigurationException e1 ) {
-                // If have a problem retrieving data from the server or decrypting keys, we regenerate.
+                // If have a problem retrieving data from the serve or decrypting keys, we regenerate.
                 engine.initClient();
                 privateKey = Preconditions.checkNotNull( engine.getPrivateKey(),
                         "Private key from engine cannot be null." );

@@ -136,12 +136,12 @@ public class DefaultStorageClient implements StorageClient {
         // index + map tokens for metadata
         Stopwatch watch = Stopwatch.createStarted();
         Set<Metadata> metadata = indexer.index( key, data );
-        logger.debug( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-        logger.debug( "[PROFILE] {} metadata indexed", metadata.size() );
+        logger.trace( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        logger.trace( "[PROFILE] {} metadata indexed", metadata.size() );
 
         watch.reset().start();
         prepareMetadata( metadata, objectIndexPair );
-        logger.debug( "[PROFILE] indexing and uploading took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        logger.trace( "[PROFILE] indexing and uploading took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
     }
 
     private byte[] provisionSearchPairAndReturnCorrespondingIndexPair( VersionedObjectKey key ) {
@@ -150,7 +150,7 @@ public class DefaultStorageClient implements StorageClient {
         Stopwatch watch = Stopwatch.createStarted();
         byte[] objectIndexPair = engine.getObjectIndexPair();
         byte[] objectSearchPair = engine.getObjectSearchPairFromObjectIndexPair( objectIndexPair );
-        logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        logger.trace( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         // TODO: Centralize these lengths in KryptnosticEngine
         Preconditions.checkState( objectSearchPair.length == KryptnosticEngine.SEARCH_PAIR_LENGTH,
@@ -160,7 +160,7 @@ public class DefaultStorageClient implements StorageClient {
 
         watch.reset().start();
         connection.newCryptoManager().registerObjectSearchPair( key, new ObjectSearchPair( objectSearchPair ) );
-        logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        logger.trace( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         return objectIndexPair;
     }
