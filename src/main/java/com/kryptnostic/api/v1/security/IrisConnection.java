@@ -133,7 +133,7 @@ public class IrisConnection implements KryptnosticConnection {
         }
         this.rsaPrivateKey = keyPair.getPrivate();
         this.rsaPublicKey = keyPair.getPublic();
-        logger.debug( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        logger.trace( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         this.loader = new KryptnosticCryptoServiceLoader( this, keyStorageApi, objectStorageApi, Cypher.AES_CTR_128 );
         KryptnosticEngineHolder holder = loadEngine();
