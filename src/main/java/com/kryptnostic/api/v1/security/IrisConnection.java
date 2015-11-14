@@ -352,7 +352,7 @@ public class IrisConnection implements KryptnosticConnection {
                     engine.initClient( privateKey, searchPrivateKey );
                     holder.clientHashFunction = maybeClientHashFunction;
                 } else {
-                    throw new SecurityConfigurationException( "Unable to load FHE keys from server." );
+                    throw new SecurityConfigurationException( "Unable to load FHE keys from server.", e );
                 }
             } catch ( SecurityConfigurationException e1 ) {
                 // If have a problem retrieving data from the serve or decrypting keys, we regenerate.
@@ -388,8 +388,8 @@ public class IrisConnection implements KryptnosticConnection {
                         mapper.writeValueAsBytes( holder.clientHashFunction ) );
 
             } catch ( IOException e1 ) {
-                logger.error( "Unable to configure FHE keys." );
-                throw new Error( "Sad times.Freeze? I'm a robot. I'm not a refrigerator. " );
+                logger.error( "Unable to configure FHE keys.", e1 );
+                throw new Error( "Sad times.Freeze? I'm a robot. I'm not a refrigerator. ", e1 );
             }
 
         }

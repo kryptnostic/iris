@@ -6,6 +6,7 @@ import javax.annotation.Nullable;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
+import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 import com.kryptnostic.v2.storage.types.TypeUUIDs;
 
@@ -18,8 +19,10 @@ public class StorageOptionsBuilder {
     private Optional<VersionedObjectKey> parentObjectId;
     private boolean                      searchable;
     private boolean                      storeable;
+    private boolean                      salted;
     private boolean                      inheritingOwnership;
     private boolean                      inheritingCryptoService;
+    private Cypher                       cypher;
     private UUID                         type;
 
     public StorageOptionsBuilder() {
@@ -27,6 +30,8 @@ public class StorageOptionsBuilder {
         parentObjectId = Optional.absent();
         searchable = true;
         storeable = true;
+        salted = false;
+        cypher = Cypher.DEFAULT;
         inheritingCryptoService = false;
         inheritingOwnership = false;
         type = TypeUUIDs.DEFAULT_TYPE;
@@ -77,6 +82,16 @@ public class StorageOptionsBuilder {
         return this;
     }
 
+    public StorageOptionsBuilder isSalted( boolean isSalted ) {
+        this.salted = isSalted;
+        return this;
+    }
+
+    public StorageOptionsBuilder cypherType( Cypher cypherType ) {
+        this.cypher = cypherType;
+        return this;
+    }
+
     public StorageOptions build() {
         Preconditions.checkState( searchable || storeable, "Must storeable or searchable." );
 
@@ -89,6 +104,8 @@ public class StorageOptionsBuilder {
                 parentObjectId,
                 searchable,
                 storeable,
+                salted,
+                cypher,
                 inheritingOwnership,
                 inheritingCryptoService,
                 type );

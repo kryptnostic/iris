@@ -367,6 +367,9 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public Map<UUID, String> getStrings( Set<UUID> objectIds ) throws IOException, ExecutionException, SecurityConfigurationException {
+        if ( objectIds == null ) {
+            return ImmutableMap.of();
+        }
         Map<UUID, String> strings = Maps.newHashMapWithExpectedSize( objectIds.size() );
         for( UUID id : objectIds ) {
             strings.put( id, (String) getObject( id ) );

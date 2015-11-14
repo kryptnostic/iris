@@ -3,7 +3,9 @@ package com.kryptnostic.api.v1.storage;
 import java.util.UUID;
 
 import com.google.common.base.Optional;
+import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.v2.storage.models.CreateObjectRequest;
+import com.kryptnostic.v2.storage.models.ObjectMetadata.CryptoMaterial;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 public class StorageOptions {
@@ -14,8 +16,10 @@ public class StorageOptions {
     private final Optional<VersionedObjectKey> parentObjectId;
     private final boolean                      isSearchable;
     private final boolean                      isStoreable;
+    private final boolean                      isSalted;
     private final boolean                      inheritOwnership;
     private final boolean                      inheritCryptoService;
+    private final Cypher                       cypherType;
     private final UUID                         type;
 
     public StorageOptions(
@@ -23,6 +27,8 @@ public class StorageOptions {
             Optional<VersionedObjectKey> parentObjectId,
             boolean isSearchable,
             boolean isStoreable,
+            boolean isSalted,
+            Cypher cypherType,
             boolean inheritOwnership,
             boolean inheritCryptoService,
             UUID type ) {
@@ -33,6 +39,8 @@ public class StorageOptions {
         this.isStoreable = isStoreable;
         this.inheritOwnership = inheritOwnership;
         this.inheritCryptoService = inheritCryptoService;
+        this.cypherType = cypherType;
+        this.isSalted = isSalted;
         this.type = type;
     }
 
@@ -60,6 +68,14 @@ public class StorageOptions {
         return isStoreable;
     }
 
+    public Cypher getCypherType() {
+        return cypherType;
+    }
+
+    public boolean isSalted() {
+        return isSalted;
+    }
+
     public CreateObjectRequest toCreateObjectRequest() {
         return toCreateObjectRequest( LOCK_DEFAULT );
     }
@@ -69,6 +85,7 @@ public class StorageOptions {
                 type,
                 parentObjectId,
                 objectId,
+                CryptoMaterial.requiredByCypher( cypherType, isSalted ),
                 Optional.<Boolean> of( inheritOwnership ),
                 Optional.<Boolean> of( inheritCryptoService ),
                 Optional.<Boolean> of( locked ) );
