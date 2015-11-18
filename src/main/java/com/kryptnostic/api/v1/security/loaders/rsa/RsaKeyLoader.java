@@ -27,8 +27,7 @@ public abstract class RsaKeyLoader extends Loader<KeyPair> {
         candidate = tryLoading();
         if ( validate( candidate ) ) {
             return candidate;
-        } else {
-            throw new KodexException( "Loaded Keys, but they were invalid" );
         }
+        throw new KodexException( "Loaded Keys, but they were invalid" );
     }
 }

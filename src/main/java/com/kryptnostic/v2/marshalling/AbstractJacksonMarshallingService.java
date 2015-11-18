@@ -12,8 +12,8 @@ import com.kryptnostic.v2.types.TypedBytes;
 public abstract class AbstractJacksonMarshallingService implements MarshallingService {
     private final ObjectMapper mapper;
     private final TypeManager resolver;
-    
-    protected AbstractJacksonMarshallingService( ObjectMapper mapper, TypeManager resolver ) throws ClassNotFoundException {
+
+    protected AbstractJacksonMarshallingService( ObjectMapper mapper, TypeManager resolver ) {
         this.mapper = mapper;
         this.resolver = resolver;
     }

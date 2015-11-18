@@ -9,22 +9,22 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import retrofit.converter.ConversionException;
-import retrofit.converter.Converter;
-import retrofit.mime.TypedByteArray;
-import retrofit.mime.TypedInput;
-import retrofit.mime.TypedOutput;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 
+import retrofit.converter.ConversionException;
+import retrofit.converter.Converter;
+import retrofit.mime.TypedByteArray;
+import retrofit.mime.TypedInput;
+import retrofit.mime.TypedOutput;
+
 /**
  * A {@link Converter} that handles both json and byte arrays. Based off work by Kai Waldron
  * (kaiwaldron@gmail.com)
- * 
+ *
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
@@ -44,19 +44,15 @@ public class KryptnosticConverter implements Converter {
 
     @Override
     public Object fromBody( TypedInput body, Type type ) throws ConversionException {
-        try {
+        try ( InputStream in = body.in() ) {
             if ( StringUtils.equals( body.mimeType(), BYTE_MIME_TYPE ) ) {
-                return IOUtils.toByteArray( body.in() );
+                return IOUtils.toByteArray( in );
             }
 
             JavaType javaType = objectMapper.getTypeFactory().constructType( type );
-
-            InputStream in = body.in();
-
             if ( in.available() == 0 ) {
                 return null;
             }
-
             return objectMapper.readValue( body.in(), javaType );
         } catch ( IOException e ) {
             logger.error( "Unable to deserialize object of type {} from body with mime-type {}.",
