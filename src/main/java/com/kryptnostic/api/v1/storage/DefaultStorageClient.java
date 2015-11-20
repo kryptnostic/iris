@@ -60,12 +60,9 @@ import com.kryptnostic.v2.types.TypedBytes;
  *
  */
 public class DefaultStorageClient implements StorageClient {
-    public static final byte[]          ZERO_LENGTH_BYTE_ARRAY   = new byte[ 0 ];
-    private static final Logger         logger                   = LoggerFactory.getLogger( StorageClient.class );
-    private static final int            PARALLEL_NETWORK_THREADS = 16;
-    private static final int            METADATA_BATCH_SIZE      = 500;
-    ExecutorService                     exec                     = Executors
-                                                                         .newFixedThreadPool( PARALLEL_NETWORK_THREADS );
+    public static final byte[]          ZERO_LENGTH_BYTE_ARRAY = new byte[ 0 ];
+    private static final Logger         logger                 = LoggerFactory.getLogger( StorageClient.class );
+    private static final int            METADATA_BATCH_SIZE    = 500;
 
     /**
      * Server-side
