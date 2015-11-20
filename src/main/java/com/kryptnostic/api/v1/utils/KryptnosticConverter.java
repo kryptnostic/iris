@@ -44,20 +44,17 @@ public class KryptnosticConverter implements Converter {
 
     @Override
     public Object fromBody( TypedInput body, Type type ) throws ConversionException {
+        String mimeType = body.mimeType();
         try ( InputStream in = body.in() ) {
-            if ( StringUtils.equals( body.mimeType(), BYTE_MIME_TYPE ) ) {
+            if ( StringUtils.equals( mimeType, BYTE_MIME_TYPE ) ) {
                 return IOUtils.toByteArray( in );
             }
-
             JavaType javaType = objectMapper.getTypeFactory().constructType( type );
-            if ( in.available() == 0 ) {
-                return null;
-            }
-            return objectMapper.readValue( body.in(), javaType );
+            return objectMapper.readValue( in, javaType );
         } catch ( IOException e ) {
             logger.error( "Unable to deserialize object of type {} from body with mime-type {}.",
                     type,
-                    body.mimeType(),
+                    mimeType,
                     e );
             throw new ConversionException( e );
         }

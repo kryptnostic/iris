@@ -104,18 +104,17 @@ public class IrisConnection implements KryptnosticConnection {
                 userKey,
                 credential,
                 client );
+        this.directoryApi = v1Adapter.create( DirectoryApi.class );
+        this.metadataStorageApi = v1Adapter.create( MetadataStorageApi.class );
 
         RestAdapter v2Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
                 url,
                 userKey,
                 credential,
                 client );
-
-        this.directoryApi = v1Adapter.create( DirectoryApi.class );
         this.keyStorageApi = v2Adapter.create( KeyStorageApi.class );
         this.objectStorageApi = v2Adapter.create( ObjectStorageApi.class );
         this.objectListingApi = v2Adapter.create( ObjectListingApi.class );
-        this.metadataStorageApi = v1Adapter.create( MetadataStorageApi.class );
         this.searchApi = v2Adapter.create( SearchApi.class );
         this.sharingApi = v2Adapter.create( SharingApi.class );
 

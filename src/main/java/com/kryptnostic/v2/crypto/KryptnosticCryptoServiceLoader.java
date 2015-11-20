@@ -110,6 +110,9 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
 
     @Override
     public Optional<CryptoService> get( VersionedObjectKey id ) throws ExecutionException {
+        if ( id == null ) {
+            return Optional.absent();
+        }
         return Optional.fromNullable( keyCache.get( id ) );
     }
 
@@ -133,6 +136,10 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
     public void clear() {
         keyCache.invalidateAll();
         keyCache.cleanUp();
+    }
+
+    public Cypher getCypher() {
+        return cypher;
     }
 
     @Override
