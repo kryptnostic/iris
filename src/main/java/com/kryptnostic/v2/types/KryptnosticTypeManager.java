@@ -1,6 +1,8 @@
 package com.kryptnostic.v2.types;
 
 import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -84,7 +86,11 @@ public class KryptnosticTypeManager implements TypeManager {
                 | SecurityConfigurationException
                 | IrisException
                 | ResourceLockedException
-                | ResourceNotFoundException | IOException | ExecutionException e ) {
+                | ResourceNotFoundException
+                | IOException
+                | ExecutionException
+                | NoSuchAlgorithmException
+                | InvalidAlgorithmParameterException e ) {
             logger.error( "Unable to register type for class {}.", clazz, e );
             throw new IrisException( e );
         }
