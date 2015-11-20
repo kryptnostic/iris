@@ -3,14 +3,13 @@ package com.kryptnostic.api.v1.storage;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -20,6 +19,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.KryptnosticConnection;
@@ -44,8 +44,10 @@ import com.kryptnostic.v2.marshalling.JsonJacksonMarshallingService;
 import com.kryptnostic.v2.marshalling.MarshallingService;
 import com.kryptnostic.v2.storage.api.ObjectListingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
+import com.kryptnostic.v2.storage.models.CreateObjectRequest;
 import com.kryptnostic.v2.storage.models.LoadLevel;
 import com.kryptnostic.v2.storage.models.ObjectMetadata;
+import com.kryptnostic.v2.storage.models.ObjectMetadata.CryptoMaterial;
 import com.kryptnostic.v2.storage.models.ObjectMetadataEncryptedNode;
 import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
 import com.kryptnostic.v2.storage.models.ObjectTreeLoadRequest;
@@ -98,26 +100,32 @@ public class DefaultStorageClient implements StorageClient {
     public VersionedObjectKey storeObject( StorageOptions req, Object storeable )
             throws IOException, ExecutionException, ResourceNotFoundException, SecurityConfigurationException, IrisException {
 
-        VersionedObjectKey objectKey = objectApi.createObject( req.toCreateObjectRequest() );
-        TypedBytes bytes = marshaller.toTypedBytes( storeable );
+        CreateObjectRequest createObjectRequest = req.toCreateObjectRequest();
+        VersionedObjectKey objectKey = objectApi.createObject( createObjectRequest );
 
         Optional<CryptoService> maybeObjectCryptoService = loader.get( objectKey );
-        CryptoService objectCryptoService;
-
-        if ( maybeObjectCryptoService.isPresent() ) {
-            objectCryptoService = maybeObjectCryptoService.get();
-        } else {
+        if ( !maybeObjectCryptoService.isPresent() ) {
             // TODO: Centralize error messages somewhere so that we can manage error messages and resources.
             logger.error( "Unable to get or create an object crypto service for object: {} ", objectKey );
             throw new ResourceNotFoundException( "Unable to get or create an object crypto service for object "
                     + objectKey.toString() );
         }
+        CryptoService objectCryptoService = maybeObjectCryptoService.get();
+
+        byte[] actualBytes = null;
+        if ( storeable instanceof byte[] ) {
+            actualBytes = (byte[]) storeable;
+        } else if ( storeable instanceof String ) {
+            actualBytes = ( (String) storeable ).getBytes();
+        } else {
+            actualBytes = marshaller.toTypedBytes( storeable ).getBytes();
+        }
 
         if ( req.isStoreable() ) {
             // TODO: Add BLOCK chunking
-            BlockCiphertext ciphertext = objectCryptoService.encrypt( bytes.getBytes() );
+            BlockCiphertext ciphertext = objectCryptoService.encrypt( actualBytes );
 
-            storeObject( objectKey, ciphertext );
+            storeObject( objectKey, ciphertext, createObjectRequest.getRequiredCryptoMaterials() );
         }
 
         if ( req.isSearchable() && ( storeable instanceof String ) ) {
@@ -162,14 +170,22 @@ public class DefaultStorageClient implements StorageClient {
         return objectIndexPair;
     }
 
-    private void storeObject( VersionedObjectKey objectKey, BlockCiphertext ciphertext ) {
+    private void storeObject( VersionedObjectKey objectKey, BlockCiphertext ciphertext, EnumSet<CryptoMaterial> required ) {
         UUID objectId = objectKey.getObjectId();
         long version = objectKey.getVersion();
 
-        this.objectApi.setObjectContent( objectId, version, ciphertext.getContents() );
-        this.objectApi.setObjectIv( objectId, version, ciphertext.getIv() );
-        this.objectApi.setObjectSalt( objectId, version, ciphertext.getSalt() );
-        this.objectApi.setObjectTag( objectId, version, ciphertext.getTag().or( ZERO_LENGTH_BYTE_ARRAY ) );
+        if ( required.contains( CryptoMaterial.CONTENTS ) ) {
+            this.objectApi.setObjectContent( objectId, version, ciphertext.getContents() );
+        }
+        if ( required.contains( CryptoMaterial.SALT ) ) {
+            this.objectApi.setObjectSalt( objectId, version, ciphertext.getSalt() );
+        }
+        if ( required.contains( CryptoMaterial.IV ) ) {
+            this.objectApi.setObjectIv( objectId, version, ciphertext.getIv() );
+        }
+        if ( required.contains( CryptoMaterial.TAG ) ) {
+            this.objectApi.setObjectTag( objectId, version, ciphertext.getTag().or( new byte[ 0 ] ) );
+        }
     }
 
     @Override
@@ -206,7 +222,7 @@ public class DefaultStorageClient implements StorageClient {
     private void prepareMetadata(
             Set<Metadata> metadata,
             byte[] objectIndexPair )
-            throws IrisException {
+                    throws IrisException {
 
         // create plaintext metadata
         Map<ByteBuffer, List<Metadata>> mappedMetadata = metadataMapper.mapTokensToKeys( metadata,
@@ -368,7 +384,7 @@ public class DefaultStorageClient implements StorageClient {
             return ImmutableMap.of();
         }
         Map<UUID, String> strings = Maps.newHashMapWithExpectedSize( objectIds.size() );
-        for( UUID id : objectIds ) {
+        for ( UUID id : objectIds ) {
             strings.put( id, (String) getObject( id ) );
         }
         return strings;
