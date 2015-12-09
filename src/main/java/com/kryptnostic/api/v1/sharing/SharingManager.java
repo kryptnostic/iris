@@ -53,6 +53,7 @@ public class SharingManager implements SharingClient {
         return Optional.of( objectSearchPair );
     }
 
+    @Override
     public Optional<byte[]> getSharingPair( VersionedObjectKey objectKey ) throws ResourceNotFoundException {
         Optional<byte[]> maybeSearchPair = getSearchPair( objectKey );
         if ( maybeSearchPair.isPresent() ) {
@@ -114,7 +115,7 @@ public class SharingManager implements SharingClient {
         }
         Map<VersionedObjectKey, ObjectSearchPair> objectSearchPairs = Maps.newHashMap();
 
-        for ( Share share : incomingShares.values() ) {
+        for ( Share share : incomingShares ) {
             VersionedObjectKey id = share.getObjectId();
             CryptoService decryptor;
             try {
