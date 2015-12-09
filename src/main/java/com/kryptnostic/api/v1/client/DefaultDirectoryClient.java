@@ -31,11 +31,13 @@ public class DefaultDirectoryClient implements DirectoryClient {
         return directoryApi.getPublicKey( id );
     }
 
+    @Deprecated
     @Override
     public NotificationPreference getNotificationPreference() {
         return directoryApi.getNotificationPreference().getData();
     }
 
+    @Deprecated
     @Override
     public void setNotificationPreference( NotificationPreference preference ) {
         directoryApi.setNotificationPreference( preference );
