@@ -26,7 +26,6 @@ import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.sharing.v1.SharingClient;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
 import com.kryptnostic.v2.sharing.api.SharingApi;
-import com.kryptnostic.v2.sharing.models.IncomingShares;
 import com.kryptnostic.v2.sharing.models.RevocationRequest;
 import com.kryptnostic.v2.sharing.models.Share;
 import com.kryptnostic.v2.sharing.models.SharingRequest;
@@ -60,9 +59,8 @@ public class SharingManager implements SharingClient {
             return Optional.of( connection
                     .getKryptnosticEngine()
                     .getObjectSharePairFromObjectSearchPair( maybeSearchPair.get() ) );
-        } else {
-            return Optional.absent();
         }
+        return Optional.absent();
     }
 
     @Override
@@ -101,7 +99,7 @@ public class SharingManager implements SharingClient {
             }
 
         } catch ( SecurityConfigurationException | IOException | ExecutionException e ) {
-            logger.error( "Failured while sharing object {} with users {}", objectId, users );
+            logger.error( "Failured while sharing object {} with users {}", objectId, users, e );
 
         }
     }
@@ -109,7 +107,7 @@ public class SharingManager implements SharingClient {
     @Override
     public Set<VersionedObjectKey> processIncomingShares() throws IOException, SecurityConfigurationException {
         CryptoServiceLoader loader = connection.getCryptoServiceLoader();
-        IncomingShares incomingShares = sharingApi.getIncomingShares();
+        Set<Share> incomingShares = sharingApi.getIncomingShares();
         if ( incomingShares == null || incomingShares.isEmpty() ) {
             return ImmutableSet.of();
         }
@@ -156,7 +154,7 @@ public class SharingManager implements SharingClient {
 
     @Override
     public int getIncomingSharesCount() {
-        IncomingShares incomingShares = sharingApi.getIncomingShares();
+        Set<Share> incomingShares = sharingApi.getIncomingShares();
         if ( incomingShares == null || incomingShares.isEmpty() ) {
             return 0;
         }
