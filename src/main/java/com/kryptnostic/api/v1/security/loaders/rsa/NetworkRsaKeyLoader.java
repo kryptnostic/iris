@@ -10,53 +10,45 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
 import com.kryptnostic.kodex.v1.crypto.keys.PublicKeyAlgorithm;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
-import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.v2.storage.api.KeyStorageApi;
 
 public final class NetworkRsaKeyLoader extends RsaKeyLoader {
     private static final Logger         logger = LoggerFactory.getLogger( NetworkRsaKeyLoader.class );
     private final PasswordCryptoService crypto;
-    private final DirectoryApi          keyClient;
+    private final KeyStorageApi         keyApi;
     private final UUID                  userKey;
 
-    public NetworkRsaKeyLoader( PasswordCryptoService crypto, DirectoryApi keyClient, UUID userKey ) throws KodexException {
-        if ( crypto == null || keyClient == null || userKey == null ) {
+    public NetworkRsaKeyLoader( PasswordCryptoService crypto, KeyStorageApi keyApi, UUID userKey ) throws KodexException {
+        if ( crypto == null || keyApi == null || userKey == null ) {
             throw new KodexException( "null values" );
         }
         this.crypto = crypto;
-        this.keyClient = keyClient;
+        this.keyApi = keyApi;
         this.userKey = userKey;
     }
 
     @Override
     protected KeyPair tryLoading() throws KodexException {
         BlockCiphertext rsaPrivateKeyCiphertext = null;
-        PublicKeyEnvelope envelope = null;
-        try {
-            rsaPrivateKeyCiphertext = keyClient.getPrivateKey();
-            envelope = keyClient.getPublicKey( userKey );
-        } catch ( ResourceNotFoundException e ) {
-            if ( e.getMessage() != null ) {
-                logger.debug( e.getMessage() );
-            }
-        }
-        if ( rsaPrivateKeyCiphertext == null || envelope == null ) {
+        byte[] pubKey = null;
+        rsaPrivateKeyCiphertext = keyApi.getRSAPrivateKey();
+        pubKey = keyApi.getRSAPublicKey( userKey );
+        if ( rsaPrivateKeyCiphertext == null || pubKey == null ) {
             throw new KodexException( "Encryption keys could not be retrieved from the network" );
         }
 
         try {
             byte[] decryptedPrivateKeyBytes = crypto.decryptBytes( rsaPrivateKeyCiphertext );
-            byte[] decryptedPublicKeyBytes = envelope.getBytes();
+            byte[] publicKeyBytes = pubKey;
 
             PrivateKey rsaPrivateKey = Keys.privateKeyFromBytes( PublicKeyAlgorithm.RSA, decryptedPrivateKeyBytes );
-            PublicKey rsaPublicKey = Keys.publicKeyFromBytes( PublicKeyAlgorithm.RSA, decryptedPublicKeyBytes );
+            PublicKey rsaPublicKey = Keys.publicKeyFromBytes( PublicKeyAlgorithm.RSA, publicKeyBytes );
 
             return new KeyPair( rsaPublicKey, rsaPrivateKey );
 

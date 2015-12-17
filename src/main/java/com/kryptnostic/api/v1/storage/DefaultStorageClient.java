@@ -1,240 +1,215 @@
 package com.kryptnostic.api.v1.storage;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.kryptnostic.api.v1.indexing.PaddedMetadataMapper;
-import com.kryptnostic.api.v1.indexing.SimpleIndexer;
+import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
-import com.kryptnostic.indexing.v1.PaddedMetadata;
-import com.kryptnostic.kodex.v1.client.KryptnosticContext;
-import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
+import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
+import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
-import com.kryptnostic.kodex.v1.indexing.Indexer;
-import com.kryptnostic.kodex.v1.indexing.MetadataMapper;
-import com.kryptnostic.kodex.v1.indexing.metadata.Metadata;
-import com.kryptnostic.kodex.v1.serialization.crypto.Encryptable;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
-import com.kryptnostic.sharing.v1.http.SharingApi;
-import com.kryptnostic.storage.v1.StorageClient;
-import com.kryptnostic.storage.v1.http.MetadataStorageApi;
-import com.kryptnostic.storage.v1.http.ObjectStorageApi;
-import com.kryptnostic.storage.v1.models.EncryptableBlock;
-import com.kryptnostic.storage.v1.models.IndexedMetadata;
-import com.kryptnostic.storage.v1.models.KryptnosticObject;
-import com.kryptnostic.storage.v1.models.ObjectMetadata;
-import com.kryptnostic.storage.v1.models.request.MetadataDeleteRequest;
-import com.kryptnostic.storage.v1.models.request.MetadataRequest;
-import com.kryptnostic.storage.v1.models.request.PendingObjectRequest;
-import com.kryptnostic.storage.v1.models.request.StorageRequest;
+import com.kryptnostic.v2.crypto.CryptoServiceLoader;
+import com.kryptnostic.v2.indexing.IndexMetadata;
+import com.kryptnostic.v2.indexing.Indexer;
+import com.kryptnostic.v2.indexing.PaddedMetadataMapper;
+import com.kryptnostic.v2.indexing.SimpleIndexer;
+import com.kryptnostic.v2.indexing.metadata.Metadata;
+import com.kryptnostic.v2.indexing.metadata.MetadataMapper;
+import com.kryptnostic.v2.indexing.metadata.MetadataRequest;
+import com.kryptnostic.v2.marshalling.JsonJacksonMarshallingService;
+import com.kryptnostic.v2.marshalling.MarshallingService;
+import com.kryptnostic.v2.storage.api.ObjectListingApi;
+import com.kryptnostic.v2.storage.api.ObjectStorageApi;
+import com.kryptnostic.v2.storage.models.CreateObjectRequest;
+import com.kryptnostic.v2.storage.models.LoadLevel;
+import com.kryptnostic.v2.storage.models.ObjectMetadata;
+import com.kryptnostic.v2.storage.models.ObjectMetadata.CryptoMaterial;
+import com.kryptnostic.v2.storage.models.ObjectMetadataEncryptedNode;
+import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
+import com.kryptnostic.v2.storage.models.ObjectTreeLoadRequest;
+import com.kryptnostic.v2.storage.models.VersionedObjectKey;
+import com.kryptnostic.v2.storage.types.TypeUUIDs;
+import com.kryptnostic.v2.types.KryptnosticTypeManager;
+import com.kryptnostic.v2.types.TypeManager;
+import com.kryptnostic.v2.types.TypedBytes;
 
 /**
- * @author sinaiman
+ * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
 public class DefaultStorageClient implements StorageClient {
-    private static final Logger       logger                   = LoggerFactory.getLogger( StorageClient.class );
-    private static final int          PARALLEL_NETWORK_THREADS = 16;
-    private static final int          METADATA_BATCH_SIZE      = 500;
-    ExecutorService                   exec                     = Executors
-                                                                       .newFixedThreadPool( PARALLEL_NETWORK_THREADS );
+    public static final byte[]          ZERO_LENGTH_BYTE_ARRAY = new byte[ 0 ];
+    private static final Logger         logger                 = LoggerFactory.getLogger( StorageClient.class );
+    private static final int            METADATA_BATCH_SIZE    = 500;
 
     /**
      * Server-side
      */
-    private final ObjectStorageApi    objectApi;
-    private final MetadataStorageApi  metadataApi;
-    private final SharingApi          sharingApi;
+    private final KryptnosticConnection connection;
+    private final ObjectStorageApi      objectApi;
+    private final ObjectListingApi      listingApi;
 
     /**
      * Client-side
      */
-    private final KryptnosticContext  context;
-    private final MetadataMapper      metadataMapper;
-    private final Indexer             indexer;
-    private final CryptoServiceLoader loader;
+    private final MetadataMapper        metadataMapper;
+    private final Indexer               indexer;
+    private final CryptoServiceLoader   loader;
+    private final MarshallingService    marshaller;
+    private final TypeManager           typeManager;
 
-    /**
-     * @param context
-     * @param objectApi
-     * @param metadataApi
-     */
     public DefaultStorageClient(
-            KryptnosticContext context,
-            ObjectStorageApi objectApi,
-            MetadataStorageApi metadataApi,
-            SharingApi sharingApi ) {
-        this.context = context;
-        this.objectApi = objectApi;
-        this.metadataApi = metadataApi;
-        this.sharingApi = sharingApi;
-        this.metadataMapper = new PaddedMetadataMapper( context );
+            KryptnosticConnection connection ) throws ClassNotFoundException, ResourceNotFoundException, IOException, ExecutionException, SecurityConfigurationException {
+        this.connection = connection;
+        this.objectApi = connection.getObjectStorageApi();
+        this.listingApi = connection.getObjectListingApi();
+        this.metadataMapper = new PaddedMetadataMapper( connection.newCryptoManager() );
         this.indexer = new SimpleIndexer();
+        this.typeManager = new KryptnosticTypeManager( this );
+        this.marshaller = new JsonJacksonMarshallingService( this.typeManager );
         this.loader = Preconditions.checkNotNull(
-                context.getConnection().getCryptoServiceLoader(),
+                connection.getCryptoServiceLoader(),
                 "CryptoServiceLoader from KryptnosticConnection cannot be null." );
     }
 
     @Override
-    public String uploadObject( StorageRequest req ) throws BadRequestException, SecurityConfigurationException,
-            IrisException, ResourceLockedException, ResourceNotFoundException {
-        String id = req.getObjectId();
+    public VersionedObjectKey storeObject( StorageOptions req, Object storeable )
+            throws IOException, ExecutionException, ResourceNotFoundException, SecurityConfigurationException, IrisException {
 
-        if ( id == null ) {
-            PendingObjectRequest pendingRequest = new PendingObjectRequest( req.getType(), req.getParentObjectId()
-                    .orNull(), Optional.<Boolean> absent() );
-            id = objectApi.createPendingObject( pendingRequest ).getData();
+        CreateObjectRequest createObjectRequest = req.toCreateObjectRequest();
+        VersionedObjectKey objectKey = objectApi.createObject( createObjectRequest );
+
+        Optional<CryptoService> maybeObjectCryptoService = loader.get( objectKey );
+        if ( !maybeObjectCryptoService.isPresent() ) {
+            // TODO: Centralize error messages somewhere so that we can manage error messages and resources.
+            logger.error( "Unable to get or create an object crypto service for object: {} ", objectKey );
+            throw new ResourceNotFoundException( "Unable to get or create an object crypto service for object "
+                    + objectKey.toString() );
+        }
+        CryptoService objectCryptoService = maybeObjectCryptoService.get();
+
+        byte[] actualBytes = null;
+        if ( storeable instanceof byte[] ) {
+            actualBytes = (byte[]) storeable;
+        } else if ( storeable instanceof String ) {
+            actualBytes = ( (String) storeable ).getBytes();
         } else {
-            objectApi.createPendingObjectFromExisting( id );
+            actualBytes = marshaller.toTypedBytes( storeable ).getBytes();
         }
 
-        KryptnosticObject obj = KryptnosticObject.fromIdAndBody( id, req.getObjectBody() );
-
-        Preconditions.checkArgument( !obj.getBody().isEncrypted() );
-        String objId = obj.getMetadata().getId();
-        // upload the object blocks
         if ( req.isStoreable() ) {
-            storeObject( obj );
+            // TODO: Add BLOCK chunking
+            BlockCiphertext ciphertext = objectCryptoService.encrypt( actualBytes );
+
+            storeObject( objectKey, ciphertext, createObjectRequest.getRequiredCryptoMaterials() );
         }
 
-        if ( req.isSearchable() ) {
+        if ( req.isSearchable() && ( storeable instanceof String ) ) {
             // Setting up sharing is only required if object is searchable.
-            byte[] objectIndexPair = provisionSearchPairAndReturnCorrespondingIndexPair( obj );
-            makeObjectSearchable( obj, objectIndexPair );
+            byte[] objectIndexPair = provisionSearchPairAndReturnCorrespondingIndexPair( objectKey );
+            makeObjectSearchable( objectKey, (String) storeable, objectIndexPair );
         }
 
-        return objId;
+        return objectKey;
     }
 
-    private void makeObjectSearchable( KryptnosticObject object, byte[] objectIndexPair )
-            throws IrisException, BadRequestException {
+    private void makeObjectSearchable( VersionedObjectKey key, String data, byte[] objectIndexPair ) throws IrisException {
         // index + map tokens for metadata
         Stopwatch watch = Stopwatch.createStarted();
-        Set<Metadata> metadata = indexer.index( object.getMetadata().getId(), object.getBody().getData() );
-        logger.debug( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-        logger.debug( "[PROFILE] {} metadata indexed", metadata.size() );
+        Set<Metadata> metadata = indexer.index( key, data );
+        logger.trace( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        logger.trace( "[PROFILE] {} metadata indexed", metadata.size() );
 
         watch.reset().start();
-        List<MetadataRequest> metadataRequests = prepareMetadata( metadata, objectIndexPair );
-        logger.debug( "[PROFILE] preparing took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-        watch.reset().start();
-        uploadMetadata( metadataRequests );
-        logger.debug( "[PROFILE] uploading metadata took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-
+        prepareMetadata( metadata, objectIndexPair );
+        logger.trace( "[PROFILE] indexing and uploading took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
     }
 
-    private byte[] provisionSearchPairAndReturnCorrespondingIndexPair( KryptnosticObject object ) throws IrisException {
-        KryptnosticEngine engine = context.getConnection().getKryptnosticEngine();
+    private byte[] provisionSearchPairAndReturnCorrespondingIndexPair( VersionedObjectKey key ) {
+        KryptnosticEngine engine = connection.getKryptnosticEngine();
 
         Stopwatch watch = Stopwatch.createStarted();
         byte[] objectIndexPair = engine.getObjectIndexPair();
         byte[] objectSearchPair = engine.getObjectSearchPairFromObjectIndexPair( objectIndexPair );
-        logger.debug( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        logger.trace( "[PROFILE] generating sharing key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         // TODO: Centralize these lengths in KryptnosticEngine
-        Preconditions.checkState( objectSearchPair.length == 2080, "Search pair must be 2080 bytes." );
-        Preconditions.checkState( objectIndexPair.length == 2064, "Index pair must be 2064 bytes." );
+        Preconditions.checkState( objectSearchPair.length == KryptnosticEngine.SEARCH_PAIR_LENGTH,
+                "Search pair must be 2080 bytes." );
+        Preconditions.checkState( objectIndexPair.length == KryptnosticEngine.INDEX_PAIR_LENGTH,
+                "Index pair must be 2064 bytes." );
 
         watch.reset().start();
-        context.addIndexPair( object.getMetadata().getId(), new ObjectSearchPair( objectSearchPair ) );
-        logger.debug( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        connection.newCryptoManager().registerObjectSearchPair( key, new ObjectSearchPair( objectSearchPair ) );
+        logger.trace( "[PROFILE] submitting bridge key took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         return objectIndexPair;
     }
 
-    private void storeObject( KryptnosticObject object ) throws SecurityConfigurationException, IrisException {
-        try {
-            object = object.encrypt( loader );
-        } catch ( ClassNotFoundException | IOException e ) {
-            throw new SecurityConfigurationException( e );
+    private void storeObject( VersionedObjectKey objectKey, BlockCiphertext ciphertext, EnumSet<CryptoMaterial> required ) {
+        UUID objectId = objectKey.getObjectId();
+        long version = objectKey.getVersion();
+
+        if ( required.contains( CryptoMaterial.CONTENTS ) ) {
+            this.objectApi.setObjectContent( objectId, version, ciphertext.getContents() );
         }
-        submitBlocksToServer( object );
-    }
-
-    @Override
-    public KryptnosticObject getObject( String id ) throws ResourceNotFoundException {
-        return objectApi.getObject( id );
-    }
-
-    @Override
-    public void uploadMetadata( List<MetadataRequest> requests ) throws BadRequestException {
-        logger.debug( "Starting metadata upload of {} batches of max size {}", requests.size(), METADATA_BATCH_SIZE );
-        List<Future<?>> tasks = Lists.newArrayList();
-        final AtomicInteger remaining = new AtomicInteger( requests.size() );
-        for ( final MetadataRequest request : requests ) {
-            tasks.add( exec.submit( new Runnable() {
-
-                @Override
-                public void run() {
-                    Stopwatch watch = Stopwatch.createStarted();
-                    try {
-                        metadataApi.uploadMetadata( request ).getData();
-                    } catch ( BadRequestException e ) {
-                        logger.error( "Metadata upload failed", e );
-                    }
-                    logger.debug(
-                            "[PROFILE] uploading metadata batch of size {} took {} ms. {} Remaining batches",
-                            request.getMetadata().size(),
-                            watch.elapsed( TimeUnit.MILLISECONDS ),
-                            remaining.decrementAndGet() );
-                }
-
-            } ) );
+        if ( required.contains( CryptoMaterial.SALT ) ) {
+            this.objectApi.setObjectSalt( objectId, version, ciphertext.getSalt() );
         }
-
-        for ( Future<?> task : tasks ) {
-            try {
-                task.get();
-            } catch ( InterruptedException e ) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            } catch ( ExecutionException e ) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+        if ( required.contains( CryptoMaterial.IV ) ) {
+            this.objectApi.setObjectIv( objectId, version, ciphertext.getIv() );
+        }
+        if ( required.contains( CryptoMaterial.TAG ) ) {
+            this.objectApi.setObjectTag( objectId, version, ciphertext.getTag().or( new byte[ 0 ] ) );
         }
     }
 
     @Override
-    public Collection<String> getObjectIds() {
-        return objectApi.getObjectIds().getData();
+    public Object getObject( UUID id ) throws IOException, ExecutionException, SecurityConfigurationException {
+        // TODO: Cache
+        ObjectMetadata objectMetadata = objectApi.getObjectMetadata( id );
+        BlockCiphertext ciphertext = getCiphertextUsingMetadata( objectMetadata );
+        CryptoService service = loader.get( VersionedObjectKey.fromObjectMetadata( objectMetadata ) ).get();
+
+        byte[] raw = service.decryptBytes( ciphertext );
+
+        return marshaller.fromTypeBytes( new TypedBytes( raw, objectMetadata.getType() ) );
     }
 
-    @Override
-    public Collection<String> getObjectIds( int offset, int pageSize ) {
-        return objectApi.getObjectIds( offset, pageSize ).getData();
-    }
+    private BlockCiphertext getCiphertextUsingMetadata( ObjectMetadata metadata ) {
+        UUID objectId = metadata.getId();
+        long version = metadata.getVersion();
 
-    @Override
-    public Collection<String> getObjectIdsByType( String type ) {
-        return objectApi.getObjectIdsByType( type ).getData();
-    }
+        byte[] contents = objectApi.getObjectContent( objectId, version );
+        byte[] iv = objectApi.getObjectIV( objectId, version );
+        byte[] salt = objectApi.getObjectSalt( objectId, version );
+        byte[] tag = objectApi.getObjectTag( objectId, version );
 
-    @Override
-    public Collection<String> getObjectIdsByType( String type, int offset, int pageSize ) {
-        return objectApi.getObjectIdsByType( type, offset, pageSize ).getData();
+        return new BlockCiphertext( iv, salt, contents, Optional.<byte[]> absent(), Optional.of( tag ) );
     }
 
     /**
@@ -244,31 +219,46 @@ public class DefaultStorageClient implements StorageClient {
      * @return
      * @throws IrisException
      */
-    private List<MetadataRequest> prepareMetadata(
+    private void prepareMetadata(
             Set<Metadata> metadata,
             byte[] objectIndexPair )
-            throws IrisException {
+                    throws IrisException {
 
         // create plaintext metadata
-        Collection<PaddedMetadata> keyedMetadata = metadataMapper.mapTokensToKeys( metadata,
+        Map<ByteBuffer, List<Metadata>> mappedMetadata = metadataMapper.mapTokensToKeys( metadata,
                 objectIndexPair );
         // logger.debug( "generated plaintext metadata {}", keyedMetadata );
 
         // encrypt the metadata and format for the server
-        Collection<IndexedMetadata> metadataIndex = Lists.newArrayListWithExpectedSize( METADATA_BATCH_SIZE );
+        Collection<IndexMetadata> metadataIndex = Lists.newArrayListWithExpectedSize( METADATA_BATCH_SIZE );
         List<MetadataRequest> requests = Lists
-                .newArrayListWithExpectedSize( keyedMetadata.size() / METADATA_BATCH_SIZE );
-        for ( PaddedMetadata pm : keyedMetadata ) {
-            byte[] address = pm.getAddress();
-            List<Metadata> metadataForKey = pm.getMetadata();
+                .newArrayListWithExpectedSize( mappedMetadata.size() / METADATA_BATCH_SIZE );
+        for ( Entry<ByteBuffer, List<Metadata>> pm : mappedMetadata.entrySet() ) {
+            byte[] address = pm.getKey().array();
+            List<Metadata> metadataForKey = pm.getValue();
 
             // encrypt the metadata
             for ( Metadata metadatumToEncrypt : metadataForKey ) {
-                Encryptable<Metadata> encryptedMetadatum = new Encryptable<Metadata>(
-                        metadatumToEncrypt,
-                        metadatumToEncrypt.getObjectId() );
+                StorageOptions options = new StorageOptionsBuilder()
+                        .notSearchable()
+                        .storeable()
+                        .inheritCryptoService()
+                        .inheritOwner()
+                        .build();
+                VersionedObjectKey metadataObjectKey;
+                try {
+                    metadataObjectKey = storeObject( options, metadatumToEncrypt );
+                } catch (
+                        SecurityConfigurationException
+                        | ResourceNotFoundException
+                        | IOException
+                        | ExecutionException e ) {
+                    logger.error( "Failed to store metadatum. ", e );
+                    throw new IrisException( e );
+                }
+
                 metadataIndex
-                        .add( new IndexedMetadata( address, encryptedMetadatum, metadatumToEncrypt.getObjectId() ) );
+                        .add( new IndexMetadata( address, metadataObjectKey, metadatumToEncrypt.getObjectKey() ) );
                 if ( metadataIndex.size() == METADATA_BATCH_SIZE ) {
                     requests.add( new MetadataRequest( metadataIndex ) );
                     metadataIndex = Lists.newArrayList();
@@ -276,97 +266,140 @@ public class DefaultStorageClient implements StorageClient {
             }
 
         }
-        if ( !metadataIndex.isEmpty() ) {
-            requests.add( new MetadataRequest( metadataIndex ) );
-        }
-
-        return requests;
-    }
-
-    /**
-     * Submit blocks in parallel
-     *
-     * @param objectId
-     * @param blocks
-     * @throws IrisException
-     */
-    private void submitBlocksToServer( final KryptnosticObject obj ) throws IrisException {
-        Preconditions.checkNotNull( obj.getBody().getEncryptedData() );
-        final String objectId = obj.getMetadata().getId();
-        for ( EncryptableBlock input : obj.getBody().getEncryptedData() ) {
-            try {
-                objectApi.updateObject( objectId, input );
-            } catch ( ResourceNotFoundException | ResourceNotLockedException | BadRequestException e ) {
-                logger.error( "Failed to uploaded block. Should probably add a retry here!" );
-            }
-            logger.info( "Object block upload completed for object {} and block {}", objectId, input.getIndex() );
-        }
     }
 
     @Override
-    public void deleteMetadata( String id ) {
-        metadataApi.deleteAll( new MetadataDeleteRequest( Lists.newArrayList( id ) ) );
+    public void deleteMetadataForObjectId( UUID objectId ) {
+
     }
 
     @Override
-    public void deleteObject( String id ) {
-        sharingApi.removeIncomingShares( id );
-        objectApi.delete( id );
+    public void deleteObject( UUID objectId ) {
+        objectApi.delete( objectId );
     }
 
     @Override
-    public List<KryptnosticObject> getObjects( List<String> ids ) throws ResourceNotFoundException {
-        return objectApi.getObjects( ids ).getData();
-    }
-
-    @Override
-    public List<EncryptableBlock> getObjectBlocks( String id, List<Integer> indices ) throws ResourceNotFoundException {
-        return objectApi.getObjectBlocks( id, indices ).getData();
-    }
-
-    @Override
-    public Map<Integer, String> getObjectPreview( String objectId, List<Integer> locations, int wordRadius )
-            throws SecurityConfigurationException, ExecutionException, ResourceNotFoundException,
-            ClassNotFoundException, IOException {
-        KryptnosticObject obj = getObject( objectId );
-
-        String body = obj.getBody().decrypt( this.loader ).getData();
-        Map<Integer, String> frags = Maps.newHashMap();
-        for ( Integer index : locations ) {
-            int backSpaces = 0;
-            int backIndex = index;
-            for ( ; backIndex > 0; backIndex-- ) {
-                if ( new String( body.charAt( backIndex ) + "" ).matches( "\\s" ) ) {
-                    backSpaces++;
-                    if ( backSpaces > wordRadius ) {
-                        if ( backIndex > 0 ) {
-                            backIndex++;
-                        }
-                        break;
-                    }
-                }
-            }
-
-            int frontSpaces = 0;
-            int frontIndex = index;
-            for ( ; frontIndex < body.length(); frontIndex++ ) {
-                if ( new String( body.charAt( frontIndex ) + "" ).matches( "\\s" ) ) {
-                    frontSpaces++;
-                    if ( frontSpaces > wordRadius ) {
-                        if ( frontIndex < body.length() ) {
-                            // frontIndex--;
-                        }
-                        break;
-                    }
-                }
-            }
-            frags.put( index, body.substring( backIndex, frontIndex ) );
-        }
-        return frags;
-    }
-
-    @Override
-    public ObjectMetadata getObjectMetadata( String id ) throws ResourceNotFoundException {
+    public ObjectMetadata getObjectMetadata( UUID id ) throws ResourceNotFoundException {
         return objectApi.getObjectMetadata( id );
     }
+
+    @Override
+    public VersionedObjectKey registerType( Class<?> clazz ) throws IrisException {
+        return typeManager.registerType( clazz );
+    }
+
+    @Override
+    public <T> T getObject( UUID id, Class<T> clazz ) throws ResourceNotFoundException {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public <T> T getObject( UUID id, TypeReference<T> ref ) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public UUID storeObject( Object storeable ) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public ObjectMetadataNode getObjects( Set<UUID> objectIds, Map<UUID, LoadLevel> loadLevelsByTypeId )
+            throws ResourceNotFoundException {
+        ObjectTreeLoadRequest request = new ObjectTreeLoadRequest( objectIds, loadLevelsByTypeId );
+        Map<UUID, ObjectMetadataEncryptedNode> encryptedObjects = objectApi.getObjectsByTypeAndLoadLevel( request );
+
+        for ( UUID id : objectIds ) {
+            ObjectMetadata objectMetadata = objectApi.getObjectMetadata( id );
+            VersionedObjectKey key = objectApi.getVersionedObjectKey( id );
+        }
+
+        return null;
+    }
+
+    @Override
+    public Set<UUID> getObjectIds() {
+        return listingApi.getAllObjectIds( connection.getUserId() );
+    }
+
+    @Override
+    public Set<UUID> getObjectIds( int offset, int pageSize ) {
+        return listingApi.getAllObjectIdsPaged( connection.getUserId(), offset, pageSize );
+    }
+
+    @Override
+    public Map<Integer, String> getObjectPreview( UUID objectId, List<Integer> locations, int wordRadius )
+            throws SecurityConfigurationException, ExecutionException, ResourceNotFoundException,
+            ClassNotFoundException, IOException {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Set<UUID> getObjectIdsByType( UUID type ) {
+        return listingApi.getObjectIdsByType( connection.getUserId(), type );
+    }
+
+    @Override
+    public Set<UUID> getObjectIdsByType( UUID type, int offset, int pageSize ) {
+        return listingApi.getObjectIdsByTypePaged( connection.getUserId(), type, offset, pageSize );
+    }
+
+    @Override
+    public Object getObject( ObjectMetadata objectMetadata ) throws ResourceNotFoundException, ExecutionException,
+            SecurityConfigurationException, IOException {
+        UUID objectId = objectMetadata.getId();
+        long version = objectMetadata.getVersion();
+
+        Optional<CryptoService> maybeObjectCryptoService = loader.get( new VersionedObjectKey( objectId, version ) );
+
+        if ( maybeObjectCryptoService.isPresent() ) {
+            CryptoService objectCryptoService = maybeObjectCryptoService.get();
+
+            byte[] contents = objectApi.getObjectContent( objectId, version );
+            byte[] iv = objectApi.getObjectIV( objectId, version );
+            byte[] salt = objectApi.getObjectSalt( objectId, version );
+            byte[] tag = objectApi.getObjectTag( objectId, version );
+
+            BlockCiphertext ciphertext = new BlockCiphertext(
+                    iv,
+                    salt,
+                    contents,
+                    Optional.<byte[]> absent(),
+                    Optional.<byte[]> of( tag ) );
+
+            byte[] bytes = objectCryptoService.decryptBytes( ciphertext );
+            return marshaller.fromTypeBytes( new TypedBytes( bytes, objectMetadata.getType() ) );
+        }
+        logger.error( "Unable to find crypto service for object: {}", objectMetadata );
+        throw new ResourceNotFoundException( "Unable to find crypto service for object: " + objectMetadata.toString() );
+    }
+
+    @Override
+    public Map<UUID, String> getStrings( Set<UUID> objectIds ) throws IOException, ExecutionException, SecurityConfigurationException {
+        if ( objectIds == null ) {
+            return ImmutableMap.of();
+        }
+        Map<UUID, String> strings = Maps.newHashMapWithExpectedSize( objectIds.size() );
+        for ( UUID id : objectIds ) {
+            strings.put( id, (String) getObject( id ) );
+        }
+        return strings;
+    }
+
+    @Override
+    public VersionedObjectKey storeIndexedString( String s ) throws BadRequestException,
+            SecurityConfigurationException, IrisException, ResourceLockedException, ResourceNotFoundException,
+            IOException, ExecutionException {
+        StorageOptions options = new StorageOptionsBuilder()
+                .searchable()
+                .storeable()
+                .withType( TypeUUIDs.UTF8_STRING )
+                .build();
+        return storeObject( options, s );
+    }
+
 }
