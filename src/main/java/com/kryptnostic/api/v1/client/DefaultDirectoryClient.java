@@ -1,6 +1,5 @@
 package com.kryptnostic.api.v1.client;
 
-import java.util.Set;
 import java.util.UUID;
 
 import com.kryptnostic.api.v1.KryptnosticConnection;
@@ -22,7 +21,7 @@ public class DefaultDirectoryClient implements DirectoryClient {
     }
 
     @Override
-    public Set<UUID> listUsersInRealm( String realm ) {
+    public Iterable<UUID> listUsersInRealm( String realm ) {
         return directoryApi.listUserInRealm( realm );
     }
 
