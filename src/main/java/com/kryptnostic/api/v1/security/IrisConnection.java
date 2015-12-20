@@ -48,7 +48,6 @@ import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
 import com.kryptnostic.v2.storage.api.ObjectListingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
-import com.kryptnostic.v2.storage.uuids.ReservedObjectUUIDs;
 
 import retrofit.RestAdapter;
 import retrofit.client.Client;
@@ -379,11 +378,11 @@ public class IrisConnection implements KryptnosticConnection {
              * If we got here then keys came from network or were freshly created and need to be flushed to disk.
              */
             try {
-                dataStore.put( ReservedObjectUUIDs.PRIVATE_KEY.toString(),
+                dataStore.put( Names.FHE_PRIVATE_KEY,
                         mapper.writeValueAsBytes( encryptedPrivateKey ) );
-                dataStore.put( ReservedObjectUUIDs.SEARCH_PRIVATE_KEY.toString(),
+                dataStore.put( Names.FHE_SEARCH_PRIVATE_KEY,
                         mapper.writeValueAsBytes( encryptedSearchPrivateKey ) );
-                dataStore.put( ReservedObjectUUIDs.CLIENT_HASH_FUNCTION.toString(),
+                dataStore.put( Names.CLIENT_HASH_FUNCTION,
                         mapper.writeValueAsBytes( holder.clientHashFunction ) );
 
             } catch ( IOException e1 ) {
