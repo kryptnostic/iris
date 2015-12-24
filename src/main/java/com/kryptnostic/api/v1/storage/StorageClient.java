@@ -37,7 +37,7 @@ public interface StorageClient {
     ObjectMetadata getObjectMetadata( UUID id ) throws ResourceNotFoundException;
 
     Object getObject( UUID id ) throws IOException, ExecutionException, SecurityConfigurationException;
-    
+
     Object getObject( ObjectMetadata objectMetadata ) throws ResourceNotFoundException, ExecutionException,
             SecurityConfigurationException, IOException;
 
@@ -45,10 +45,11 @@ public interface StorageClient {
 
     <T> T getObject( UUID id, TypeReference<T> ref );
 
-    ObjectMetadataNode getObjects( Set<UUID> objectIds, Map<UUID, LoadLevel> loadLevelsByTypeId )
+    ObjectMetadataNode getObjects( Set<UUID> objectIds, Map<UUID, Set<LoadLevel>> loadLevelsByTypeId )
             throws ResourceNotFoundException;
 
-    Map<UUID, String> getStrings( Set<UUID> objectIds ) throws IOException, ExecutionException, SecurityConfigurationException;
+    Map<UUID, String> getStrings( Set<UUID> objectIds )
+            throws IOException, ExecutionException, SecurityConfigurationException;
 
     void deleteMetadataForObjectId( UUID id );
 
