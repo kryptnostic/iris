@@ -314,7 +314,7 @@ public class DefaultStorageClient implements StorageClient {
 
         for ( UUID id : objectIds ) {
             ObjectMetadata objectMetadata = objectApi.getObjectMetadata( id );
-            VersionedObjectKey key = objectApi.getVersionedObjectKey( id );
+            VersionedObjectKey key = objectApi.getLatestVersionedObjectKey( id );
         }
 
         return null;
