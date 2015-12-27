@@ -307,14 +307,14 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public ObjectMetadataNode getObjects( Set<UUID> objectIds, Map<UUID, LoadLevel> loadLevelsByTypeId )
+    public ObjectMetadataNode getObjects( Set<UUID> objectIds, Map<UUID, Set<LoadLevel>> loadLevelsByTypeId )
             throws ResourceNotFoundException {
         ObjectTreeLoadRequest request = new ObjectTreeLoadRequest( objectIds, loadLevelsByTypeId );
         Map<UUID, ObjectMetadataEncryptedNode> encryptedObjects = objectApi.getObjectsByTypeAndLoadLevel( request );
 
         for ( UUID id : objectIds ) {
             ObjectMetadata objectMetadata = objectApi.getObjectMetadata( id );
-            VersionedObjectKey key = objectApi.getVersionedObjectKey( id );
+            VersionedObjectKey key = objectApi.getLatestVersionedObjectKey( id );
         }
 
         return null;
