@@ -10,10 +10,10 @@ import retrofit.RestAdapter.LogLevel;
 import retrofit.client.Client;
 import retrofit.converter.Converter;
 
+import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.api.v1.utils.ByteArrayConverter;
 import com.kryptnostic.api.v1.utils.KryptnosticConverter;
 import com.kryptnostic.kodex.v1.authentication.PreauthenticationRequestInterceptor;
-import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.exceptions.DefaultErrorHandler;
 
 public final class KryptnosticRestAdapter {
@@ -22,7 +22,7 @@ public final class KryptnosticRestAdapter {
     private static final Logger logger = LoggerFactory.getLogger( KryptnosticRestAdapter.class );
 
     public static RestAdapter create( Client client, KryptnosticConnection connection ) {
-        return builder( connection, new KryptnosticConverter( connection.getCryptoServiceLoader() ) ).setClient( client )
+        return builder( connection, new KryptnosticConverter() ).setClient( client )
                 .build();
     }
 
@@ -31,11 +31,11 @@ public final class KryptnosticRestAdapter {
     }
 
     public static RestAdapter createWithDefaultClient( KryptnosticConnection connection ) {
-        return builder( connection, new KryptnosticConverter( connection.getCryptoServiceLoader() ) ).build();
+        return builder( connection, new KryptnosticConverter() ).build();
     }
 
     public static RestAdapter createWithDefaultJacksonConverter( KryptnosticConnection connection ) {
-        return builder( connection, new KryptnosticConverter( connection.getCryptoServiceLoader() ) ).build();
+        return builder( connection, new KryptnosticConverter() ).build();
     }
 
     public static RestAdapter createWithDefaultJacksonConverter( String url, UUID user, String userCredential ) {
@@ -49,7 +49,7 @@ public final class KryptnosticRestAdapter {
             Client client ) {
         return builder( url, user, userCredential, new ByteArrayConverter() ).setClient( client ).build();
     }
-    
+
     public static RestAdapter createWithDefaultJacksonConverter(
             String url,
             UUID user,

@@ -56,31 +56,18 @@ repositories {
 }
 
 ext.fhe_core_version='0.1.2-SNAPSHOT'
-ext.kodex_version='4.0.0-SNAPSHOT'
+ext.kodex_version='4.1.0-SNAPSHOT'
 ext.krypto_version='0.2.1-SNAPSHOT'
 ext.retrofit_version='1.9.0'
 ext.jackson_version='2.4.4'
+ext.retrofit_version='1.9.0'
+ext.okhttp_version='2.5.0'
+ext.okio_version='1.6.0'
 dependencies {
-    /*
-     * SL4J + LOG4J
-     * Currently use Log4J through sl4j.
-     * TODO: Switch to logback
-     */
-    compile group: 'org.slf4j', name: 'slf4j-log4j12', version:'1.7.12'
-    compile group: 'org.slf4j', name: 'slf4j-api', version:'1.7.12'
-    compile "org.apache.logging.log4j:log4j:2.3"
-
-    /*
-     * GUAVA
-     * EventBus, FluentIterables, ListenableFutures and more
-     */
-    compile 'com.google.guava:guava:18.0'
-
     /*
      JODA TIME - A better datetime class.
      */
     compile 'joda-time:joda-time:2.8.2'
-
 
     compile "com.fasterxml.jackson.core:jackson-databind:${jackson_version}"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-guava:${jackson_version}"
@@ -97,8 +84,6 @@ dependencies {
 
     compile 'commons-io:commons-io:2.4'
     compile 'org.apache.commons:commons-lang3:3.4'
-    //compile 'commons-logging:commons-logging:1.1.3'
-    compile 'commons-collections:commons-collections:3.2.1'
 
     if( project.hasProperty('developmentMode') && project.developmentMode ) {
       logger.quiet("$project.name is using project dependencies")
@@ -116,7 +101,8 @@ dependencies {
     }
 
     compile "com.squareup.retrofit:retrofit:${retrofit_version}"
-    compile "com.squareup.okhttp:okhttp:2.3.0"
+    compile "com.squareup.okhttp:okhttp:${okhttp_version}"
+    compile "com.squareup.okio:okio:${okio_version}"
 
     /*
      * TESTING

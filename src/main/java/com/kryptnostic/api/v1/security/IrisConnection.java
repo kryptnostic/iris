@@ -7,35 +7,31 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import retrofit.RestAdapter;
-import retrofit.client.Client;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.kryptnostic.api.v1.KryptnosticConnection;
+import com.kryptnostic.api.v1.KryptnosticCryptoManager;
+import com.kryptnostic.api.v1.client.DefaultKryptnosticClient;
+import com.kryptnostic.api.v1.client.DefaultKryptnosticCryptoManager;
 import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.LocalRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.NetworkRsaKeyLoader;
-import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
-import com.kryptnostic.kodex.v1.client.KryptnosticConnection;
+import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.kodex.v1.crypto.ciphers.PasswordCryptoService;
-import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
-import com.kryptnostic.kodex.v1.crypto.keys.CryptoServiceLoader;
-import com.kryptnostic.kodex.v1.crypto.keys.DefaultCryptoServiceLoader;
-import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
@@ -43,7 +39,18 @@ import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
-import com.kryptnostic.storage.v1.http.CryptoKeyStorageApi;
+import com.kryptnostic.storage.v1.http.MetadataStorageApi;
+import com.kryptnostic.v2.constants.Names;
+import com.kryptnostic.v2.crypto.CryptoServiceLoader;
+import com.kryptnostic.v2.crypto.KryptnosticCryptoServiceLoader;
+import com.kryptnostic.v2.search.SearchApi;
+import com.kryptnostic.v2.sharing.api.SharingApi;
+import com.kryptnostic.v2.storage.api.KeyStorageApi;
+import com.kryptnostic.v2.storage.api.ObjectListingApi;
+import com.kryptnostic.v2.storage.api.ObjectStorageApi;
+
+import retrofit.RestAdapter;
+import retrofit.client.Client;
 
 public class IrisConnection implements KryptnosticConnection {
     private static final Logger                   logger  = LoggerFactory
@@ -52,8 +59,13 @@ public class IrisConnection implements KryptnosticConnection {
     private final UUID                            userKey;
     private final String                          userCredential;
     private final String                          url;
-    private final DirectoryApi                    keyService;
-    private final CryptoKeyStorageApi             cryptoKeyStorageApi;
+    private final DirectoryApi                    directoryApi;
+    private final ObjectStorageApi                objectStorageApi;
+    private final ObjectListingApi                objectListingApi;
+    private final KeyStorageApi                   keyStorageApi;
+    private final SearchApi                       searchApi;
+    private final SharingApi                      sharingApi;
+    private final MetadataStorageApi              metadataStorageApi;
     private final DataStore                       dataStore;
     private final PublicKey                       rsaPublicKey;
     private final PrivateKey                      rsaPrivateKey;
@@ -62,7 +74,17 @@ public class IrisConnection implements KryptnosticConnection {
     private final KryptnosticEngine               engine;
     private final byte[]                          clientHashFunction;
 
-    public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client ) throws IrisException {
+    // TODO: Make constructor that can take mock services.
+    // public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client ,
+    // DirectoryApi directoryApi , ObjectStorageApi objectStorageApi , KeyStorageApi keyStorageApi, SearchApi searchApi,
+    // MetadataStorageApi storageApi ) {
+    // this.url = url;
+    // this.userKey = userKey;
+    // this.
+    // }
+
+    public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client )
+            throws IrisException {
         this( url, userKey, password, dataStore, client, null );
     }
 
@@ -76,14 +98,24 @@ public class IrisConnection implements KryptnosticConnection {
         cryptoService = new PasswordCryptoService( password );
         String credential = bootstrapCredential( userKey, url, password, client );
 
-        RestAdapter adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
+        RestAdapter v1Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
+                url.replace( "/v2", "/v1" ),
+                userKey,
+                credential,
+                client );
+        this.directoryApi = v1Adapter.create( DirectoryApi.class );
+        this.metadataStorageApi = v1Adapter.create( MetadataStorageApi.class );
+
+        RestAdapter v2Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
                 url,
                 userKey,
                 credential,
                 client );
-
-        this.keyService = adapter.create( DirectoryApi.class );
-        this.cryptoKeyStorageApi = adapter.create( CryptoKeyStorageApi.class );
+        this.keyStorageApi = v2Adapter.create( KeyStorageApi.class );
+        this.objectStorageApi = v2Adapter.create( ObjectStorageApi.class );
+        this.objectListingApi = v2Adapter.create( ObjectListingApi.class );
+        this.searchApi = v2Adapter.create( SearchApi.class );
+        this.sharingApi = v2Adapter.create( SharingApi.class );
 
         this.userCredential = credential;
         this.userKey = userKey;
@@ -95,13 +127,13 @@ public class IrisConnection implements KryptnosticConnection {
          */
         Stopwatch watch = Stopwatch.createStarted();
         if ( keyPair == null ) {
-            keyPair = loadRsaKeys( cryptoService, userKey, dataStore, keyService );
+            keyPair = loadRsaKeys( cryptoService, userKey, dataStore, directoryApi );
         }
         this.rsaPrivateKey = keyPair.getPrivate();
         this.rsaPublicKey = keyPair.getPublic();
-        logger.debug( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+        logger.trace( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
-        this.loader = new DefaultCryptoServiceLoader( this, keyService, Cypher.AES_CTR_128 );
+        this.loader = new KryptnosticCryptoServiceLoader( this, keyStorageApi, objectStorageApi, Cypher.AES_CTR_128 );
         KryptnosticEngineHolder holder = loadEngine();
         this.engine = holder.engine;
         this.clientHashFunction = holder.clientHashFunction;
@@ -110,11 +142,7 @@ public class IrisConnection implements KryptnosticConnection {
     private static String bootstrapCredential( UUID userKey, String url, String password, Client client )
             throws IrisException {
         RestAdapter bootstrap = KryptnosticRestAdapter.createWithNoAuthAndDefaultJacksonConverter( url, client );
-        BlockCiphertext encryptedSalt = null;
-        try {
-            encryptedSalt = bootstrap.create( DirectoryApi.class ).getSalt( userKey );
-        } catch ( ResourceNotFoundException e1 ) {}
-
+        BlockCiphertext encryptedSalt = bootstrap.create( KeyStorageApi.class ).getEncryptedSalt( userKey );
         if ( encryptedSalt == null ) {
             throw new IrisException( "Salt not found for user. Is this user registered?" );
         }
@@ -142,7 +170,7 @@ public class IrisConnection implements KryptnosticConnection {
         if ( keyPair == null ) {
             try {
                 logger.debug( "Loading RSA keys from network" );
-                keyPair = new NetworkRsaKeyLoader( crypto, keyClient, userKey ).load();
+                keyPair = new NetworkRsaKeyLoader( crypto, keyStorageApi, userKey ).load();
                 try {
                     flushRsaKeysToDisk( keyPair, createEncryptedPrivateKey( keyPair ) );
                 } catch ( IOException | SecurityConfigurationException e ) {
@@ -185,11 +213,11 @@ public class IrisConnection implements KryptnosticConnection {
         byte[] pubKey = keyPair.getPublic().getEncoded();
 
         logger.debug( "Flushing RSA privkey to web..." );
-        keyService.setPrivateKey( encPrivKey );
+        keyStorageApi.setRSAPrivateKey( encPrivKey );
         logger.debug( "Done flushing RSA privkey to web." );
 
         logger.debug( "Flushing RSA pubkey to web..." );
-        keyService.setPublicKey( new PublicKeyEnvelope( pubKey ) );
+        keyStorageApi.setRSAPublicKey( pubKey );
         logger.debug( "Done flushing RSA pubkey to web." );
     }
 
@@ -223,17 +251,17 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     @Override
-    public DataStore getDataStore() {
+    public DataStore getLocalDataStore() {
         return dataStore;
     }
 
     @Override
-    public PrivateKey getRsaPrivateKey() {
+    public PrivateKey getPrivateKey() {
         return rsaPrivateKey;
     }
 
     @Override
-    public PublicKey getRsaPublicKey() {
+    public PublicKey getPublicKey() {
         return rsaPublicKey;
     }
 
@@ -248,13 +276,8 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     @Override
-    public CryptoKeyStorageApi getCryptoKeyStorageApi() {
-        return cryptoKeyStorageApi;
-    }
-
-    @Override
-    public RsaCompressingCryptoService getRsaCryptoService() throws SecurityConfigurationException {
-        return new RsaCompressingCryptoService( RsaKeyLoader.CIPHER, getRsaPrivateKey(), getRsaPublicKey() );
+    public KeyStorageApi getCryptoKeyStorageApi() {
+        return keyStorageApi;
     }
 
     private static class KryptnosticEngineHolder {
@@ -269,7 +292,7 @@ public class IrisConnection implements KryptnosticConnection {
          */
         CryptoService privateKeyCryptoService;
         try {
-            privateKeyCryptoService = loader.get( KryptnosticEngine.PRIVATE_KEY ).get();
+            privateKeyCryptoService = cryptoService;
         } catch ( Exception e1 ) {
             // This should only happen when the server return bad data. Fail.
             throw new Error( "Unable to get or generate AES keys." );
@@ -289,32 +312,33 @@ public class IrisConnection implements KryptnosticConnection {
              * First we try loading keys from data store.
              */
             Optional<byte[]> maybePrivateKeyBytes = Optional.fromNullable( dataStore
-                    .get( KryptnosticEngine.PRIVATE_KEY ) );
+                    .get( Names.FHE_PRIVATE_KEY ) );
             Optional<byte[]> maybeSearchPrivateKeyBytes = Optional.fromNullable( dataStore
-                    .get( KryptnosticEngine.SEARCH_PRIVATE_KEY ) );
+                    .get( Names.FHE_SEARCH_PRIVATE_KEY ) );
             Optional<byte[]> maybeClientHashFunction = Optional.fromNullable( dataStore
-                    .get( KryptnosticEngine.CLIENT_HASH_FUNCTION ) );
-            if ( maybePrivateKeyBytes.isPresent() && maybeSearchPrivateKeyBytes.isPresent()
-                    && maybeClientHashFunction.isPresent() ) {
-                privateKey = privateKeyCryptoService.decryptBytes( mapper.readValue( maybePrivateKeyBytes.get(),
-                        BlockCiphertext.class ) );
-                searchPrivateKey = privateKeyCryptoService.decryptBytes( mapper.readValue( maybeSearchPrivateKeyBytes
-                        .get(),
-                        BlockCiphertext.class ) );
-                engine.initClient( privateKey, searchPrivateKey );
-                holder.clientHashFunction = maybeClientHashFunction.get();
-                return holder;
-            } else {
+                    .get( Names.CLIENT_HASH_FUNCTION ) );
+            boolean privateKeyPresent = maybePrivateKeyBytes.isPresent();
+            boolean searchPrivateKeyPresent = maybeSearchPrivateKeyBytes.isPresent();
+            boolean clientHashPresent = maybeClientHashFunction.isPresent();
+            if ( !privateKeyPresent || !searchPrivateKeyPresent || !clientHashPresent ) {
                 // If some keys are absent locally let's try and pull from the network.
                 throw new IOException( "Unable to load kryptnostic engine keys." );
             }
+            privateKey = privateKeyCryptoService.decryptBytes( mapper.readValue( maybePrivateKeyBytes.get(),
+                    BlockCiphertext.class ) );
+            searchPrivateKey = privateKeyCryptoService.decryptBytes( mapper.readValue( maybeSearchPrivateKeyBytes
+                    .get(),
+                    BlockCiphertext.class ) );
+            engine.initClient( privateKey, searchPrivateKey );
+            holder.clientHashFunction = maybeClientHashFunction.get();
+            return holder;
         } catch ( SecurityConfigurationException | IOException e ) {
             try {
-                Optional<BlockCiphertext> maybeEncryptedPrivateKey = cryptoKeyStorageApi
+                Optional<BlockCiphertext> maybeEncryptedPrivateKey = keyStorageApi
                         .getFHEPrivateKeyForCurrentUser();
-                Optional<BlockCiphertext> maybeEncryptedSearchPrivateKey = cryptoKeyStorageApi
+                Optional<BlockCiphertext> maybeEncryptedSearchPrivateKey = keyStorageApi
                         .getFHESearchPrivateKeyForUser();
-                byte[] maybeClientHashFunction = cryptoKeyStorageApi.getHashFunctionForCurrentUser();
+                byte[] maybeClientHashFunction = keyStorageApi.getHashFunctionForCurrentUser();
                 // TODO: Check that the length matches the expected length for the client hash function.
                 if ( maybeEncryptedPrivateKey.isPresent() && maybeEncryptedSearchPrivateKey.isPresent()
                         && ( maybeClientHashFunction.length > 0 ) ) {
@@ -326,10 +350,10 @@ public class IrisConnection implements KryptnosticConnection {
                     engine.initClient( privateKey, searchPrivateKey );
                     holder.clientHashFunction = maybeClientHashFunction;
                 } else {
-                    throw new SecurityConfigurationException( "Unable to load FHE keys from server." );
+                    throw new SecurityConfigurationException( "Unable to load FHE keys from server.", e );
                 }
-            } catch ( BadRequestException | SecurityConfigurationException e1 ) {
-                // If have a problem retrieving data from the server or decrypting keys, we regenerate.
+            } catch ( SecurityConfigurationException e1 ) {
+                // If have a problem retrieving data from the serve or decrypting keys, we regenerate.
                 engine.initClient();
                 privateKey = Preconditions.checkNotNull( engine.getPrivateKey(),
                         "Private key from engine cannot be null." );
@@ -342,10 +366,10 @@ public class IrisConnection implements KryptnosticConnection {
                 try {
                     encryptedPrivateKey = privateKeyCryptoService.encrypt( privateKey );
                     encryptedSearchPrivateKey = privateKeyCryptoService.encrypt( searchPrivateKey );
-                    cryptoKeyStorageApi.setHashFunctionForCurrentUser( holder.clientHashFunction );
-                    cryptoKeyStorageApi.setFHEPrivateKeyForCurrentUser( encryptedPrivateKey );
-                    cryptoKeyStorageApi.setFHESearchPrivateKeyForCurrentUser( encryptedSearchPrivateKey );
-                } catch ( SecurityConfigurationException | BadRequestException e2 ) {
+                    keyStorageApi.setHashFunctionForCurrentUser( holder.clientHashFunction );
+                    keyStorageApi.setFHEPrivateKeyForCurrentUser( encryptedPrivateKey );
+                    keyStorageApi.setFHESearchPrivateKeyForCurrentUser( encryptedSearchPrivateKey );
+                } catch ( SecurityConfigurationException e2 ) {
                     throw new IrisException( e2 );
                 }
             }
@@ -354,16 +378,16 @@ public class IrisConnection implements KryptnosticConnection {
              * If we got here then keys came from network or were freshly created and need to be flushed to disk.
              */
             try {
-                dataStore.put( KryptnosticEngine.PRIVATE_KEY, mapper.writeValueAsBytes( encryptedPrivateKey )
-                        );
-                dataStore.put( KryptnosticEngine.SEARCH_PRIVATE_KEY,
+                dataStore.put( Names.FHE_PRIVATE_KEY,
+                        mapper.writeValueAsBytes( encryptedPrivateKey ) );
+                dataStore.put( Names.FHE_SEARCH_PRIVATE_KEY,
                         mapper.writeValueAsBytes( encryptedSearchPrivateKey ) );
-                dataStore.put( KryptnosticEngine.CLIENT_HASH_FUNCTION,
+                dataStore.put( Names.CLIENT_HASH_FUNCTION,
                         mapper.writeValueAsBytes( holder.clientHashFunction ) );
 
             } catch ( IOException e1 ) {
-                logger.error( "Unable to configure FHE keys." );
-                throw new Error( "Sad times.Freeze? I'm a robot. I'm not a refrigerator. " );
+                logger.error( "Unable to configure FHE keys.", e1 );
+                throw new Error( "Sad times.Freeze? I'm a robot. I'm not a refrigerator. ", e1 );
             }
 
         }
@@ -374,5 +398,50 @@ public class IrisConnection implements KryptnosticConnection {
     @Override
     public byte[] getClientHashFunction() {
         return clientHashFunction;
+    }
+
+    @Override
+    public MetadataStorageApi getMetadataApi() {
+        return metadataStorageApi;
+    }
+
+    @Override
+    public ObjectStorageApi getObjectStorageApi() {
+        return objectStorageApi;
+    }
+
+    @Override
+    public ObjectListingApi getObjectListingApi() {
+        return objectListingApi;
+    }
+
+    @Override
+    public SearchApi getSearchApi() {
+        return searchApi;
+    }
+
+    @Override
+    public SharingApi getSharingApi() {
+        return sharingApi;
+    }
+
+    @Override
+    public DirectoryApi getDirectoryApi() {
+        return directoryApi;
+    }
+
+    @Override
+    public KeyStorageApi getKeyStorageApi() {
+        return keyStorageApi;
+    }
+
+    @Override
+    public KryptnosticClient newClient() throws ClassNotFoundException, IrisException, ResourceNotFoundException, IOException, ExecutionException, SecurityConfigurationException {
+        return new DefaultKryptnosticClient( this );
+    }
+
+    @Override
+    public KryptnosticCryptoManager newCryptoManager() {
+        return new DefaultKryptnosticCryptoManager( this );
     }
 }
