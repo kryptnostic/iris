@@ -442,6 +442,7 @@ public class IrisConnection implements KryptnosticConnection {
 
     @Override
     public KryptnosticCryptoManager newCryptoManager() {
+        //TODO: Why is this a factory method?
         return new DefaultKryptnosticCryptoManager( this );
     }
 }

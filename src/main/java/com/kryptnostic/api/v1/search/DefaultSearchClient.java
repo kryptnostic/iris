@@ -1,10 +1,13 @@
 package com.kryptnostic.api.v1.search;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.KryptnosticConnection;
@@ -12,14 +15,15 @@ import com.kryptnostic.api.v1.indexing.SimpleIndexer;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.search.v1.SearchClient;
-import com.kryptnostic.search.v1.models.request.SearchRequest;
 import com.kryptnostic.v2.search.SearchApi;
 import com.kryptnostic.v2.search.SearchResultResponse;
+import com.kryptnostic.v2.search.TermQuery;
 
 /**
  * Default implementation of SearchService. Must use same IndexingService as the KryptnosticConnection.
  * 
  * @author Nick Hewitt &lt;nick@kryptnostic.com&gt;
+ * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
 public class DefaultSearchClient implements SearchClient {
@@ -33,49 +37,51 @@ public class DefaultSearchClient implements SearchClient {
         this.indexer = new SimpleIndexer();
     }
 
+    @Override
+    public SearchResultResponse search( List<String> searchTerms ) {
+        return submitTermQuery( buildTermQuery( searchTerms ) );
+    }
+
     /**
      * Analyze query into tokens, convert tokens into searchTokens, and generate a SearchRequest to Kryptnostic RESTful
      * search service.
      */
 
     @Override
-    public SearchResultResponse search( String query ) {
-        return search( query, null );
+    public SearchResultResponse search( String... searchTerms ) {
+        return search( Arrays.asList( searchTerms ) );
     }
 
     @Override
-    public SearchResultResponse search( String query, SearchRequest request ) {
-        List<String> tokens = analyzeQuery( query );
-        SearchRequest searchRequest = generateSearchRequest( tokens );
-
-        if ( request != null ) {
-            searchRequest = new SearchRequest(
-                    searchRequest.getSearchToken(),
-                    request.getMaxResults(),
-                    request.getOffset() );
-        }
-
-        return search( searchRequest );
-    }
-
-    @Override
-    public SearchResultResponse search( SearchRequest request ) {
-        return searchApi.search( request );
+    public SearchResultResponse submitTermQuery( TermQuery termQuery ) {
+        return searchApi.submitTermQuery( termQuery );
     }
 
     /**
      * @return SearchRequest based on search tokens, the ciphertext to be submitted to KryptnosticSearch.
      */
     @Override
-    public SearchRequest generateSearchRequest( List<String> tokens ) {
-        Preconditions.checkArgument( tokens != null, "Cannot pass null tokens param." );
+    public TermQuery buildTermQuery( List<String> searchTerms ) {
+        Preconditions.checkArgument( searchTerms != null, "Cannot pass null tokens param." );
 
-        List<byte[]> searchTokens = Lists.newArrayList();
-        for ( String token : tokens ) {
-            searchTokens.add( connection.newCryptoManager().prepareSearchToken( token ) );
-        }
+        Iterable<String> analyzedTerms = Iterables
+                .concat( Lists.transform( searchTerms, new Function<String, List<String>>() {
 
-        return SearchRequest.searchToken( searchTokens );
+                    @Override
+                    public List<String> apply( String searchTerm ) {
+                        return analyzeQuery( searchTerm );
+                    }
+                } ) );
+
+        Iterable<byte[]> fheEncryptedSearchTerms = Iterables.transform( analyzedTerms, new Function<String, byte[]>() {
+
+            @Override
+            public byte[] apply( String searchTerm ) {
+                return connection.newCryptoManager().prepareSearchToken( searchTerm );
+            }
+
+        } );
+        return new TermQuery( fheEncryptedSearchTerms );
     }
 
     /**
@@ -94,4 +100,5 @@ public class DefaultSearchClient implements SearchClient {
         }
         return Lists.newArrayList( tokens );
     }
+
 }
