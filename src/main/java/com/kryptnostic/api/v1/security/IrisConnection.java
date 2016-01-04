@@ -1,6 +1,7 @@
 package com.kryptnostic.api.v1.security;
 
 import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -28,6 +29,7 @@ import com.kryptnostic.api.v1.security.loaders.rsa.NetworkRsaKeyLoader;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
+import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
@@ -36,6 +38,7 @@ import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
@@ -53,35 +56,29 @@ import retrofit.RestAdapter;
 import retrofit.client.Client;
 
 public class IrisConnection implements KryptnosticConnection {
-    private static final Logger                   logger  = LoggerFactory
-                                                                  .getLogger( IrisConnection.class );
-    private transient final PasswordCryptoService cryptoService;
-    private final UUID                            userKey;
-    private final String                          userCredential;
-    private final String                          url;
-    private final DirectoryApi                    directoryApi;
-    private final ObjectStorageApi                objectStorageApi;
-    private final ObjectListingApi                objectListingApi;
-    private final KeyStorageApi                   keyStorageApi;
-    private final SearchApi                       searchApi;
-    private final SharingApi                      sharingApi;
-    private final MetadataStorageApi              metadataStorageApi;
-    private final DataStore                       dataStore;
-    private final PublicKey                       rsaPublicKey;
-    private final PrivateKey                      rsaPrivateKey;
-    private final CryptoServiceLoader             loader;
-    boolean                                       doFresh = false;
-    private final KryptnosticEngine               engine;
-    private final byte[]                          clientHashFunction;
 
-    // TODO: Make constructor that can take mock services.
-    // public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client ,
-    // DirectoryApi directoryApi , ObjectStorageApi objectStorageApi , KeyStorageApi keyStorageApi, SearchApi searchApi,
-    // MetadataStorageApi storageApi ) {
-    // this.url = url;
-    // this.userKey = userKey;
-    // this.
-    // }
+    private static final Logger                       logger     = LoggerFactory
+                                                                         .getLogger( IrisConnection.class );
+    protected static final DeflatingJacksonMarshaller marshaller = new DeflatingJacksonMarshaller();
+    private transient final PasswordCryptoService     cryptoService;
+    private final UUID                                userKey;
+    private final String                              userCredential;
+    private final String                              url;
+    private final DirectoryApi                        directoryApi;
+    private final ObjectStorageApi                    objectStorageApi;
+    private final ObjectListingApi                    objectListingApi;
+    private final KeyStorageApi                       keyStorageApi;
+    private final SearchApi                           searchApi;
+    private final SharingApi                          sharingApi;
+    private final MetadataStorageApi                  metadataStorageApi;
+    private final DataStore                           dataStore;
+    private final PublicKey                           rsaPublicKey;
+    private final PrivateKey                          rsaPrivateKey;
+    private final CryptoServiceLoader                 loader;
+    boolean                                           doFresh    = false;
+    private final KryptnosticEngine                   engine;
+    private final byte[]                              clientHashFunction;
+    private final CryptoService                       masterCryptoService;
 
     public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client )
             throws IrisException {
@@ -134,6 +131,7 @@ public class IrisConnection implements KryptnosticConnection {
         logger.trace( "[PROFILE] load rsa keys {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
 
         this.loader = new KryptnosticCryptoServiceLoader( this, keyStorageApi, objectStorageApi, Cypher.AES_CTR_128 );
+        masterCryptoService = loadMasterCryptoService();
         KryptnosticEngineHolder holder = loadEngine();
         this.engine = holder.engine;
         this.clientHashFunction = holder.clientHashFunction;
@@ -150,6 +148,39 @@ public class IrisConnection implements KryptnosticConnection {
         try {
             return CredentialFactory.deriveCredential( password, encryptedSalt );
         } catch ( SecurityConfigurationException | InvalidKeySpecException | NoSuchAlgorithmException e ) {
+            throw new IrisException( e );
+        }
+    }
+
+    private CryptoService loadMasterCryptoService() throws IrisException {
+        byte[] cryptoServiceBytes = null;
+        try {
+            cryptoServiceBytes = dataStore.get( MASTER_CRYPTO_SERVICE );
+        } catch ( IOException e ) {
+            logger.warn( "Unable to load crypto service bytes from disk." );
+        }
+
+        if ( cryptoServiceBytes == null ) {
+            logger.info( "Trying to load master crypto service from network " );
+            cryptoServiceBytes = keyStorageApi.getMasterCryptoService();
+        }
+
+        try {
+            if ( cryptoServiceBytes == null ) {
+                CryptoService cs = new AesCryptoService( Cypher.AES_CTR_128 );
+                byte[] encryptedMasterKey = newCryptoManager().getRsaCryptoService().encrypt( cs );
+                dataStore.put( MASTER_CRYPTO_SERVICE, encryptedMasterKey );
+                return cs;
+            } else {
+                return newCryptoManager().getRsaCryptoService().decrypt( keyStorageApi.getMasterCryptoService(),
+                        AesCryptoService.class );
+            }
+        } catch (
+                SecurityConfigurationException
+                | IOException
+                | NoSuchAlgorithmException
+                | InvalidAlgorithmParameterException e ) {
+            logger.error( "Something went wrong while loading master key. ", e );
             throw new IrisException( e );
         }
     }
@@ -436,12 +467,19 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     @Override
-    public KryptnosticClient newClient() throws ClassNotFoundException, IrisException, ResourceNotFoundException, IOException, ExecutionException, SecurityConfigurationException {
+    public KryptnosticClient newClient() throws ClassNotFoundException, IrisException, ResourceNotFoundException,
+            IOException, ExecutionException, SecurityConfigurationException {
         return new DefaultKryptnosticClient( this );
     }
 
     @Override
     public KryptnosticCryptoManager newCryptoManager() {
+        // TODO: Why is this a factory method?
         return new DefaultKryptnosticCryptoManager( this );
+    }
+
+    @Override
+    public CryptoService getMasterCryptoService() {
+        return masterCryptoService;
     }
 }

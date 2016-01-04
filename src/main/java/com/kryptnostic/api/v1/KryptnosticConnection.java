@@ -8,6 +8,7 @@ import java.util.concurrent.ExecutionException;
 
 import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
+import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
@@ -29,6 +30,8 @@ import com.kryptnostic.v2.storage.api.ObjectStorageApi;
  *
  */
 public interface KryptnosticConnection {
+    //TODO: Move this somewhere else.
+    String MASTER_CRYPTO_SERVICE = "master-crypto-service";
     /**
      * Retrieves the security principal for this connection.
      *
@@ -47,6 +50,8 @@ public interface KryptnosticConnection {
     PrivateKey getPrivateKey();
 
     PublicKey getPublicKey();
+    
+    CryptoService getMasterCryptoService();
 
     KryptnosticEngine getKryptnosticEngine();
 
