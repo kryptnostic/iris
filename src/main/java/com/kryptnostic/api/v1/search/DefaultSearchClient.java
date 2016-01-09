@@ -17,7 +17,6 @@ import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.v2.search.SearchApi;
 import com.kryptnostic.v2.search.SearchResultResponse;
-import com.kryptnostic.v2.search.TermQuery;
 
 /**
  * Default implementation of SearchService. Must use same IndexingService as the KryptnosticConnection.
@@ -61,7 +60,7 @@ public class DefaultSearchClient implements SearchClient {
      * @return SearchRequest based on search tokens, the ciphertext to be submitted to KryptnosticSearch.
      */
     @Override
-    public TermQuery buildTermQuery( List<String> searchTerms ) {
+    public Map<String, byte[]> buildTermQuery( List<String> searchTerms ) {
         Preconditions.checkArgument( searchTerms != null, "Cannot pass null tokens param." );
 
         Iterable<String> analyzedTerms = Iterables
@@ -81,6 +80,7 @@ public class DefaultSearchClient implements SearchClient {
             }
 
         } );
+        AesCryptoService cryptoService = connection.getMasterCryptoService();
         return new TermQuery( fheEncryptedSearchTerms );
     }
 
