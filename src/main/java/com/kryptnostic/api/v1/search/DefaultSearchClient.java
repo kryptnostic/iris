@@ -4,18 +4,21 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 
-import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
+import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.v2.search.SearchApi;
+import com.kryptnostic.v2.search.SearchResult;
 import com.kryptnostic.v2.search.SearchResultResponse;
 
 /**
@@ -52,8 +55,8 @@ public class DefaultSearchClient implements SearchClient {
     }
 
     @Override
-    public SearchResultResponse submitTermQuery( TermQuery termQuery ) {
-        return searchApi.submitTermQuery( termQuery );
+    public SortedSet<SearchResult> submitTermQuery( Map<String,byte[]> query ) {
+        return searchApi.submitTermQuery( query );
     }
 
     /**
@@ -72,6 +75,9 @@ public class DefaultSearchClient implements SearchClient {
                     }
                 } ) );
 
+        for( String analyzedTerm : analyzedTerm ) {
+            
+        }
         Iterable<byte[]> fheEncryptedSearchTerms = Iterables.transform( analyzedTerms, new Function<String, byte[]>() {
 
             @Override
@@ -81,7 +87,7 @@ public class DefaultSearchClient implements SearchClient {
 
         } );
         AesCryptoService cryptoService = connection.getMasterCryptoService();
-        return new TermQuery( fheEncryptedSearchTerms );
+        return Maps.toMap( fheEn, valueFunction )
     }
 
     /**
