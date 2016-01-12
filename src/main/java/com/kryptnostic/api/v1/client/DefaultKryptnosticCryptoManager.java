@@ -132,7 +132,6 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
                 connection.getPublicKey() );
     }
 
-    @Override
     public String computeSearchToken( String token ) {
         // TODO: actually implement htis.
         return null;
