@@ -9,7 +9,6 @@ import java.util.SortedSet;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.api.v1.indexing.SimpleIndexer;
@@ -40,7 +39,7 @@ public class DefaultSearchClient implements SearchClient {
     }
 
     @Override
-    public SearchResultResponse search( List<String> searchTerms ) {
+    public Set<SearchResult> search( List<String> searchTerms ) {
         return submitTermQuery( buildTermQuery( searchTerms ) );
     }
 
@@ -50,12 +49,12 @@ public class DefaultSearchClient implements SearchClient {
      */
 
     @Override
-    public SearchResultResponse search( String... searchTerms ) {
+    public Set<SearchResult> search( String... searchTerms ) {
         return search( Arrays.asList( searchTerms ) );
     }
 
     @Override
-    public SortedSet<SearchResult> submitTermQuery( Map<String,byte[]> query ) {
+    public Set<SearchResult> submitTermQuery( Map<String, byte[]> query ) {
         return searchApi.submitTermQuery( query );
     }
 
@@ -75,7 +74,7 @@ public class DefaultSearchClient implements SearchClient {
                     }
                 } ) );
 
-        for( String analyzedTerm : analyzedTerm ) {
+        for( String analyzedTerm : analyzedTerms ) {
             
         }
         Iterable<byte[]> fheEncryptedSearchTerms = Iterables.transform( analyzedTerms, new Function<String, byte[]>() {
@@ -87,7 +86,8 @@ public class DefaultSearchClient implements SearchClient {
 
         } );
         AesCryptoService cryptoService = connection.getMasterCryptoService();
-        return Maps.toMap( fheEn, valueFunction )
+        
+        cryptoService.getSecretKey()
     }
 
     /**

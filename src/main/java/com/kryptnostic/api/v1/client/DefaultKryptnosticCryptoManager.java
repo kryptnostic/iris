@@ -1,14 +1,11 @@
 package com.kryptnostic.api.v1.client;
 
-import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
-import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import org.apache.commons.codec.binary.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,12 +20,11 @@ import com.kryptnostic.api.v1.KryptnosticCryptoManager;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
-import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
-import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.v2.search.SearchApi;
 import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.sharing.models.VersionedObjectSearchPair;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
@@ -43,7 +39,8 @@ import com.kryptnostic.v2.storage.models.VersionedObjectKey;
  */
 public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager {
     private final SharingApi            sharingApi;
-    final KeyStorageApi                 keyStorageApi;
+    private final KeyStorageApi         keyStorageApi;
+    private final SearchApi             searchApi;
     private final KryptnosticConnection connection;
 
     private static final Logger         logger = LoggerFactory
@@ -53,7 +50,9 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
             KryptnosticConnection connection ) {
         this.sharingApi = connection.getSharingApi();
         this.keyStorageApi = connection.getKeyStorageApi();
+        this.searchApi = connection.getSearchApi();
         this.connection = connection;
+
     }
 
     @Override
@@ -135,7 +134,12 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
 
     @Override
     public String computeSearchToken( String token ) {
-        //TODO: actually implement htis.
+        // TODO: actually implement htis.
         return null;
+    }
+
+    @Override
+    public int getIndexBucketSize( VersionedObjectKey objectKey ) {
+        return searchApi.getTotalSegments( objectKey.getObjectId() , objectKey.getVersion() );
     }
 }

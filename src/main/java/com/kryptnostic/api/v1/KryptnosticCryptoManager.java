@@ -36,4 +36,7 @@ public interface KryptnosticCryptoManager {
 
     void registerObjectSearchPairs( Set<VersionedObjectSearchPair> indexPairs );
 
+    String computeSearchToken( String token );
+    
+    int getIndexBucketSize( VersionedObjectKey objectKey );
 }

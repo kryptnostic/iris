@@ -37,6 +37,7 @@ import com.kryptnostic.v2.indexing.IndexMetadata;
 import com.kryptnostic.v2.indexing.Indexer;
 import com.kryptnostic.v2.indexing.PaddedMetadataMapper;
 import com.kryptnostic.v2.indexing.SimpleIndexer;
+import com.kryptnostic.v2.indexing.metadata.BucketedMetadata;
 import com.kryptnostic.v2.indexing.metadata.Metadata;
 import com.kryptnostic.v2.indexing.metadata.MetadataMapper;
 import com.kryptnostic.v2.indexing.metadata.MetadataRequest;
@@ -83,7 +84,11 @@ public class DefaultStorageClient implements StorageClient {
     private final TypeManager           typeManager;
 
     public DefaultStorageClient(
-            KryptnosticConnection connection ) throws ClassNotFoundException, ResourceNotFoundException, IOException, ExecutionException, SecurityConfigurationException {
+            KryptnosticConnection connection ) throws ClassNotFoundException,
+                    ResourceNotFoundException,
+                    IOException,
+                    ExecutionException,
+                    SecurityConfigurationException {
         this.connection = connection;
         this.objectApi = connection.getObjectStorageApi();
         this.listingApi = connection.getObjectListingApi();
@@ -98,7 +103,8 @@ public class DefaultStorageClient implements StorageClient {
 
     @Override
     public VersionedObjectKey storeObject( StorageOptions req, Object storeable )
-            throws IOException, ExecutionException, ResourceNotFoundException, SecurityConfigurationException, IrisException {
+            throws IOException, ExecutionException, ResourceNotFoundException, SecurityConfigurationException,
+            IrisException {
 
         CreateObjectRequest createObjectRequest = req.toCreateObjectRequest();
         VersionedObjectKey objectKey = objectApi.createObject( createObjectRequest );
@@ -137,10 +143,11 @@ public class DefaultStorageClient implements StorageClient {
         return objectKey;
     }
 
-    private void makeObjectSearchable( VersionedObjectKey key, String data, byte[] objectIndexPair ) throws IrisException {
+    private void makeObjectSearchable( VersionedObjectKey key, String data, byte[] objectIndexPair )
+            throws IrisException {
         // index + map tokens for metadata
         Stopwatch watch = Stopwatch.createStarted();
-        Set<Metadata> metadata = indexer.index( key, data );
+        Set<BucketedMetadata> metadata = indexer.index( key, data );
         logger.trace( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
         logger.trace( "[PROFILE] {} metadata indexed", metadata.size() );
 
@@ -170,7 +177,10 @@ public class DefaultStorageClient implements StorageClient {
         return objectIndexPair;
     }
 
-    private void storeObject( VersionedObjectKey objectKey, BlockCiphertext ciphertext, EnumSet<CryptoMaterial> required ) {
+    private void storeObject(
+            VersionedObjectKey objectKey,
+            BlockCiphertext ciphertext,
+            EnumSet<CryptoMaterial> required ) {
         UUID objectId = objectKey.getObjectId();
         long version = objectKey.getVersion();
 
@@ -220,14 +230,14 @@ public class DefaultStorageClient implements StorageClient {
      * @throws IrisException
      */
     private void prepareMetadata(
-            Set<Metadata> metadata,
+            Set<BucketedMetadata> metadata,
             byte[] objectIndexPair )
                     throws IrisException {
 
         // create plaintext metadata
         Map<ByteBuffer, List<Metadata>> mappedMetadata = metadataMapper.mapTokensToKeys( metadata,
                 objectIndexPair );
-        // logger.debug( "generated plaintext metadata {}", keyedMetadata );
+                // logger.debug( "generated plaintext metadata {}", keyedMetadata );
 
         // encrypt the metadata and format for the server
         Collection<IndexMetadata> metadataIndex = Lists.newArrayListWithExpectedSize( METADATA_BATCH_SIZE );
@@ -379,7 +389,8 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public Map<UUID, String> getStrings( Set<UUID> objectIds ) throws IOException, ExecutionException, SecurityConfigurationException {
+    public Map<UUID, String> getStrings( Set<UUID> objectIds )
+            throws IOException, ExecutionException, SecurityConfigurationException {
         if ( objectIds == null ) {
             return ImmutableMap.of();
         }
