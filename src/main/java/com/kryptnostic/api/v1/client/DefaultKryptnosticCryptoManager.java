@@ -1,14 +1,11 @@
 package com.kryptnostic.api.v1.client;
 
-import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
-import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import org.apache.commons.codec.binary.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,8 +20,6 @@ import com.kryptnostic.api.v1.KryptnosticCryptoManager;
 import com.kryptnostic.api.v1.security.loaders.rsa.RsaKeyLoader;
 import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
-import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
-import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
@@ -133,7 +128,6 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
                 connection.getPublicKey() );
     }
 
-    @Override
     public String computeSearchToken( String token ) {
         //TODO: actually implement htis.
         return null;

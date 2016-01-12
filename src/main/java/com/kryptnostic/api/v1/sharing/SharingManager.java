@@ -159,10 +159,10 @@ public class SharingManager implements SharingClient {
 
     @Override
     public int getIncomingSharesCount() {
-        Set<Share> incomingShares = sharingApi.getIncomingShares();
-        if ( incomingShares == null || incomingShares.isEmpty() ) {
+        Iterable<Share> incomingShares = sharingApi.getIncomingShares();
+        if ( incomingShares == null || Iterables.isEmpty( incomingShares ) ) {
             return 0;
         }
-        return incomingShares.size();
+        return Iterables.size( incomingShares );
     }
 }
