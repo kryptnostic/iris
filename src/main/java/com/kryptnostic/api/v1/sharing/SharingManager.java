@@ -114,10 +114,12 @@ public class SharingManager implements SharingClient {
         if ( incomingShares == null || Iterables.isEmpty( incomingShares ) ) {
             return ImmutableSet.of();
         }
+        Set<VersionedObjectKey> objectKeys = Sets.newHashSet();
         Set<VersionedObjectSearchPair> objectSearchPairs = Sets.newHashSet();
 
         for ( Share share : incomingShares ) {
             VersionedObjectKey id = share.getObjectKey();
+            objectKeys.add( id );
             CryptoService decryptor;
             try {
                 logger.info( "Processing share for {}", id );
@@ -148,7 +150,7 @@ public class SharingManager implements SharingClient {
         }
 
         sharingApi.addSearchPairs( objectSearchPairs );
-        return objectSearchPairs.keySet();
+        return objectKeys;
     }
 
     @Override
