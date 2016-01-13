@@ -6,6 +6,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import javax.crypto.Mac;
+
+import org.apache.commons.codec.binary.StringUtils;
+import org.apache.commons.codec.digest.HmacUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +46,7 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
     private final KeyStorageApi         keyStorageApi;
     private final SearchApi             searchApi;
     private final KryptnosticConnection connection;
+    private final Mac                   hmac;
 
     private static final Logger         logger = LoggerFactory
                                                        .getLogger( DefaultKryptnosticCryptoManager.class );
@@ -52,7 +57,7 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
         this.keyStorageApi = connection.getKeyStorageApi();
         this.searchApi = connection.getSearchApi();
         this.connection = connection;
-
+        hmac = HmacUtils.getHmacSha256( connection.getMasterCryptoService().getSecretKey() );
     }
 
     @Override
@@ -90,8 +95,8 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
     }
 
     @Override
-    public byte[] prepareSearchToken( String token ) {
-        return connection.getKryptnosticEngine().getEncryptedSearchToken( getHashedToken( token ) );
+    public byte[] prepareSearchToken( String term ) {
+        return connection.getKryptnosticEngine().getEncryptedSearchToken( getHashedToken( term ) );
     }
 
     @Override
@@ -132,13 +137,12 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
                 connection.getPublicKey() );
     }
 
-    public String computeSearchToken( String token ) {
-        // TODO: actually implement htis.
-        return null;
+    public byte[] computeSearchToken( String term ) {
+        return hmac.doFinal( StringUtils.getBytesUtf16( term ) );
     }
 
     @Override
     public int getIndexBucketSize( VersionedObjectKey objectKey ) {
-        return searchApi.getTotalSegments( objectKey.getObjectId() , objectKey.getVersion() );
+        return searchApi.getTotalSegments( objectKey.getObjectId(), objectKey.getVersion() );
     }
 }
