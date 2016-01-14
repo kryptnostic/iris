@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.indexing.analysis.TokenizingWhitespaceAnalyzer;
 import com.kryptnostic.kodex.v1.indexing.Indexer;
@@ -16,17 +18,17 @@ public class SimpleIndexer implements Indexer {
     private final Set<Analyzer> analyzers;
 
     public SimpleIndexer() {
-        analyzers = Sets.<Analyzer> newHashSet( new TokenizingWhitespaceAnalyzer() );
+        analyzers = Sets.<Analyzer> newHashSet( new TokenizingWhitespaceAnalyzer( 10 ) );
     }
 
     @Override
     public Set<Metadata> index( String objectId, String object ) {
         Set<Metadata> metadata = Sets.newHashSet();
         for ( Analyzer analyzer : analyzers ) {
-            Map<String, List<Integer>> invertedIndex = analyzer.analyze( object );
-            for ( Entry<String, List<Integer>> entry : invertedIndex.entrySet() ) {
+            Map<String, List<List<Integer>>> invertedIndex = analyzer.analyze( object );
+            for ( Entry<String, List<List<Integer>>> entry : invertedIndex.entrySet() ) {
                 String token = entry.getKey();
-                List<Integer> locations = entry.getValue();
+                List<Integer> locations = ImmutableList.copyOf( Iterables.concat( entry.getValue() ) );
                 metadata.add( new Metadata( objectId, token, locations ) );
             }
         }

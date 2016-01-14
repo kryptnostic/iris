@@ -7,15 +7,16 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
+import com.kryptnostic.v2.indexing.Indexer;
 
 public class AnalyzerTests {
     private static final String doc = "This is a test document, with some fu(|<3d up $hit!";
 
     @Test
     public void testTokenizingWhitepsaceAnalyzer() {
-        TokenizingWhitespaceAnalyzer analyzer = new TokenizingWhitespaceAnalyzer();
+        TokenizingWhitespaceAnalyzer analyzer = new TokenizingWhitespaceAnalyzer( Indexer.DEFAULT_BUCKET_SIZE );
 
-        Map<String, List<Integer>> invertedIndex = analyzer.analyze( doc );
+        Map<String, List<List<Integer>>> invertedIndex = analyzer.analyze( doc );
 
         Assert.assertEquals(
                 invertedIndex.keySet(),

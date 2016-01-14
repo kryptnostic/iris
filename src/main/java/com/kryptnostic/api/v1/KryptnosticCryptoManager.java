@@ -8,6 +8,7 @@ import com.kryptnostic.indexing.v1.ObjectSearchPair;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.v2.sharing.models.VersionedObjectSearchPair;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 /**
@@ -25,8 +26,6 @@ public interface KryptnosticCryptoManager {
 
     void registerObjectSearchPair( VersionedObjectKey objectKey, ObjectSearchPair objectSearchPair );
 
-    void registerObjectSearchPairs( Map<VersionedObjectKey, ObjectSearchPair> objectSearchPairs );
-
     byte[] prepareSearchToken( String token );
 
     Map<UUID, RsaCompressingEncryptionService> getEncryptionServiceForUsers( Set<UUID> users );
@@ -35,4 +34,9 @@ public interface KryptnosticCryptoManager {
 
     byte[] generateIndexForToken( String token, byte[] objectIndexPair );
 
+    void registerObjectSearchPairs( Set<VersionedObjectSearchPair> indexPairs );
+
+    byte[] computeSearchToken( String token );
+    
+    int getIndexBucketSize( VersionedObjectKey objectKey );
 }

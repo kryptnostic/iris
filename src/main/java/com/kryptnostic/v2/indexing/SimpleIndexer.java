@@ -9,25 +9,25 @@ import java.util.Set;
 import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.indexing.analysis.TokenizingWhitespaceAnalyzer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
-import com.kryptnostic.v2.indexing.metadata.Metadata;
+import com.kryptnostic.v2.indexing.metadata.BucketedMetadata;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 public class SimpleIndexer implements Indexer {
     private final Set<Analyzer> analyzers;
 
     public SimpleIndexer() {
-        analyzers = Sets.<Analyzer> newHashSet( new TokenizingWhitespaceAnalyzer() );
+        analyzers = Sets.<Analyzer> newHashSet( new TokenizingWhitespaceAnalyzer( DEFAULT_BUCKET_SIZE ) );
     }
 
     @Override
-    public Set<Metadata> index( VersionedObjectKey objectId, String object ) {
-        Set<Metadata> metadata = Sets.newHashSet();
+    public Set<BucketedMetadata> index( VersionedObjectKey objectId, String object ) {
+        Set<BucketedMetadata> metadata = Sets.newHashSet();
         for ( Analyzer analyzer : analyzers ) {
-            Map<String, List<Integer>> invertedIndex = analyzer.analyze( object );
-            for ( Entry<String, List<Integer>> entry : invertedIndex.entrySet() ) {
+            Map<String, List<List<Integer>>> invertedIndex = analyzer.analyze( object );
+            for ( Entry<String, List<List<Integer>>> entry : invertedIndex.entrySet() ) {
                 String token = entry.getKey();
-                List<Integer> locations = entry.getValue();
-                metadata.add( new Metadata( objectId, token, locations.size(), locations ) );
+                List<List<Integer>> locations = entry.getValue();
+                metadata.add( new BucketedMetadata( objectId, token, locations.size(), locations ) );
             }
         }
         return metadata;
