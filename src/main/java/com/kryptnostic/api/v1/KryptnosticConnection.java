@@ -21,6 +21,7 @@ import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
 import com.kryptnostic.v2.storage.api.ObjectListingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
+import com.kryptnostic.v2.storage.api.TypesApi;
 
 /**
  * Manages connection state for making API requests against the Kryptnostic API. *
@@ -76,6 +77,8 @@ public interface KryptnosticConnection {
     DirectoryApi getDirectoryApi();
 
     KeyStorageApi getKeyStorageApi();
+    
+    TypesApi getTypesApi();
 
     DataStore getLocalDataStore();
 
