@@ -20,6 +20,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.KryptnosticConnection;
@@ -349,7 +350,7 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public Set<UUID> getObjectIdsByType( UUID type ) {
+    public Iterable<UUID> getObjectIdsByType( UUID type ) {
         return listingApi.getObjectIdsByType( connection.getUserId(), type );
     }
 
@@ -389,12 +390,12 @@ public class DefaultStorageClient implements StorageClient {
     }
 
     @Override
-    public Map<UUID, String> getStrings( Set<UUID> objectIds )
+    public Map<UUID, String> getStrings( Iterable<UUID> objectIds )
             throws IOException, ExecutionException, SecurityConfigurationException {
         if ( objectIds == null ) {
             return ImmutableMap.of();
         }
-        Map<UUID, String> strings = Maps.newHashMapWithExpectedSize( objectIds.size() );
+        Map<UUID, String> strings = Maps.newHashMapWithExpectedSize( Iterables.size( objectIds ) );
         for ( UUID id : objectIds ) {
             strings.put( id, (String) getObject( id ) );
         }
