@@ -42,7 +42,7 @@ public class KryptnosticTypeManager implements TypeManager {
 
         // Initial type system
 
-        Set<UUID> typeIds = storageClient.getObjectIdsByType( TypeUUIDs.TYPE );
+        Iterable<UUID> typeIds = storageClient.getObjectIdsByType( TypeUUIDs.TYPE );
 
         Map<UUID, String> typesMap = storageClient.getStrings( typeIds );
         registeredTypes = HashBiMap.<UUID, Class<?>> create( typesMap.size() );

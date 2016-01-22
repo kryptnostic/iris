@@ -48,7 +48,7 @@ public interface StorageClient {
     ObjectMetadataNode getObjects( Set<UUID> objectIds, Map<UUID, Set<LoadLevel>> loadLevelsByTypeId )
             throws ResourceNotFoundException;
 
-    Map<UUID, String> getStrings( Set<UUID> objectIds )
+    Map<UUID, String> getStrings( Iterable<UUID> objectIds )
             throws IOException, ExecutionException, SecurityConfigurationException;
 
     void deleteMetadataForObjectId( UUID id );
@@ -63,7 +63,7 @@ public interface StorageClient {
             throws SecurityConfigurationException, ExecutionException, ResourceNotFoundException,
             ClassNotFoundException, IOException;
 
-    Set<UUID> getObjectIdsByType( UUID type );
+    Iterable<UUID> getObjectIdsByType( UUID type );
 
     Set<UUID> getObjectIdsByType( UUID type, int offset, int pageSize );
 

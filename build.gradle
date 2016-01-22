@@ -55,8 +55,7 @@ repositories {
   }
 }
 
-ext.fhe_core_version='0.1.2-SNAPSHOT'
-ext.kodex_version='4.1.0-SNAPSHOT'
+ext.kodex_version='5.0.1-SNAPSHOT'
 ext.krypto_version='0.2.1-SNAPSHOT'
 ext.retrofit_version='1.9.0'
 ext.jackson_version='2.4.4'
@@ -87,14 +86,10 @@ dependencies {
 
     if( project.hasProperty('developmentMode') && project.developmentMode ) {
       logger.quiet("$project.name is using project dependencies")
-      compile project(":fhe-core:kryptnostic-api")
-      compile project(":fhe-core:kryptnostic-core")
       compile project(":kodex")
       testCompile project(path: ":kodex", configuration: "tests")
     } else {
       logger.quiet("$project.name is using jar dependencies")
-      compile "com.kryptnostic:kryptnostic-api:${fhe_core_version}"
-      compile "com.kryptnostic:kryptnostic-core:${fhe_core_version}"
       compile "com.kryptnostic:krypto-api:${krypto_version}"
       compile "com.kryptnostic:kodex:${kodex_version}"
       testCompile "com.kryptnostic:kodex:${kodex_version}:tests"

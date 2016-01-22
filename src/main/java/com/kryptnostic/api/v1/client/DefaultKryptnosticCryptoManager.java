@@ -6,13 +6,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import javax.crypto.Mac;
+
+import org.apache.commons.codec.binary.StringUtils;
+import org.apache.commons.codec.digest.HmacUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.KryptnosticConnection;
@@ -24,7 +28,9 @@ import com.kryptnostic.kodex.v1.crypto.ciphers.Cyphers;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingCryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.RsaCompressingEncryptionService;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
+import com.kryptnostic.v2.search.SearchApi;
 import com.kryptnostic.v2.sharing.api.SharingApi;
+import com.kryptnostic.v2.sharing.models.VersionedObjectSearchPair;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
@@ -37,8 +43,10 @@ import com.kryptnostic.v2.storage.models.VersionedObjectKey;
  */
 public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager {
     private final SharingApi            sharingApi;
-    final KeyStorageApi         keyStorageApi;
+    private final KeyStorageApi         keyStorageApi;
+    private final SearchApi             searchApi;
     private final KryptnosticConnection connection;
+    private final Mac                   hmac;
 
     private static final Logger         logger = LoggerFactory
                                                        .getLogger( DefaultKryptnosticCryptoManager.class );
@@ -47,16 +55,18 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
             KryptnosticConnection connection ) {
         this.sharingApi = connection.getSharingApi();
         this.keyStorageApi = connection.getKeyStorageApi();
+        this.searchApi = connection.getSearchApi();
         this.connection = connection;
+        hmac = HmacUtils.getHmacSha256( connection.getMasterCryptoService().getSecretKey() );
     }
 
     @Override
     public void registerObjectSearchPair( VersionedObjectKey objectId, ObjectSearchPair indexPair ) {
-        sharingApi.addSearchPairs( ImmutableMap.of( objectId, indexPair ) );
+        sharingApi.addSearchPairs( ImmutableSet.of( new VersionedObjectSearchPair( objectId, indexPair ) ) );
     }
 
     @Override
-    public void registerObjectSearchPairs( Map<VersionedObjectKey, ObjectSearchPair> indexPairs ) {
+    public void registerObjectSearchPairs( Set<VersionedObjectSearchPair> indexPairs ) {
         sharingApi.addSearchPairs( indexPairs );
     }
 
@@ -85,8 +95,8 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
     }
 
     @Override
-    public byte[] prepareSearchToken( String token ) {
-        return connection.getKryptnosticEngine().getEncryptedSearchToken( getHashedToken( token ) );
+    public byte[] prepareSearchToken( String term ) {
+        return connection.getKryptnosticEngine().getEncryptedSearchToken( getHashedToken( term ) );
     }
 
     @Override
@@ -125,5 +135,14 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
                 RsaKeyLoader.CIPHER,
                 connection.getPrivateKey(),
                 connection.getPublicKey() );
+    }
+
+    public byte[] computeSearchToken( String term ) {
+        return hmac.doFinal( StringUtils.getBytesUtf16( term ) );
+    }
+
+    @Override
+    public int getIndexBucketSize( VersionedObjectKey objectKey ) {
+        return searchApi.getTotalSegments( objectKey.getObjectId(), objectKey.getVersion() );
     }
 }

@@ -13,7 +13,9 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.api.v1.KryptnosticCryptoManager;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
@@ -29,6 +31,7 @@ import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.sharing.models.RevocationRequest;
 import com.kryptnostic.v2.sharing.models.Share;
 import com.kryptnostic.v2.sharing.models.SharingRequest;
+import com.kryptnostic.v2.sharing.models.VersionedObjectSearchPair;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 public class SharingManager implements SharingClient {
@@ -107,14 +110,16 @@ public class SharingManager implements SharingClient {
     @Override
     public Set<VersionedObjectKey> processIncomingShares() throws IOException, SecurityConfigurationException {
         CryptoServiceLoader loader = connection.getCryptoServiceLoader();
-        Set<Share> incomingShares = sharingApi.getIncomingShares();
-        if ( incomingShares == null || incomingShares.isEmpty() ) {
+        Iterable<Share> incomingShares = sharingApi.getIncomingShares();
+        if ( incomingShares == null || Iterables.isEmpty( incomingShares ) ) {
             return ImmutableSet.of();
         }
-        Map<VersionedObjectKey, ObjectSearchPair> objectSearchPairs = Maps.newHashMap();
+        Set<VersionedObjectKey> objectKeys = Sets.newHashSet();
+        Set<VersionedObjectSearchPair> objectSearchPairs = Sets.newHashSet();
 
         for ( Share share : incomingShares ) {
-            VersionedObjectKey id = share.getObjectId();
+            VersionedObjectKey id = share.getObjectKey();
+            objectKeys.add( id );
             CryptoService decryptor;
             try {
                 logger.info( "Processing share for {}", id );
@@ -122,9 +127,9 @@ public class SharingManager implements SharingClient {
                 if ( maybeService.isPresent() ) {
                     decryptor = maybeService.get();
                 } else {
-                    logger.error( "Unable to retrieve crypto service for object {}", share.getObjectId() );
+                    logger.error( "Unable to retrieve crypto service for object {}", share.getObjectKey() );
                     throw new SecurityConfigurationException( "Unable to retrieve crypto service for object {}"
-                            + share.getObjectId() );
+                            + share.getObjectKey() );
                 }
             } catch ( ExecutionException e ) {
                 throw new IOException( e );
@@ -135,15 +140,17 @@ public class SharingManager implements SharingClient {
                 byte[] sharePair = decryptor.decryptBytes( encryptedSharingPair.get() );
                 Preconditions.checkState( sharePair.length == KryptnosticEngine.SHARE_PAIR_LENGTH,
                         "Sharing pair must be 2064 bytes long." );
-                objectSearchPairs.put( id,
+                VersionedObjectSearchPair pair = new VersionedObjectSearchPair(
+                        id,
                         new ObjectSearchPair( connection
                                 .getKryptnosticEngine()
                                 .getObjectSearchPairFromObjectSharePair( sharePair ) ) );
+                objectSearchPairs.add( pair );
             }
         }
 
         sharingApi.addSearchPairs( objectSearchPairs );
-        return objectSearchPairs.keySet();
+        return objectKeys;
     }
 
     @Override
@@ -154,10 +161,10 @@ public class SharingManager implements SharingClient {
 
     @Override
     public int getIncomingSharesCount() {
-        Set<Share> incomingShares = sharingApi.getIncomingShares();
-        if ( incomingShares == null || incomingShares.isEmpty() ) {
+        Iterable<Share> incomingShares = sharingApi.getIncomingShares();
+        if ( incomingShares == null || Iterables.isEmpty( incomingShares ) ) {
             return 0;
         }
-        return incomingShares.size();
+        return Iterables.size( incomingShares );
     }
 }
