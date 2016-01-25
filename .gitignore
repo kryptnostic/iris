@@ -2,6 +2,7 @@
 .project
 .gradle/
 .settings/
+.idea/
 bin/
 build/
 artifacts/
@@ -11,3 +12,4 @@ dontUseMe.map
 app.js.map
 app.css.map
 .kryptnostic/
+*.iml
