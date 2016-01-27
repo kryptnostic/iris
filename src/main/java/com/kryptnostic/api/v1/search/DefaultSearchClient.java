@@ -1,6 +1,7 @@
 package com.kryptnostic.api.v1.search;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,7 +22,7 @@ import com.kryptnostic.v2.search.SearchResult;
 
 /**
  * Default implementation of SearchService. Must use same IndexingService as the KryptnosticConnection.
- * 
+ *
  * @author Nick Hewitt &lt;nick@kryptnostic.com&gt;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
@@ -54,7 +55,7 @@ public class DefaultSearchClient implements SearchClient {
 
     @Override
     public Set<SearchResult> submitTermQuery( Map<byte[], byte[]> query ) {
-        return searchApi.submitTermQuery( query );
+        return new HashSet<SearchResult>();
     }
 
     /**
