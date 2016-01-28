@@ -14,7 +14,7 @@ import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 /**
  * KryptnosticContext is responsible for maintaining shared state between the KryptnosticClient and Kryptnostic
  * services.
- * 
+ *
  * @author Nick Hewitt &lt;nick@kryptnostic.com&gt;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  */
@@ -36,7 +36,4 @@ public interface KryptnosticCryptoManager {
 
     void registerObjectSearchPairs( Set<VersionedObjectSearchPair> indexPairs );
 
-    byte[] computeSearchToken( String token );
-    
-    int getIndexBucketSize( VersionedObjectKey objectKey );
 }

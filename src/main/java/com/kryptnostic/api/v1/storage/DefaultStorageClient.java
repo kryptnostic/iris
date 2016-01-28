@@ -1,12 +1,12 @@
 package com.kryptnostic.api.v1.storage;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collection;
+import java.security.SecureRandom;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -21,9 +21,10 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.hash.Hashing;
 import com.kryptnostic.api.v1.KryptnosticConnection;
+import com.kryptnostic.api.v1.KryptnosticCryptoManager;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
@@ -34,18 +35,15 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
-import com.kryptnostic.v2.indexing.IndexMetadata;
+import com.kryptnostic.v2.indexing.BucketingAndPaddingIndexer;
 import com.kryptnostic.v2.indexing.Indexer;
-import com.kryptnostic.v2.indexing.PaddedMetadataMapper;
-import com.kryptnostic.v2.indexing.SimpleIndexer;
-import com.kryptnostic.v2.indexing.metadata.BucketedMetadata;
-import com.kryptnostic.v2.indexing.metadata.Metadata;
-import com.kryptnostic.v2.indexing.metadata.MetadataMapper;
-import com.kryptnostic.v2.indexing.metadata.MetadataRequest;
+import com.kryptnostic.v2.indexing.InvertedIndexSegment;
 import com.kryptnostic.v2.marshalling.JsonJacksonMarshallingService;
 import com.kryptnostic.v2.marshalling.MarshallingService;
+import com.kryptnostic.v2.search.SearchApi;
 import com.kryptnostic.v2.storage.api.ObjectListingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
+import com.kryptnostic.v2.storage.models.CreateIndexSegmentRequest;
 import com.kryptnostic.v2.storage.models.CreateObjectRequest;
 import com.kryptnostic.v2.storage.models.LoadLevel;
 import com.kryptnostic.v2.storage.models.ObjectMetadata;
@@ -66,7 +64,7 @@ import com.kryptnostic.v2.types.TypedBytes;
 public class DefaultStorageClient implements StorageClient {
     public static final byte[]          ZERO_LENGTH_BYTE_ARRAY = new byte[ 0 ];
     private static final Logger         logger                 = LoggerFactory.getLogger( StorageClient.class );
-    private static final int            METADATA_BATCH_SIZE    = 500;
+    private static final Random         SECURE_RANDOM          = new SecureRandom();
 
     /**
      * Server-side
@@ -74,15 +72,16 @@ public class DefaultStorageClient implements StorageClient {
     private final KryptnosticConnection connection;
     private final ObjectStorageApi      objectApi;
     private final ObjectListingApi      listingApi;
+    private final SearchApi             searchApi;
 
     /**
      * Client-side
      */
-    private final MetadataMapper        metadataMapper;
     private final Indexer               indexer;
     private final CryptoServiceLoader   loader;
     private final MarshallingService    marshaller;
     private final TypeManager           typeManager;
+    private final KryptnosticCryptoManager cryptoManager;
 
     public DefaultStorageClient(
             KryptnosticConnection connection ) throws ClassNotFoundException,
@@ -93,13 +92,27 @@ public class DefaultStorageClient implements StorageClient {
         this.connection = connection;
         this.objectApi = connection.getObjectStorageApi();
         this.listingApi = connection.getObjectListingApi();
-        this.metadataMapper = new PaddedMetadataMapper( connection.newCryptoManager() );
-        this.indexer = new SimpleIndexer();
+        this.searchApi = connection.getSearchApi();
+        this.indexer = new BucketingAndPaddingIndexer();
         this.typeManager = new KryptnosticTypeManager( this );
         this.marshaller = new JsonJacksonMarshallingService( this.typeManager );
         this.loader = Preconditions.checkNotNull(
                 connection.getCryptoServiceLoader(),
                 "CryptoServiceLoader from KryptnosticConnection cannot be null." );
+        this.cryptoManager = connection.newCryptoManager();
+    }
+
+    private CryptoService getOrCreateObjectCryptoService( VersionedObjectKey objectKey )
+            throws ExecutionException, ResourceNotFoundException {
+        Optional<CryptoService> maybeObjectCryptoService = loader.get( objectKey );
+        if ( !maybeObjectCryptoService.isPresent() ) {
+            // TODO: Centralize error messages somewhere so that we can manage error messages and resources.
+            logger.error( "Unable to get or create an object crypto service for object: {} ", objectKey );
+            throw new ResourceNotFoundException( "Unable to get or create an object crypto service for object "
+                    + objectKey.toString() );
+        }
+        CryptoService objectCryptoService = maybeObjectCryptoService.get();
+        return objectCryptoService;
     }
 
     @Override
@@ -110,14 +123,7 @@ public class DefaultStorageClient implements StorageClient {
         CreateObjectRequest createObjectRequest = req.toCreateObjectRequest();
         VersionedObjectKey objectKey = objectApi.createObject( createObjectRequest );
 
-        Optional<CryptoService> maybeObjectCryptoService = loader.get( objectKey );
-        if ( !maybeObjectCryptoService.isPresent() ) {
-            // TODO: Centralize error messages somewhere so that we can manage error messages and resources.
-            logger.error( "Unable to get or create an object crypto service for object: {} ", objectKey );
-            throw new ResourceNotFoundException( "Unable to get or create an object crypto service for object "
-                    + objectKey.toString() );
-        }
-        CryptoService objectCryptoService = maybeObjectCryptoService.get();
+        CryptoService objectCryptoService = getOrCreateObjectCryptoService( objectKey );
 
         byte[] actualBytes = null;
         if ( storeable instanceof byte[] ) {
@@ -144,17 +150,50 @@ public class DefaultStorageClient implements StorageClient {
         return objectKey;
     }
 
-    private void makeObjectSearchable( VersionedObjectKey key, String data, byte[] objectIndexPair )
-            throws IrisException {
-        // index + map tokens for metadata
+    // See http://wiki.krypt.int/pages/viewpage.action?pageId=13140089
+    private void makeObjectSearchable( VersionedObjectKey objectKey, String contents, byte[] objectIndexPair )
+            throws IOException, ExecutionException, ResourceNotFoundException, SecurityConfigurationException,
+            IrisException {
+
         Stopwatch watch = Stopwatch.createStarted();
-        Set<BucketedMetadata> metadata = indexer.index( key, data );
+        List<InvertedIndexSegment> indexSegments = indexer.index( objectKey, contents );
         logger.trace( "[PROFILE] indexer took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
-        logger.trace( "[PROFILE] {} metadata indexed", metadata.size() );
+        logger.trace( "[PROFILE] {} inverted index segments generated", indexSegments.size() );
+
+        Collections.shuffle( indexSegments, SECURE_RANDOM );
 
         watch.reset().start();
-        prepareMetadata( metadata, objectIndexPair );
-        logger.trace( "[PROFILE] indexing and uploading took {} ms", watch.elapsed( TimeUnit.MILLISECONDS ) );
+
+        int N = indexSegments.size();
+        int rangeStart = searchApi.getAndAddSegmentCount( objectKey.getObjectId(), N);
+        for (int j = 0; j < N; j++) {
+            InvertedIndexSegment indexSegment = indexSegments.get( j );
+            byte[] baseAddress = cryptoManager.generateIndexForToken(
+                    indexSegment.getToken(),
+                    objectIndexPair );
+            byte[] address = Hashing
+                    .sha256()
+                    .newHasher()
+                    .putBytes( baseAddress )
+                    .putInt( rangeStart + j )
+                    .hash()
+                    .asBytes();
+            VersionedObjectKey indexSegmentKey =
+                    objectApi.createIndexSegment( new CreateIndexSegmentRequest( address ) );
+
+            CryptoService objectCryptoService = getOrCreateObjectCryptoService( objectKey );
+            BlockCiphertext encryptedIndexSegment = objectCryptoService.encrypt(
+                    marshaller.toTypedBytes( indexSegment ).getBytes() );
+
+            objectApi.setObjectFromBlockCiphertext(
+                    indexSegmentKey.getObjectId(),
+                    indexSegmentKey.getVersion(),
+                    encryptedIndexSegment );
+        }
+
+        logger.trace(
+                "[PROFILE] computing addresses, encrypting index segments, and uploading took {} ms",
+                watch.elapsed( TimeUnit.MILLISECONDS ) );
     }
 
     private byte[] provisionSearchPairAndReturnCorrespondingIndexPair( VersionedObjectKey key ) {
@@ -221,62 +260,6 @@ public class DefaultStorageClient implements StorageClient {
         byte[] tag = objectApi.getObjectTag( objectId, version );
 
         return new BlockCiphertext( iv, salt, contents, Optional.<byte[]> absent(), Optional.of( tag ) );
-    }
-
-    /**
-     * Maps all metadata to an index that the server can compute when searching
-     *
-     * @param metadata
-     * @return
-     * @throws IrisException
-     */
-    private void prepareMetadata(
-            Set<BucketedMetadata> metadata,
-            byte[] objectIndexPair )
-                    throws IrisException {
-
-        // create plaintext metadata
-        Map<ByteBuffer, List<Metadata>> mappedMetadata = metadataMapper.mapTokensToKeys( metadata,
-                objectIndexPair );
-                // logger.debug( "generated plaintext metadata {}", keyedMetadata );
-
-        // encrypt the metadata and format for the server
-        Collection<IndexMetadata> metadataIndex = Lists.newArrayListWithExpectedSize( METADATA_BATCH_SIZE );
-        List<MetadataRequest> requests = Lists
-                .newArrayListWithExpectedSize( mappedMetadata.size() / METADATA_BATCH_SIZE );
-        for ( Entry<ByteBuffer, List<Metadata>> pm : mappedMetadata.entrySet() ) {
-            byte[] address = pm.getKey().array();
-            List<Metadata> metadataForKey = pm.getValue();
-
-            // encrypt the metadata
-            for ( Metadata metadatumToEncrypt : metadataForKey ) {
-                StorageOptions options = new StorageOptionsBuilder()
-                        .notSearchable()
-                        .storeable()
-                        .inheritCryptoService()
-                        .inheritOwner()
-                        .build();
-                VersionedObjectKey metadataObjectKey;
-                try {
-                    metadataObjectKey = storeObject( options, metadatumToEncrypt );
-                } catch (
-                        SecurityConfigurationException
-                        | ResourceNotFoundException
-                        | IOException
-                        | ExecutionException e ) {
-                    logger.error( "Failed to store metadatum. ", e );
-                    throw new IrisException( e );
-                }
-
-                metadataIndex
-                        .add( new IndexMetadata( address, metadataObjectKey, metadatumToEncrypt.getObjectKey() ) );
-                if ( metadataIndex.size() == METADATA_BATCH_SIZE ) {
-                    requests.add( new MetadataRequest( metadataIndex ) );
-                    metadataIndex = Lists.newArrayList();
-                }
-            }
-
-        }
     }
 
     @Override

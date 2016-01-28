@@ -1,103 +1,69 @@
 package com.kryptnostic.api.v1.search;
 
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
-import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.api.v1.KryptnosticCryptoManager;
-import com.kryptnostic.api.v1.indexing.SimpleIndexer;
-import com.kryptnostic.kodex.v1.indexing.Indexer;
+import com.kryptnostic.api.v1.indexing.analysis.PatternMatchingAnalyzer;
 import com.kryptnostic.kodex.v1.indexing.analysis.Analyzer;
 import com.kryptnostic.search.v1.SearchClient;
 import com.kryptnostic.v2.search.SearchApi;
-import com.kryptnostic.v2.search.SearchResult;
 
 /**
- * Default implementation of SearchService. Must use same IndexingService as the KryptnosticConnection.
+ * Default implementation of SearchService. Must use same Indexer as the KryptnosticConnection.
  *
  * @author Nick Hewitt &lt;nick@kryptnostic.com&gt;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
 public class DefaultSearchClient implements SearchClient {
-    private final SearchApi             searchApi;
-    private final Indexer               indexer;
-    private final KryptnosticConnection connection;
+
+    private static final Analyzer DEFAULT_ANALYZER = new PatternMatchingAnalyzer();
+
+    private final KryptnosticCryptoManager cryptoManager;
+    private final SearchApi searchApi;
+    private final Analyzer analyzer;
+
+    public DefaultSearchClient(
+            KryptnosticConnection connection,
+            Analyzer analyzer ) {
+        this.cryptoManager = connection.newCryptoManager();
+        this.searchApi = connection.getSearchApi();
+        this.analyzer = analyzer;
+
+    }
 
     public DefaultSearchClient( KryptnosticConnection connection ) {
-        this.connection = connection;
-        this.searchApi = connection.getSearchApi();
-        this.indexer = new SimpleIndexer();
+        this( connection, DEFAULT_ANALYZER );
     }
+
+    // TODO (elliott): Actually return the InvertedIndexSegments instead?
 
     @Override
-    public Set<SearchResult> search( List<String> searchTerms ) {
-        return submitTermQuery( buildTermQuery( searchTerms ) );
-    }
-
-    /**
-     * Analyze query into tokens, convert tokens into searchTokens, and generate a SearchRequest to Kryptnostic RESTful
-     * search service.
-     */
-
-    @Override
-    public Set<SearchResult> search( String... searchTerms ) {
-        return search( Arrays.asList( searchTerms ) );
-    }
-
-    @Override
-    public Set<SearchResult> submitTermQuery( Map<byte[], byte[]> query ) {
-        return new HashSet<SearchResult>();
-    }
-
-    /**
-     * @return SearchRequest based on search tokens, the ciphertext to be submitted to KryptnosticSearch.
-     */
-    @Override
-    public Map<byte[], byte[]> buildTermQuery( List<String> searchTerms ) {
-
-        Preconditions.checkArgument( searchTerms != null, "Cannot pass null tokens param." );
-
-        Iterable<String> analyzedTerms = Iterables
-                .concat( Lists.transform( searchTerms, new Function<String, Iterable<String>>() {
-
-                    @Override
-                    public Iterable<String> apply( String searchTerm ) {
-                        return analyzeQuery( searchTerm );
-                    }
-                } ) );
-
-        Map<byte[], byte[]> termQuery = Maps.newHashMap();
-        KryptnosticCryptoManager crypto = connection.newCryptoManager();
-
-        for ( String analyzedTerm : analyzedTerms ) {
-            termQuery.put( crypto.computeSearchToken( analyzedTerm ), crypto.prepareSearchToken( analyzedTerm ) );
-        }
-
-        return termQuery;
-    }
-
-    /**
-     * @return List<String> of unique tokens, the plaintext to be searched for in stored documents.
-     */
-    private Iterable<String> analyzeQuery( final String query ) {
-        Preconditions.checkArgument( query != null, "Cannot pass null query param." );
-
-        return Iterables.concat( Iterables.transform( indexer.getAnalyzers(), new Function<Analyzer, Set<String>>() {
-
-            @Override
-            public Set<String> apply( Analyzer input ) {
-                return input.analyze( query ).keySet();
+    public Set<UUID> search( List<String> terms ) {
+        Preconditions.checkNotNull( terms );
+        Set<byte[]> fheEncryptedSearchTerms = Sets.newHashSet();
+        for (String term : terms) {
+            for (String token : analyzer.tokenize( term )) {
+                fheEncryptedSearchTerms.add( fheEncryptSearchTerm( token ) );
             }
-        } ) );
+        }
+        return searchApi.search( fheEncryptedSearchTerms );
+    }
+
+    @Override
+    public Set<UUID> search( String... terms ) {
+        return search( Lists.newArrayList( terms ) );
+    }
+
+    private byte[] fheEncryptSearchTerm( String processedSearchTerm ) {
+        // TODO (elliott): Is it safe to reuse the same KryptnosticCryptoManager instance?
+        return cryptoManager.prepareSearchToken( processedSearchTerm );
     }
 
 }
