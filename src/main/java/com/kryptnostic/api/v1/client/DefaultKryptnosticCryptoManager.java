@@ -143,6 +143,6 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
 
     @Override
     public int getIndexBucketSize( VersionedObjectKey objectKey ) {
-        return searchApi.getTotalSegments( objectKey.getObjectId(), objectKey.getVersion() );
+        return 0;
     }
 }
