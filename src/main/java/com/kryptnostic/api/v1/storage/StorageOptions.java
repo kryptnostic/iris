@@ -5,7 +5,6 @@ import java.util.UUID;
 import com.google.common.base.Optional;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.v2.storage.models.CreateObjectRequest;
-import com.kryptnostic.v2.storage.models.ObjectMetadata.CryptoMaterial;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 
 public class StorageOptions {
@@ -85,7 +84,8 @@ public class StorageOptions {
                 type,
                 parentObjectId,
                 objectId,
-                CryptoMaterial.requiredByCypher( cypherType, isSalted ),
+                cypherType,
+                Optional.<Boolean> of( isSalted ),
                 Optional.<Boolean> of( inheritOwnership ),
                 Optional.<Boolean> of( inheritCryptoService ),
                 Optional.<Boolean> of( locked ) );
