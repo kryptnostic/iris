@@ -186,8 +186,7 @@ public class DefaultStorageClient implements StorageClient {
         UUID objectId = objectKey.getObjectId();
         long version = objectKey.getVersion();
 
-        // TODO: MAKE SURE TRUE OR FALSE CYPHRE SALTED --Move into Cypher maybe?
-        EnumSet<CryptoMaterial> required = CryptoMaterial.requiredByCypher( cipher, true );
+        EnumSet<CryptoMaterial> required = CryptoMaterial.requiredByCypher( cipher );
 
         if ( required.contains( CryptoMaterial.CONTENTS ) ) {
             this.objectApi.setObjectContent( objectId, version, ciphertext.getContents() );
