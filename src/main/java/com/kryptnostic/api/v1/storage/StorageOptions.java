@@ -15,7 +15,6 @@ public class StorageOptions {
     private final Optional<VersionedObjectKey> parentObjectId;
     private final boolean                      isSearchable;
     private final boolean                      isStoreable;
-    private final boolean                      isSalted;
     private final boolean                      inheritOwnership;
     private final boolean                      inheritCryptoService;
     private final Cypher                       cypherType;
@@ -39,7 +38,6 @@ public class StorageOptions {
         this.inheritOwnership = inheritOwnership;
         this.inheritCryptoService = inheritCryptoService;
         this.cypherType = cypherType;
-        this.isSalted = isSalted;
         this.type = type;
     }
 
@@ -71,10 +69,6 @@ public class StorageOptions {
         return cypherType;
     }
 
-    public boolean isSalted() {
-        return isSalted;
-    }
-
     public CreateObjectRequest toCreateObjectRequest() {
         return toCreateObjectRequest( LOCK_DEFAULT );
     }
@@ -85,7 +79,6 @@ public class StorageOptions {
                 parentObjectId,
                 objectId,
                 cypherType,
-                Optional.<Boolean> of( isSalted ),
                 Optional.<Boolean> of( inheritOwnership ),
                 Optional.<Boolean> of( inheritCryptoService ),
                 Optional.<Boolean> of( locked ) );
