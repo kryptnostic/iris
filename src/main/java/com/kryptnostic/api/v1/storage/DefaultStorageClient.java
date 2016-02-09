@@ -27,12 +27,14 @@ import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.indexing.v1.ObjectSearchPair;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
+import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceLockedException;
 import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
+import com.kryptnostic.v2.crypto.CryptoMaterial;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
 import com.kryptnostic.v2.indexing.IndexMetadata;
 import com.kryptnostic.v2.indexing.Indexer;
@@ -49,7 +51,6 @@ import com.kryptnostic.v2.storage.api.ObjectStorageApi;
 import com.kryptnostic.v2.storage.models.CreateObjectRequest;
 import com.kryptnostic.v2.storage.models.LoadLevel;
 import com.kryptnostic.v2.storage.models.ObjectMetadata;
-import com.kryptnostic.v2.storage.models.ObjectMetadata.CryptoMaterial;
 import com.kryptnostic.v2.storage.models.ObjectMetadataEncryptedNode;
 import com.kryptnostic.v2.storage.models.ObjectMetadataNode;
 import com.kryptnostic.v2.storage.models.ObjectTreeLoadRequest;
@@ -132,7 +133,7 @@ public class DefaultStorageClient implements StorageClient {
             // TODO: Add BLOCK chunking
             BlockCiphertext ciphertext = objectCryptoService.encrypt( actualBytes );
 
-            storeObject( objectKey, ciphertext, createObjectRequest.getRequiredCryptoMaterials() );
+            storeObject( objectKey, ciphertext, createObjectRequest.getCipherType() );
         }
 
         if ( req.isSearchable() && ( storeable instanceof String ) ) {
@@ -181,9 +182,11 @@ public class DefaultStorageClient implements StorageClient {
     private void storeObject(
             VersionedObjectKey objectKey,
             BlockCiphertext ciphertext,
-            EnumSet<CryptoMaterial> required ) {
+            Cypher cipher ) {
         UUID objectId = objectKey.getObjectId();
         long version = objectKey.getVersion();
+
+        EnumSet<CryptoMaterial> required = CryptoMaterial.requiredByCypher( cipher );
 
         if ( required.contains( CryptoMaterial.CONTENTS ) ) {
             this.objectApi.setObjectContent( objectId, version, ciphertext.getContents() );
