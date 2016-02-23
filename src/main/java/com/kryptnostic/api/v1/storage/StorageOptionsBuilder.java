@@ -104,7 +104,6 @@ public class StorageOptionsBuilder {
                 parentObjectId,
                 searchable,
                 storeable,
-                salted,
                 cypher,
                 inheritingOwnership,
                 inheritingCryptoService,
