@@ -14,7 +14,6 @@ import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
-import com.kryptnostic.storage.v1.http.MetadataStorageApi;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
 import com.kryptnostic.v2.search.SearchApi;
 import com.kryptnostic.v2.sharing.api.SharingApi;
@@ -62,8 +61,6 @@ public interface KryptnosticConnection {
     CryptoServiceLoader getCryptoServiceLoader();
 
     KeyStorageApi getCryptoKeyStorageApi();
-
-    MetadataStorageApi getMetadataApi();
 
     ObjectStorageApi getObjectStorageApi();
 

@@ -9,24 +9,25 @@ import java.security.spec.InvalidKeySpecException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
-import com.kryptnostic.directory.v1.http.DirectoryApi;
 import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.keys.Keys;
 import com.kryptnostic.kodex.v1.crypto.keys.PublicKeyAlgorithm;
 import com.kryptnostic.kodex.v1.exceptions.types.KodexException;
-import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
+import com.kryptnostic.v2.storage.api.KeyStorageApi;
 
 public final class LocalRsaKeyLoader extends RsaKeyLoader {
     private final ObjectMapper  mapper = KodexObjectMapperFactory.getObjectMapper();
     private final CryptoService crypto;
     private final DataStore     dataStore;
-    private final DirectoryApi  keyClient;
+    private final KeyStorageApi keyClient;
+    // private final DirectoryApi directoryClient;
 
-    public LocalRsaKeyLoader( CryptoService crypto, DirectoryApi keyClient, DataStore dataStore ) throws KodexException {
+    public LocalRsaKeyLoader( CryptoService crypto, KeyStorageApi keyClient, DataStore dataStore )
+            throws KodexException {
         if ( crypto == null || dataStore == null || keyClient == null ) {
             throw new KodexException(
                     "Crypto service, key network client, and data store are required to load from disk" );
@@ -47,9 +48,7 @@ public final class LocalRsaKeyLoader extends RsaKeyLoader {
             // need to check if local privateKey is synced with the server and user is authenticated
 
             BlockCiphertext networkPrivateKey = null;
-            try {
-                networkPrivateKey = keyClient.getPrivateKey();
-            } catch ( ResourceNotFoundException e ) {}
+            networkPrivateKey = keyClient.getRSAPrivateKey();
             if ( networkPrivateKey == null ) {
                 throw new KodexException( "User not recognized" );
             }

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -19,6 +20,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Maps;
 import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
+import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.kodex.v1.exceptions.types.SecurityConfigurationException;
@@ -65,17 +67,17 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
                             ids.add( key );
                         }
 
-                        Map<VersionedObjectKey, byte[]> data = keyApi.getObjectCryptoServices( ids );
+                        Map<VersionedObjectKey, BlockCiphertext> data = keyApi.getAesEncryptedCryptoServices( ids );
                         if ( data.size() != ids.size() ) {
                             throw new InvalidCacheLoadException( "Unable to retrieve all keys." );
                         }
                         Map<VersionedObjectKey, CryptoService> processedData = Maps.newHashMap();
 
-                        for ( Map.Entry<VersionedObjectKey, byte[]> entry : data.entrySet() ) {
-                            byte[] crypto = entry.getValue();
+                        for ( Entry<VersionedObjectKey, BlockCiphertext> entry : data.entrySet() ) {
+                            BlockCiphertext crypto = entry.getValue();
                             if ( crypto != null ) {
                                 CryptoService service = connection.newCryptoManager().getRsaCryptoService().decrypt(
-                                        crypto,
+                                        crypto.getContents(), // TODO: is this chrrect????
                                         AesCryptoService.class );
                                 processedData.put( entry.getKey(), service );
                             }
@@ -86,8 +88,9 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
                     @Override
                     public CryptoService load( VersionedObjectKey key ) throws IOException,
                             SecurityConfigurationException {
-                        byte[] crypto = keyApi.getObjectCryptoService( key.getObjectId(), key.getVersion() );
-                        if ( ( crypto == null ) ) {
+                        BlockCiphertext crypto = keyApi.getAesEncryptedObjectCryptoService( key.getObjectId(),
+                                key.getVersion() );
+                        if ( crypto == null ) {
                             try {
                                 CryptoService cs = new AesCryptoService( KryptnosticCryptoServiceLoader.this.cypher );
                                 put( key, cs );
@@ -103,7 +106,7 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
                         return connection
                                 .newCryptoManager()
                                 .getRsaCryptoService()
-                                .decrypt( crypto, AesCryptoService.class );
+                                .decrypt( crypto.getContents(), AesCryptoService.class );// TODO isthis correct???
                     }
                 } );
     }
@@ -121,7 +124,7 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
         keyCache.put( id, service );
         try {
             byte[] cs = connection.newCryptoManager().getRsaCryptoService().encrypt( service );
-            keyStorageApi.setObjectCryptoService( id.getObjectId(), id.getVersion(), cs );
+            keyStorageApi.setObjectCryptoService( id.getObjectId(), cs ); // TODO: is this correct???
         } catch ( SecurityConfigurationException | IOException e ) {
             throw new ExecutionException( e );
         }
@@ -138,6 +141,7 @@ public class KryptnosticCryptoServiceLoader implements CryptoServiceLoader {
         keyCache.cleanUp();
     }
 
+    @Override
     public Cypher getCypher() {
         return cypher;
     }
