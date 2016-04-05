@@ -26,7 +26,7 @@ import com.kryptnostic.api.v1.client.KryptnosticRestAdapter;
 import com.kryptnostic.api.v1.security.loaders.rsa.FreshRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.LocalRsaKeyLoader;
 import com.kryptnostic.api.v1.security.loaders.rsa.NetworkRsaKeyLoader;
-import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.http.UserDirectoryApi;
 import com.kryptnostic.kodex.v1.authentication.CredentialFactory;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.crypto.ciphers.AesCryptoService;
@@ -63,7 +63,7 @@ public class IrisConnection implements KryptnosticConnection {
     private final UUID                                userKey;
     private final String                              userCredential;
     private final String                              url;
-    private final DirectoryApi                        directoryApi;
+    private final UserDirectoryApi                    userDirectoryApi;
     private final ObjectStorageApi                    objectStorageApi;
     private final ObjectListingApi                    objectListingApi;
     private final KeyStorageApi                       keyStorageApi;
@@ -98,7 +98,7 @@ public class IrisConnection implements KryptnosticConnection {
                 userKey,
                 credential,
                 client );
-        this.directoryApi = v1Adapter.create( DirectoryApi.class );
+        this.userDirectoryApi = v1Adapter.create( UserDirectoryApi.class );
 
         RestAdapter v2Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
                 url,
@@ -449,8 +449,8 @@ public class IrisConnection implements KryptnosticConnection {
     }
 
     @Override
-    public DirectoryApi getDirectoryApi() {
-        return directoryApi;
+    public UserDirectoryApi getDirectoryApi() {
+        return userDirectoryApi;
     }
 
     @Override

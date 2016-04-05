@@ -4,12 +4,13 @@ import java.util.UUID;
 
 import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.directory.v1.DirectoryClient;
-import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.http.UserDirectoryApi;
+import com.kryptnostic.kodex.v1.exceptions.types.BadRequestException;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
 
 public class DefaultDirectoryClient implements DirectoryClient {
 
-    private final DirectoryApi directoryApi;
+    private final UserDirectoryApi userDirectoryApi;
     private final KeyStorageApi keyStorageApi;
 
 
@@ -17,13 +18,13 @@ public class DefaultDirectoryClient implements DirectoryClient {
     // classes.
 
     public DefaultDirectoryClient( KryptnosticConnection connection ) {
-        this.directoryApi = connection.getDirectoryApi();
+        this.userDirectoryApi = connection.getDirectoryApi();
         this.keyStorageApi = connection.getKeyStorageApi();
     }
 
     @Override
-    public Iterable<UUID> listUsersInRealm( String realm ) {
-        return directoryApi.listUserInRealm( realm );
+    public Iterable<UUID> listUsersInRealm( String realm ) throws BadRequestException {
+        return userDirectoryApi.listUserInRealm( realm );
     }
 
     @Override
