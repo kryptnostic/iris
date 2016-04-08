@@ -42,7 +42,6 @@ import com.kryptnostic.kodex.v1.marshalling.DeflatingJacksonMarshaller;
 import com.kryptnostic.kodex.v1.serialization.jackson.KodexObjectMapperFactory;
 import com.kryptnostic.kodex.v1.storage.DataStore;
 import com.kryptnostic.krypto.engine.KryptnosticEngine;
-import com.kryptnostic.storage.v1.http.MetadataStorageApi;
 import com.kryptnostic.v2.constants.Names;
 import com.kryptnostic.v2.crypto.CryptoServiceLoader;
 import com.kryptnostic.v2.crypto.KryptnosticCryptoServiceLoader;
@@ -70,7 +69,6 @@ public class IrisConnection implements KryptnosticConnection {
     private final KeyStorageApi                       keyStorageApi;
     private final SearchApi                           searchApi;
     private final SharingApi                          sharingApi;
-    private final MetadataStorageApi                  metadataStorageApi;
     private final DataStore                           dataStore;
     private final PublicKey                           rsaPublicKey;
     private final PrivateKey                          rsaPrivateKey;
@@ -101,7 +99,6 @@ public class IrisConnection implements KryptnosticConnection {
                 credential,
                 client );
         this.directoryApi = v1Adapter.create( DirectoryApi.class );
-        this.metadataStorageApi = v1Adapter.create( MetadataStorageApi.class );
 
         RestAdapter v2Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
                 url,
@@ -124,7 +121,7 @@ public class IrisConnection implements KryptnosticConnection {
          */
         Stopwatch watch = Stopwatch.createStarted();
         if ( keyPair == null ) {
-            keyPair = loadRsaKeys( cryptoService, userKey, dataStore, directoryApi );
+            keyPair = loadRsaKeys( cryptoService, userKey, dataStore, keyStorageApi );
         }
         this.rsaPrivateKey = keyPair.getPrivate();
         this.rsaPublicKey = keyPair.getPublic();
@@ -189,7 +186,7 @@ public class IrisConnection implements KryptnosticConnection {
             PasswordCryptoService crypto,
             UUID userKey,
             DataStore dataStore,
-            DirectoryApi keyClient ) throws IrisException {
+            KeyStorageApi keyClient ) throws IrisException {
         KeyPair keyPair = null;
 
         try {
@@ -429,11 +426,6 @@ public class IrisConnection implements KryptnosticConnection {
     @Override
     public byte[] getClientHashFunction() {
         return clientHashFunction;
-    }
-
-    @Override
-    public MetadataStorageApi getMetadataApi() {
-        return metadataStorageApi;
     }
 
     @Override

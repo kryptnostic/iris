@@ -5,19 +5,20 @@ import java.util.UUID;
 import com.kryptnostic.api.v1.KryptnosticConnection;
 import com.kryptnostic.directory.v1.DirectoryClient;
 import com.kryptnostic.directory.v1.http.DirectoryApi;
-import com.kryptnostic.directory.v1.model.response.PublicKeyEnvelope;
-import com.kryptnostic.kodex.v1.exceptions.types.ResourceNotFoundException;
-import com.kryptnostic.sharing.v1.models.NotificationPreference;
+import com.kryptnostic.v2.storage.api.KeyStorageApi;
 
 public class DefaultDirectoryClient implements DirectoryClient {
 
     private final DirectoryApi directoryApi;
+    private final KeyStorageApi keyStorageApi;
+
 
     // This is here so when things are added in the future, it is possible to use the context to access relevant
     // classes.
 
     public DefaultDirectoryClient( KryptnosticConnection connection ) {
         this.directoryApi = connection.getDirectoryApi();
+        this.keyStorageApi = connection.getKeyStorageApi();
     }
 
     @Override
@@ -26,20 +27,8 @@ public class DefaultDirectoryClient implements DirectoryClient {
     }
 
     @Override
-    public PublicKeyEnvelope getPublicKey( UUID id ) throws ResourceNotFoundException {
-        return directoryApi.getPublicKey( id );
-    }
-
-    @Deprecated
-    @Override
-    public NotificationPreference getNotificationPreference() {
-        return directoryApi.getNotificationPreference().getData();
-    }
-
-    @Deprecated
-    @Override
-    public void setNotificationPreference( NotificationPreference preference ) {
-        directoryApi.setNotificationPreference( preference );
+    public byte[] getPublicKey( UUID id ) {
+        return keyStorageApi.getRSAPublicKey( id );
     }
 
 }
