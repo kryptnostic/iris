@@ -25,7 +25,6 @@ public class StorageOptions {
             Optional<VersionedObjectKey> parentObjectId,
             boolean isSearchable,
             boolean isStoreable,
-            boolean isSalted,
             Cypher cypherType,
             boolean inheritOwnership,
             boolean inheritCryptoService,
