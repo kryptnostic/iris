@@ -6,7 +6,7 @@ import java.security.PublicKey;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
-import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.http.UserDirectoryApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticClient;
 import com.kryptnostic.kodex.v1.crypto.ciphers.CryptoService;
 import com.kryptnostic.kodex.v1.exceptions.types.IrisException;
@@ -70,7 +70,7 @@ public interface KryptnosticConnection {
 
     SharingApi getSharingApi();
 
-    DirectoryApi getDirectoryApi();
+    UserDirectoryApi getDirectoryApi();
 
     KeyStorageApi getKeyStorageApi();
 

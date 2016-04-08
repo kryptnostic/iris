@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.kryptnostic.api.v1.KryptnosticConnection;
-import com.kryptnostic.directory.v1.http.DirectoryApi;
+import com.kryptnostic.directory.v1.http.UserDirectoryApi;
 import com.kryptnostic.kodex.v1.client.KryptnosticServicesFactory;
 import com.kryptnostic.sharing.v1.http.SharingApi;
 
@@ -14,7 +14,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     private final static Logger    logger = LoggerFactory.getLogger( DefaultKryptnosticServicesFactory.class );
 
     private final SharingApi       sharingApi;
-    private final DirectoryApi     directoryApi;
+    private final UserDirectoryApi     userDirectoryApi;
 
     public DefaultKryptnosticServicesFactory( KryptnosticConnection credentialService ) {
         this( KryptnosticRestAdapter.create( credentialService ) );
@@ -23,7 +23,7 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     public DefaultKryptnosticServicesFactory( RestAdapter restAdapter ) {
         logger.debug( "Starting generation of facades for KryptnosticServices." );
         sharingApi = restAdapter.create( SharingApi.class );
-        directoryApi = restAdapter.create( DirectoryApi.class );
+        userDirectoryApi = restAdapter.create( UserDirectoryApi.class );
         logger.debug( "Finishing generation of facades for KryptnosticServices." );
     }
 
@@ -33,8 +33,8 @@ public class DefaultKryptnosticServicesFactory implements KryptnosticServicesFac
     }
 
     @Override
-    public DirectoryApi createDirectoryApi() {
-        return directoryApi;
+    public UserDirectoryApi createDirectoryApi() {
+        return userDirectoryApi;
     }
 
 }
