@@ -6,6 +6,7 @@ import javax.annotation.Nullable;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
+import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
 import com.kryptnostic.v2.storage.types.TypeUUIDs;
@@ -24,6 +25,7 @@ public class StorageOptionsBuilder {
     private boolean                      inheritingCryptoService;
     private Cypher                       cypher;
     private UUID                         type;
+    private Optional<BlockCiphertext>    contents;
 
     public StorageOptionsBuilder() {
         objectId = Optional.absent();
@@ -82,6 +84,11 @@ public class StorageOptionsBuilder {
         return this;
     }
 
+    public StorageOptionsBuilder withContents( @Nullable BlockCiphertext contents ) {
+        this.contents = Optional.fromNullable( contents );
+        return this;
+    }
+
     public StorageOptionsBuilder isSalted( boolean isSalted ) {
         this.salted = isSalted;
         return this;
@@ -107,6 +114,7 @@ public class StorageOptionsBuilder {
                 cypher,
                 inheritingOwnership,
                 inheritingCryptoService,
+                contents,
                 type );
     }
 }

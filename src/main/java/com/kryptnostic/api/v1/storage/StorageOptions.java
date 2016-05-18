@@ -3,6 +3,7 @@ package com.kryptnostic.api.v1.storage;
 import java.util.UUID;
 
 import com.google.common.base.Optional;
+import com.kryptnostic.kodex.v1.crypto.ciphers.BlockCiphertext;
 import com.kryptnostic.kodex.v1.crypto.ciphers.Cypher;
 import com.kryptnostic.v2.storage.models.CreateObjectRequest;
 import com.kryptnostic.v2.storage.models.VersionedObjectKey;
@@ -19,6 +20,7 @@ public class StorageOptions {
     private final boolean                      inheritCryptoService;
     private final Cypher                       cypherType;
     private final UUID                         type;
+    private Optional<BlockCiphertext>          contents;
 
     public StorageOptions(
             Optional<VersionedObjectKey> objectId,
@@ -28,6 +30,7 @@ public class StorageOptions {
             Cypher cypherType,
             boolean inheritOwnership,
             boolean inheritCryptoService,
+            Optional<BlockCiphertext> contents,
             UUID type ) {
         super();
         this.objectId = objectId;
@@ -38,6 +41,7 @@ public class StorageOptions {
         this.inheritCryptoService = inheritCryptoService;
         this.cypherType = cypherType;
         this.type = type;
+        this.contents = contents;
     }
 
     public static StorageOptionsBuilder builder() {
@@ -68,6 +72,10 @@ public class StorageOptions {
         return cypherType;
     }
 
+    public Optional<BlockCiphertext> getContents() {
+        return contents;
+    }
+
     public CreateObjectRequest toCreateObjectRequest() {
         return toCreateObjectRequest( LOCK_DEFAULT );
     }
@@ -80,6 +88,8 @@ public class StorageOptions {
                 cypherType,
                 Optional.<Boolean> of( inheritOwnership ),
                 Optional.<Boolean> of( inheritCryptoService ),
-                Optional.<Boolean> of( locked ) );
+                Optional.<Boolean> of( locked ),
+                contents );
     }
+
 }
