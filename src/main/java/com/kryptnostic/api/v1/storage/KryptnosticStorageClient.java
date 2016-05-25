@@ -64,7 +64,7 @@ import com.kryptnostic.v2.types.TypedBytes;
  * @author Matthew Tamayo-Rios &lt;matthew@kryptnostic.com&gt;
  *
  */
-public class DefaultStorageClient implements StorageClient {
+public class KryptnosticStorageClient implements StorageClient {
     public static final byte[]          ZERO_LENGTH_BYTE_ARRAY = new byte[ 0 ];
     private static final Logger         logger                 = LoggerFactory.getLogger( StorageClient.class );
     private static final int            METADATA_BATCH_SIZE    = 500;
@@ -85,7 +85,7 @@ public class DefaultStorageClient implements StorageClient {
     private final MarshallingService    marshaller;
     private final TypeManager           typeManager;
 
-    public DefaultStorageClient(
+    public KryptnosticStorageClient(
             KryptnosticConnection connection ) throws ClassNotFoundException,
                     ResourceNotFoundException,
                     IOException,

@@ -50,14 +50,14 @@ import com.kryptnostic.v2.sharing.api.SharingApi;
 import com.kryptnostic.v2.storage.api.KeyStorageApi;
 import com.kryptnostic.v2.storage.api.ObjectListingApi;
 import com.kryptnostic.v2.storage.api.ObjectStorageApi;
+import com.kryptnostic.v2.storage.api.TypesApi;
 
 import retrofit.RestAdapter;
 import retrofit.client.Client;
 
-public class IrisConnection implements KryptnosticConnection {
-
+public class CachingKryptnosticConnection implements KryptnosticConnection {
     private static final Logger                       logger     = LoggerFactory
-                                                                         .getLogger( IrisConnection.class );
+                                                                         .getLogger( CachingKryptnosticConnection.class );
     protected static final DeflatingJacksonMarshaller marshaller = new DeflatingJacksonMarshaller();
     private transient final PasswordCryptoService     cryptoService;
     private final UUID                                userKey;
@@ -69,21 +69,23 @@ public class IrisConnection implements KryptnosticConnection {
     private final KeyStorageApi                       keyStorageApi;
     private final SearchApi                           searchApi;
     private final SharingApi                          sharingApi;
+    private final TypesApi                            typesApi;
     private final DataStore                           dataStore;
     private final PublicKey                           rsaPublicKey;
     private final PrivateKey                          rsaPrivateKey;
     private final CryptoServiceLoader                 loader;
+    private final KryptnosticCryptoManager            cryptoManager;
     boolean                                           doFresh    = false;
     private final KryptnosticEngine                   engine;
     private final byte[]                              clientHashFunction;
     private final CryptoService                       masterCryptoService;
 
-    public IrisConnection( String url, UUID userKey, String password, DataStore dataStore, Client client )
+    public CachingKryptnosticConnection( String url, UUID userKey, String password, DataStore dataStore, Client client )
             throws IrisException {
         this( url, userKey, password, dataStore, client, null );
     }
 
-    public IrisConnection(
+    public CachingKryptnosticConnection(
             String url,
             UUID userKey,
             String password,
@@ -105,7 +107,7 @@ public class IrisConnection implements KryptnosticConnection {
         this.objectListingApi = v2Adapter.create( ObjectListingApi.class );
         this.searchApi = v2Adapter.create( SearchApi.class );
         this.sharingApi = v2Adapter.create( SharingApi.class );
-
+        this.typesApi = v2Adapter.create( TypesApi.class );
         this.userCredential = credential;
         this.userKey = userKey;
         this.url = url;
@@ -127,6 +129,7 @@ public class IrisConnection implements KryptnosticConnection {
         KryptnosticEngineHolder holder = loadEngine();
         this.engine = holder.engine;
         this.clientHashFunction = holder.clientHashFunction;
+        this.cryptoManager = new DefaultKryptnosticCryptoManager( this );
     }
 
     private static String bootstrapCredential( UUID userKey, String url, String password, Client client )
@@ -461,12 +464,16 @@ public class IrisConnection implements KryptnosticConnection {
 
     @Override
     public KryptnosticCryptoManager newCryptoManager() {
-        // TODO: Why is this a factory method?
-        return new DefaultKryptnosticCryptoManager( this );
+        return cryptoManager;
     }
 
     @Override
     public CryptoService getMasterCryptoService() {
         return masterCryptoService;
+    }
+
+    @Override
+    public TypesApi getTypesApi() {
+        return typesApi;
     }
 }
