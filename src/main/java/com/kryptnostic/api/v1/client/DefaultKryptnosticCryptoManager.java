@@ -137,6 +137,7 @@ public class DefaultKryptnosticCryptoManager implements KryptnosticCryptoManager
                 connection.getPublicKey() );
     }
 
+    @Override
     public byte[] computeSearchToken( String term ) {
         return hmac.doFinal( StringUtils.getBytesUtf16( term ) );
     }

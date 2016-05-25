@@ -57,7 +57,8 @@ import retrofit.client.Client;
 
 public class CachingKryptnosticConnection implements KryptnosticConnection {
     private static final Logger                       logger     = LoggerFactory
-                                                                         .getLogger( CachingKryptnosticConnection.class );
+                                                                         .getLogger(
+                                                                                 CachingKryptnosticConnection.class );
     protected static final DeflatingJacksonMarshaller marshaller = new DeflatingJacksonMarshaller();
     private transient final PasswordCryptoService     cryptoService;
     private final UUID                                userKey;
@@ -94,7 +95,6 @@ public class CachingKryptnosticConnection implements KryptnosticConnection {
             KeyPair keyPair ) throws IrisException {
         cryptoService = new PasswordCryptoService( password );
         String credential = bootstrapCredential( userKey, url, password, client );
-
 
         RestAdapter v2Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
                 url,
@@ -152,7 +152,7 @@ public class CachingKryptnosticConnection implements KryptnosticConnection {
         try {
             cryptoServiceBytes = dataStore.get( MASTER_CRYPTO_SERVICE );
         } catch ( IOException e ) {
-            logger.warn( "Unable to load crypto service bytes from disk." );
+            logger.warn( "Unable to load crypto service bytes from disk.", e );
         }
 
         if ( cryptoServiceBytes == null ) {
@@ -166,10 +166,9 @@ public class CachingKryptnosticConnection implements KryptnosticConnection {
                 byte[] encryptedMasterKey = newCryptoManager().getRsaCryptoService().encrypt( cs );
                 dataStore.put( MASTER_CRYPTO_SERVICE, encryptedMasterKey );
                 return cs;
-            } else {
-                return newCryptoManager().getRsaCryptoService().decrypt( keyStorageApi.getMasterCryptoService(),
-                        AesCryptoService.class );
             }
+            return newCryptoManager().getRsaCryptoService().decrypt( cryptoServiceBytes, AesCryptoService.class );
+
         } catch (
                 SecurityConfigurationException
                 | IOException
