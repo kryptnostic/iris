@@ -93,18 +93,13 @@ public class IrisConnection implements KryptnosticConnection {
         cryptoService = new PasswordCryptoService( password );
         String credential = bootstrapCredential( userKey, url, password, client );
 
-        RestAdapter v1Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
-                url.replace( "/v2", "/v1" ),
-                userKey,
-                credential,
-                client );
-        this.userDirectoryApi = v1Adapter.create( UserDirectoryApi.class );
 
         RestAdapter v2Adapter = KryptnosticRestAdapter.createWithDefaultJacksonConverter(
                 url,
                 userKey,
                 credential,
                 client );
+        this.userDirectoryApi = v2Adapter.create( UserDirectoryApi.class );
         this.keyStorageApi = v2Adapter.create( KeyStorageApi.class );
         this.objectStorageApi = v2Adapter.create( ObjectStorageApi.class );
         this.objectListingApi = v2Adapter.create( ObjectListingApi.class );
