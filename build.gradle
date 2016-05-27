@@ -55,11 +55,10 @@ repositories {
   }
 }
 
-ext.kodex_version='5.0.1-SNAPSHOT'
-ext.krypto_version='0.2.1-SNAPSHOT'
+ext.kodex_version='6.2.1-SNAPSHOT'
+ext.krypto_version='0.3.0-SNAPSHOT'
 ext.retrofit_version='1.9.0'
 ext.jackson_version='2.4.4'
-ext.retrofit_version='1.9.0'
 ext.okhttp_version='2.5.0'
 ext.okio_version='1.6.0'
 dependencies {
