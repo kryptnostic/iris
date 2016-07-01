@@ -125,13 +125,13 @@ eclipse {
     ext.downloadSources = true
     ext.downloadJavadoc = true
     ext.sourceCompatibility=JavaVersion.VERSION_1_7
-    classpath {
-         containers.remove('org.eclipse.jdt.launching.JRE_CONTAINER')
-         containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7'
-    }
+    //classpath {
+         //containers.remove('org.eclipse.jdt.launching.JRE_CONTAINER')
+         //containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7'
+    //}
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.4'
+    gradleVersion = '2.14'
 }
 
